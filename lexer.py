@@ -13,33 +13,43 @@ reserved = {
     'else': 'ELSE',
     'while': 'WHILE',
     'do' : 'DO',
-    'end' : 'END'
+    'end' : 'END',
 }
 
 # List of token names.
 tokens = [
-    'ID',   #identity
+    'ID',
     'ASSIGN',
-    'UNITARY',
-    'SEQUENCE',
+    'ZERO',
+    'MUL_EQ',
+    'SEMICOLON',
     'NONDET_CHOICE',
     'LSBRAKET',
-    'RSBRAKET'
+    'RSBRAKET',
+    'LBRACE',
+    'RBRACE'
  ] + list(reserved.values())
 
 # Regular expression rules for simple tokens
 t_ASSIGN = r':='
-t_UNITARY = r'\*='
-t_SEQUENCE = r';'
+t_ZERO = r'0'
+t_MUL_EQ = r'\*='
+t_SEMICOLON = r';'
 t_NONDET_CHOICE = r'[#]'
 t_LSBRAKET = r'\['
 t_RSBRAKET = r'\]'
+t_LBRACE = r'{'
+t_RBRACE = r'}'
+
+# use // to comment a line
+def t_COMMENT(t):
+    r'//.*'
+    pass
 
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z_0-9]*'
-    t.type = reserved.get(t.value, 'ID')    # Check for reserved words
+    t.type = reserved.get(t.value,'ID')    # Check for reserved words
     return t
-
 
 # Define a rule so we can track line numbers
 def t_newline(t):
@@ -54,24 +64,10 @@ t_ignore = ' \t'
 
 
 def t_error(t):
-    print("Illegal character '%s'" % t.value[0])
+    print("Illegal character '" + t.value[0] + "' at line " + str(t.lineno))
     t.lexer.skip(1)
+
 
 
 # Build the lexer
 lexer = lex.lex()
-
-# Test it out
-data = '''
-ifandonlyif if if] while [#] jnj;end
-'''
-
-# Give the lexer some input
-lexer.input(data)
-
-# Tokenize
-while True:
-    tok = lexer.token()
-    if not tok:
-        break      # No more input
-    print(tok)

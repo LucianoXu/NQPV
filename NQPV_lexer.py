@@ -1,5 +1,5 @@
 # ------------------------------------------------------------
-# lexer.py
+# NQPV_lexer.py
 #
 # tokenizer for nondeterministic quantum programs
 # ------------------------------------------------------------
@@ -14,6 +14,7 @@ reserved = {
     'while': 'WHILE',
     'do' : 'DO',
     'end' : 'END',
+    'qvar' : 'QVAR'
 }
 
 # List of token names.

@@ -1,8 +1,20 @@
+# ------------------------------------------------------------
+# NQPV_parser.py
+#
+# parser for nondeterministic quantum programs
+# ------------------------------------------------------------
+
 import ply.yacc as yacc
 
-from lexer import tokens, lexer
+from NQPV_lexer import tokens, lexer
 
 # program declaration section
+def p_prog(p):
+    'prog : QVAR id_ls sequence'
+    p[0] = {
+        'qvar' : p[2],
+        'sequence' : p[3]
+    }
 
 def p_sequence_form(p):
     'sequence : sentence'
@@ -27,7 +39,7 @@ def p_sentence(p):
 
 def p_nondet_choice(p):
     'nondet_choice : LBRACE sequence NONDET_CHOICE sequence RBRACE'
-    p[0] = ('nondet_choice', p[2], p[4])
+    p[0] = ('NONDET_CHOICE', p[2], p[4])
 
 def p_if(p):
     'if : IF ID id_ls THEN sequence ELSE sequence END'

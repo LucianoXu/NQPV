@@ -37,9 +37,9 @@ def check_unity(m, m_id):
         return False
     return True
 
-def check_hermitian(m, m_id):
+def check_hermitian_predicate(m, m_id):
     '''
-    check whether tensor m is hermitian
+    check whether tensor m is hermitian and 0 <= m <= I
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
     '''
     if len(m.shape) % 2 == 1:
@@ -61,6 +61,13 @@ def check_hermitian(m, m_id):
     if diff > EPS:
         print("'" + m_id + "' is not an Hermitian operator." )
         return False
+
+    # check 0 <= matrix <= I
+    e_vals = np.linalg.eigvals(matrix)
+    if np.any(e_vals < 0 - EPS) or np.any(e_vals > 1 + EPS):
+        print("The requirement 0 <= '" + m_id + "' <= I is not satisfied.")
+        return False
+        
     return True
 
 

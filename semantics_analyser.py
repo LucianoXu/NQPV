@@ -85,7 +85,7 @@ def check_hermitian(id, herm_dict, var_ls):
             return False
 
         # check for valid unitary
-        if not NQPV_la.check_hermitian(loaded, id):
+        if not NQPV_la.check_hermitian_predicate(loaded, id):
             return False
 
         herm_dict[id] = loaded

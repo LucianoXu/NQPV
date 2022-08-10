@@ -37,6 +37,33 @@ def check_unity(m, m_id):
         return False
     return True
 
+def check_hermitian(m, m_id):
+    '''
+    check whether tensor m is hermitian
+    m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
+    '''
+    if len(m.shape) % 2 == 1:
+        print("The dimension of '" + m_id + "' is invalid for an Hermitian operator.")
+        return False
+
+    for dim in m.shape:
+        if dim != 2:
+            print("The dimension of '" + m_id + "' is invalid for an Hermitian operator.")
+            return False
+    
+    # calculate the dim for matrix
+    dim_m = 2**(len(m.shape)//2)
+    matrix = m.reshape((dim_m, dim_m))
+
+    # check the maximum of U^dagger @ U - I
+    zero_check = matrix - np.transpose(np.conj(matrix))
+    diff = np.sqrt(complex_norm(np.max(zero_check)))
+    if diff > EPS:
+        print("'" + m_id + "' is not an Hermitian operator." )
+        return False
+    return True
+
+
 def check_measure(m, m_id):
     '''
     check whether tensor m is a valid measurement
@@ -66,3 +93,4 @@ def check_measure(m, m_id):
         print("'" + m_id + "' does not satisfy the normalization requirement of a measurement." )
         return False
     return True
+    

@@ -14,7 +14,8 @@ reserved = {
     'while': 'WHILE',
     'do' : 'DO',
     'end' : 'END',
-    'qvar' : 'QVAR'
+    'qvar' : 'QVAR',
+    'inv' : 'INV'
 }
 
 # List of token names.
@@ -25,8 +26,11 @@ tokens = [
     'MUL_EQ',
     'SEMICOLON',
     'NONDET_CHOICE',
+    'COLON',
     'LSBRAKET',
     'RSBRAKET',
+    'LBRAKET',
+    'RBRAKET',
     'LBRACE',
     'RBRACE'
  ] + list(reserved.values())
@@ -37,8 +41,11 @@ t_ZERO = r'0'
 t_MUL_EQ = r'\*='
 t_SEMICOLON = r';'
 t_NONDET_CHOICE = r'[#]'
+t_COLON = r':'
 t_LSBRAKET = r'\['
 t_RSBRAKET = r'\]'
+t_LBRAKET = r'\('
+t_RBRAKET = r'\)'
 t_LBRACE = r'{'
 t_RBRACE = r'}'
 

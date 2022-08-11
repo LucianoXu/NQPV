@@ -95,3 +95,30 @@ Mmp = np.array(
 )
 np.save('./measure/Mmp.npy', Mmp)
 
+# create hermitian operators
+folder = os.path.exists("./herm")
+if not folder:
+    os.makedirs('./herm')
+
+np.save('./herm/I.npy', I)
+
+zero = np.zeros((2,2))
+np.save('./herm/Zero.npy', zero)
+
+P0 = np.array([[1., 0.],
+                [0., 0.]])
+np.save('./herm/P0.npy', P0)
+
+P1 = np.array([[0., 0.],
+                [0., 1.]])
+np.save('./herm/P1.npy', P1)
+
+Pp = np.array([[0.5, 0.5],
+                [0.5, 0.5]])
+np.save('./herm/Pp.npy', Pp)
+
+Pm = np.array([[0.5, -0.5],
+                [-0.5, 0.5]])
+np.save('./herm/Pm.npy', Pm)
+
+

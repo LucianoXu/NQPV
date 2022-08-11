@@ -23,6 +23,9 @@ def sqsubseteq(setA : list, setB : list) -> bool:
     msetA = [m.reshape((dim, dim)) for m in setA]
     msetB = [m.reshape((dim, dim)) for m in setB]
 
+    #print(msetA)
+    #print(msetB)
+
     for mB in msetB:
         X = cp.Variable((dim, dim), hermitian=True)
         constraints = [X >> 0]

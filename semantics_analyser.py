@@ -86,7 +86,7 @@ def check_hermitian(id, herm_dict, var_ls):
         pass
     else:
         try:
-            loaded = np.load("./" + id + ".npy")
+            loaded = np.load("./herm/" + id + ".npy")
         except:
             print("hermitian operator '" + id +".npy' not found")
             return False

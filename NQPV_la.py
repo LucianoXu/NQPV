@@ -136,22 +136,18 @@ def hermitian_contract(qvar: list, H, qvar_act : list, M):
     iH_right_ls = [i + nH for i in iH_left_ls]
 
     # decide the rearrangements, since the standard rearrangement is not what we want
-    count_ctt_MH = 0
     count_rem_MH = 0
-    count_ctt_HMd = 0
     count_rem_HMd = nH
     rearrange_MH = []
     rearrange_HMd = []
     for i in range(nH):
         if i in iH_left_ls:
-            rearrange_MH.append(2*nH-nM + iM_ls.index(count_ctt_MH))
-            count_ctt_MH += 1
+            rearrange_MH.append(2*nH-nM + qvar_act.index(qvar[i]))
         else:
             rearrange_MH.append(count_rem_MH)
             count_rem_MH += 1
-        if i in iH_right_ls:
-            rearrange_HMd.append(2*nH-nM + iM_ls.index(count_ctt_HMd))
-            count_ctt_HMd += 1
+        if i + nH in iH_right_ls:
+            rearrange_HMd.append(2*nH-nM + qvar_act.index(qvar[i - nH]))
         else:
             rearrange_HMd.append(count_rem_HMd)
             count_rem_HMd += 1
@@ -160,9 +156,8 @@ def hermitian_contract(qvar: list, H, qvar_act : list, M):
     rearrange_HMd = list(range(nH)) + rearrange_HMd
 
     # conduct the contraction and rearrange the indices
-    temp1 = np.tensordot(M, H, (iM_ls, iH_left_ls)).transpose(rearrange_MH)
+    temp1 = np.tensordot(H, M, (iH_left_ls, iM_ls)).transpose(rearrange_MH)
     temp2 = np.tensordot(temp1, np.conjugate(M), (iH_right_ls, iM_ls)).transpose(rearrange_HMd)
-
     return temp2
 
 def dagger(M):
@@ -191,6 +186,12 @@ def hermitian_init(qvar: list, H, qvar_init: list):
         tempH = a + b
     
     return tempH
+
+def tensor_to_matrix(t):
+    nM = len(t.shape)//2
+    ndim = 2**nM
+    return t.reshape((ndim, ndim))
+
 
 def hermitian_extend(qvar: list, H, qvar_H: list):
     '''

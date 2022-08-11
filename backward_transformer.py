@@ -42,6 +42,14 @@ def wlp_iter(sequence: list, qvar: list, postcond: list, operators: dict):
     cur_postcond = postcond
     # transform in the reverse order
     for i in range(len(sequence)-1, -1, -1):
+
+        '''
+        # make a brief report here
+        print("current condition:")
+        for t in cur_postcond:
+            print(NQPV_la.tensor_to_matrix(t))
+        '''
+
         sentence = sequence[i]
         if sentence[0] == 'SKIP':
             pass
@@ -91,13 +99,16 @@ def wlp_iter(sequence: list, qvar: list, postcond: list, operators: dict):
                 # check whether it is a valid invariant
                 for Hinv in inv:
                     proposed_pre.append(
-                        NQPV_la.hermitian_contract(qvar, H, sentence[3],
+                        NQPV_la.hermitian_contract(qvar, Hinv, sentence[3],
                          operators['measure'][sentence[2]][0]) +
                         NQPV_la.hermitian_contract(qvar, Hinv, sentence[3],
                          operators['measure'][sentence[2]][1])
                     )
                 calculated_pre = wlp_iter(sentence[4], qvar, proposed_pre, operators)
-                if sqsubseteq(inv, proposed_pre):
+                if calculated_pre is None:
+                    return None
+
+                if sqsubseteq(inv, calculated_pre):
                     temp += proposed_pre
                 else:
                     print("The given invariant '" + str(sentence[1]) + "' is invalid.")

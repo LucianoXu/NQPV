@@ -16,10 +16,17 @@ import NQPV_la
 
 #check whether the variables in check_ls are predefined in var_ls
 def check_variable(var_ls : list, check_ls : list):
+    used_qvar = []
     for var in check_ls:
+        # check whether the variable is defined in qvar
         if var not in var_ls:
             print("variable '" + var + "' not defined in qvar.")
             return False
+        # check whether the variable has been used
+        if var in used_qvar:
+            print("variable '" + var + "' appeared more than once in the variable list "+str(check_ls))
+            return False
+        used_qvar.append(var)
     return True
 
 def check_unitary(id, unitary_dict, var_ls):
@@ -111,17 +118,17 @@ def check(prog : dict):
     # check the pre-condition and post-condition
     for herm_tuple in prog['pre-cond']:
         if not check_variable(prog['qvar'], herm_tuple[1]):
-            return False
+            return None
         if not check_hermitian(herm_tuple[0], herm_dict, herm_tuple[1]):
-            return False
+            return None
     for herm_tuple in prog['post-cond']:
         if not check_variable(prog['qvar'], herm_tuple[1]):
-            return False
+            return None
         if not check_hermitian(herm_tuple[0], herm_dict, herm_tuple[1]):
-            return False
+            return None
 
     if check_iter(prog['qvar'], prog['sequence'], unitary_dict, measure_dict, herm_dict) :
-        return (unitary_dict, measure_dict)
+        return {'unitary': unitary_dict, 'measure': measure_dict, 'herm': herm_dict}
     else:
         return None
     

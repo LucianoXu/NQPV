@@ -1,8 +1,7 @@
-/__pycache__
+__pycache__
 
 *.out
 parsetab.py
 *.npy
 
 output.txt
-test.py

@@ -209,10 +209,11 @@ def verify(folder_path, lib_path = "", silent = False, total_correctness = False
             msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
             np.save(folder_path + "/" + id + ".npy", pinfo['herm'][id])
             msg("done\n", silent, None)
-        for id in pinfo['im_pre-cond']:
-            msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
-            np.save(folder_path + "/" + id + ".npy", pinfo['im_pre-cond'][id])
-            msg("done\n", silent, None)
+        if preserve_pre:
+            for id in pinfo['im_pre-cond']:
+                msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
+                np.save(folder_path + "/" + id + ".npy", pinfo['im_pre-cond'][id])
+                msg("done\n", silent, None)
 
 
     # close the output file

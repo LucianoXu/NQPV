@@ -38,7 +38,7 @@ class SyntaxStruct:
         r = ""
         # if annoted, add the preconditions
         if self.pre_cond != []:
-            r += prefix + "{ " + precondition_to_code(self.pre_cond) +" }\n"
+            r += "\n"+ prefix + "{ " + precondition_to_code(self.pre_cond) +" }\n"
         r += self.sentence_to_code(prefix)
         return r
     

@@ -1,0 +1,14 @@
+qvar [q q1 q2]
+
+{ Hrand[q] }
+
+[q1 q2] := 0;
+[q q1] *= CX;
+[q q2] *= CX;
+(((skip # q *= X) # q1 *= X) # q2 *= X);
+[q q1] *= CX;
+[q q2] *= CX;
+[q1 q2 q] *= CCX
+
+{ Hrand[q] }
+

@@ -62,7 +62,18 @@ def lib_create(lib_path):
         ).reshape((2,2,2,2))
         np.save(lib_path + '/unitary/CX.npy', CX)
 
-
+        CCX = np.array(
+            [[1., 0., 0., 0., 0., 0., 0., 0.],
+            [0., 1., 0., 0., 0., 0., 0., 0.],
+            [0., 0., 1., 0., 0., 0., 0., 0.],
+            [0., 0., 0., 1., 0., 0., 0., 0.],
+            [0., 0., 0., 0., 1., 0., 0., 0.],
+            [0., 0., 0., 0., 0., 1., 0., 0.],
+            [0., 0., 0., 0., 0., 0., 0., 1.],
+            [0., 0., 0., 0., 0., 0., 1., 0.]]
+        ).reshape((2,2,2,2,2,2))
+        np.save(lib_path + '/unitary/CCX.npy', CCX)
+        
         # create measurements
         folder = os.path.exists(lib_path + "/measure")
         if not folder:

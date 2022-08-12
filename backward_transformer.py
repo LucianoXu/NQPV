@@ -8,7 +8,7 @@
 import NQPV_la
 from set_order import sqsubseteq
 
-def wlp_verify(prog : dict, operators : dict):
+def wlp_verify(prog : dict, pinfo : dict):
     '''
     calculates the weakest liberal precondition
     prog: the given abstract syntax tree
@@ -17,20 +17,18 @@ def wlp_verify(prog : dict, operators : dict):
     qvar = prog['qvar']
 
     #prepare the hermitian operators
-    input_post = [NQPV_la.hermitian_extend(qvar, operators['herm'][tuple[0]], tuple[1]) for tuple in prog['post-cond']]
-    input_pre = [NQPV_la.hermitian_extend(qvar, operators['herm'][tuple[0]], tuple[1]) for tuple in prog['pre-cond']]
+    input_post = [NQPV_la.hermitian_extend(qvar, pinfo['herm'][tuple[0]], tuple[1]) for tuple in prog['post-cond']]
+    input_pre = [NQPV_la.hermitian_extend(qvar, pinfo['herm'][tuple[0]], tuple[1]) for tuple in prog['pre-cond']]
 
-    calculated_pre = wlp_iter(prog['sequence'], prog['qvar'], input_post, operators)
+    calculated_pre = wlp_iter(prog['sequence'], prog['qvar'], input_post, pinfo)
 
     if calculated_pre is not None:
         if sqsubseteq(input_pre, calculated_pre):
-            print("Partial Correctness Verified.")
             return True
     
-    print("Partial Correctness Verification fails.")
     return False
 
-def wlp_iter(sequence: list, qvar: list, postcond: list, operators: dict):
+def wlp_iter(sequence: list, qvar: list, postcond: list, pinfo: dict):
     '''
     input:
         sequence: sequence of program sentences
@@ -62,17 +60,17 @@ def wlp_iter(sequence: list, qvar: list, postcond: list, operators: dict):
                             for H in cur_postcond]
 
         elif sentence[0] == 'UNITARY':
-            Ud = NQPV_la.dagger(operators['unitary'][sentence[2]])
+            Ud = NQPV_la.dagger(pinfo['unitary'][sentence[2]])
             cur_postcond = [NQPV_la.hermitian_contract(qvar, H, sentence[1], Ud)
                             for H in cur_postcond]
 
         elif sentence[0] == 'IF':
             temp = []
             for H in cur_postcond:
-                pre0 = wlp_iter(sentence[3], qvar, [H], operators)
+                pre0 = wlp_iter(sentence[3], qvar, [H], pinfo)
                 if pre0 is None:
                     return None
-                pre1 = wlp_iter(sentence[4], qvar, [H], operators)
+                pre1 = wlp_iter(sentence[4], qvar, [H], pinfo)
                 if pre1 is None:
                     return None
 
@@ -80,9 +78,9 @@ def wlp_iter(sequence: list, qvar: list, postcond: list, operators: dict):
                     for H1 in pre1:
                         temp.append(
                             NQPV_la.hermitian_contract(qvar, H0, sentence[2],
-                             operators['measure'][sentence[1]][0]) + 
+                             pinfo['measure'][sentence[1]][0]) + 
                             NQPV_la.hermitian_contract(qvar, H1, sentence[2],
-                             operators['measure'][sentence[1]][1])
+                             pinfo['measure'][sentence[1]][1])
                         )
 
             cur_postcond = temp
@@ -92,19 +90,19 @@ def wlp_iter(sequence: list, qvar: list, postcond: list, operators: dict):
             temp = []
 
             #prepare the hermitian operators
-            inv = [NQPV_la.hermitian_extend(qvar, operators['herm'][tuple[0]], tuple[1]) for tuple in sentence[1]]
+            inv = [NQPV_la.hermitian_extend(qvar, pinfo['herm'][tuple[0]], tuple[1]) for tuple in sentence[1]]
 
             for H in cur_postcond:
                 proposed_pre = []
                 # check whether it is a valid invariant
                 for Hinv in inv:
                     proposed_pre.append(
+                        NQPV_la.hermitian_contract(qvar, H, sentence[3],
+                         pinfo['measure'][sentence[2]][0]) +
                         NQPV_la.hermitian_contract(qvar, Hinv, sentence[3],
-                         operators['measure'][sentence[2]][0]) +
-                        NQPV_la.hermitian_contract(qvar, Hinv, sentence[3],
-                         operators['measure'][sentence[2]][1])
+                         pinfo['measure'][sentence[2]][1])
                     )
-                calculated_pre = wlp_iter(sentence[4], qvar, proposed_pre, operators)
+                calculated_pre = wlp_iter(sentence[4], qvar, proposed_pre, pinfo)
                 if calculated_pre is None:
                     return None
 
@@ -118,10 +116,10 @@ def wlp_iter(sequence: list, qvar: list, postcond: list, operators: dict):
 
         
         elif sentence[0] == 'NONDET_CHOICE':
-            pre0 = wlp_iter(sentence[1], qvar, cur_postcond, operators)
+            pre0 = wlp_iter(sentence[1], qvar, cur_postcond, pinfo)
             if pre0 is None:
                 return None
-            pre1 = wlp_iter(sentence[2], qvar, cur_postcond, operators)
+            pre1 = wlp_iter(sentence[2], qvar, cur_postcond, pinfo)
             if pre1 is None:
                 return None
             cur_postcond = pre0 + pre1

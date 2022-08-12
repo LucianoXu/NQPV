@@ -117,8 +117,16 @@ def p_id_ls_start(p):
     p[0] = [p[2]]
 
 # Error rule for syntax errors
+
+from tools import err
+
+error_info = ""
+silent = False
+
 def p_error(p):
-    print("Syntax error in input: '" + str(p.value) + "' " + str(p))
+    global error_info, silent
+    cur_info = "(line " + str(p.lineno) + ")\tSyntax error in input: '" + str(p.value) + "'. \n"
+    error_info += err(cur_info, silent)
 
 
 # Build the lexer

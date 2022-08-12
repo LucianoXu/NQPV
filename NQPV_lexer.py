@@ -15,14 +15,14 @@ reserved = {
     'do' : 'DO',
     'end' : 'END',
     'qvar' : 'QVAR',
-    'inv' : 'INV'
+    'inv' : 'INV',
+    '0' : 'ZERO'
 }
 
 # List of token names.
 tokens = [
     'ID',
     'ASSIGN',
-    'ZERO',
     'MUL_EQ',
     'SEMICOLON',
     'NONDET_CHOICE',
@@ -37,7 +37,6 @@ tokens = [
 
 # Regular expression rules for simple tokens
 t_ASSIGN = r':='
-t_ZERO = r'0'
 t_MUL_EQ = r'\*='
 t_SEMICOLON = r';'
 t_NONDET_CHOICE = r'[#]'
@@ -70,12 +69,31 @@ t_ignore = ' \t'
 
 # Error handling rule
 
+from tools import err
+
+error_info = ""
+silent = False
 
 def t_error(t):
-    print("Illegal character '" + t.value[0] + "' at line " + str(t.lineno))
+    global error_info, silent
+    cur_info = "(line " + str(t.lineno) + ")\tSyntax Error. Illegal character '" + t.value[0] + "'. \n"
+    error_info += err(cur_info, silent)
     t.lexer.skip(1)
-
 
 
 # Build the lexer
 lexer = lex.lex()
+
+# test the lexer
+if __name__ == '__main__':
+
+    data = '''
+    '''
+
+    lexer.input(data)
+
+    while True:
+        tok = lexer.token()
+        if not tok:
+            break
+        print(tok)

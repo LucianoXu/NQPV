@@ -41,7 +41,7 @@ np.save('./unitary/Z.npy', Z)
 
 H = np.array(
     [[1., 1.],
-    [1., 1.]]
+    [1., -1.]]
 )/np.sqrt(2)
 np.save('./unitary/H.npy', H)
 

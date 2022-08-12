@@ -14,30 +14,42 @@
 import numpy as np
 import NQPV_la
 
+# store the error information
+from tools import err
+error_info = ""
+silent = False
+
 #check whether the variables in check_ls are predefined in var_ls
 def check_variable(var_ls : list, check_ls : list):
+    global error_info, silent
+
     used_qvar = []
     for var in check_ls:
         # check whether the variable is defined in qvar
         if var not in var_ls:
-            print("variable '" + var + "' not defined in qvar.")
+            error_info += err("Error: variable '" + var + "' not defined in qvar\n", silent)
             return False
         # check whether the variable has been used
         if var in used_qvar:
-            print("variable '" + var + "' appeared more than once in the variable list "+str(check_ls))
+            error_info += err("Error: Variable '" + var + "' appeared more than once in the variable list "+str(check_ls) + ".\n", silent)
             return False
         used_qvar.append(var)
     return True
 
-def check_unitary(id, unitary_dict, var_ls):
+def check_unitary(id, unitary_dict, var_ls, run_path):
+    global error_info, silent
+
     if id in unitary_dict:
         pass
     else:
         try:
             loaded = np.load("./unitary/" + id + ".npy")
         except:
-            print("unitary '" + id +".npy' not found")
-            return False
+            try:
+                loaded = np.load(run_path + id + ".npy")
+            except:
+                error_info += err("Error: unitary '" + id +".npy' not found\n", silent)
+                return False
 
         # check for valid unitary
         if not NQPV_la.check_unity(loaded, id):
@@ -49,20 +61,25 @@ def check_unitary(id, unitary_dict, var_ls):
     if (len(var_ls) * 2 == len(unitary_dict[id].shape)):
         return True
     else:
-        print("The dimensions of unitary '" + id + "' and qvars " + str(var_ls) + " do not match.")
+        error_info += err("Error: The dimensions of unitary '" + id + "' and qvars " + str(var_ls) + " do not match.\n", silent)
         return False
 
 
 
-def check_measure(id, measure_dict, var_ls):
+def check_measure(id, measure_dict, var_ls, run_path):
+    global error_info, silent
+
     if id in measure_dict:
         pass
     else:
         try:
             loaded = np.load("./measure/"+ id + ".npy")
         except:
-            print("measurement '" + id +".npy' not found")
-            return False
+            try:
+                loaded = np.load(run_path + id + ".npy")
+            except:
+                error_info += err("Error: measurement '" + id +".npy' not found\n", silent)
+                return False
 
         # check for valid measurement
         if not NQPV_la.check_measure(loaded, id):
@@ -75,12 +92,13 @@ def check_measure(id, measure_dict, var_ls):
     if (len(var_ls) * 2 + 1 == len(measure_dict[id].shape)):
         return True
     else:
-        print("The dimensions of measurement '" + id + "' and qvars " + str(var_ls) + " do not match.")
+        error_info += err("Error: The dimensions of measurement '" + id + "' and qvars " + str(var_ls) + " do not match.\n", silent)
         return False
 
 
-def check_hermitian(id, herm_dict, var_ls):
+def check_hermitian(id, herm_dict, var_ls, run_path):
     # check whether the hermitian is suitable
+    global error_info, silent
 
     if id in herm_dict:
         pass
@@ -88,8 +106,11 @@ def check_hermitian(id, herm_dict, var_ls):
         try:
             loaded = np.load("./herm/" + id + ".npy")
         except:
-            print("hermitian operator '" + id +".npy' not found")
-            return False
+            try:
+                loaded = np.load(run_path + id + ".npy")
+            except:
+                error_info += err("Error: hermitian operator '" + id +".npy' not found\n", silent)
+                return False
 
         # check for valid unitary
         if not NQPV_la.check_hermitian_predicate(loaded, id):
@@ -101,39 +122,47 @@ def check_hermitian(id, herm_dict, var_ls):
     if (len(var_ls) * 2 == len(herm_dict[id].shape)):
         return True
     else:
-        print("The dimensions of hermitian '" + id + "' and qvars " + str(var_ls) + " do not match.")
+        error_info += err("Error: The dimensions of hermitian '" + id + "' and qvars " + str(var_ls) + " do not match.\n", silent)
         return False
 
 
 # check the semantics of prog. load and return the operators
-def check(prog : dict):
+def check(prog : dict, run_path):
+    global error_info, silent
+
     if prog == None:
-        print("The input abstract syntax tree is invalid.")
+        error_info += err("Error: The input abstract syntax tree is invalid.\n", silent)
         return None
 
-    unitary_dict = {}
-    measure_dict = {}
-    herm_dict = {}
+    # check the declared qvar, ensure the uniqueness
+    check_variable(prog['qvar'], prog['qvar'])
+
+    pinfo = {
+        'unitary' : {},
+        'measure' : {},
+        'herm' : {},
+        'while_exists' : False
+    }
     
     # check the pre-condition and post-condition
     for herm_tuple in prog['pre-cond']:
         if not check_variable(prog['qvar'], herm_tuple[1]):
             return None
-        if not check_hermitian(herm_tuple[0], herm_dict, herm_tuple[1]):
+        if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path):
             return None
     for herm_tuple in prog['post-cond']:
         if not check_variable(prog['qvar'], herm_tuple[1]):
             return None
-        if not check_hermitian(herm_tuple[0], herm_dict, herm_tuple[1]):
+        if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path):
             return None
 
-    if check_iter(prog['qvar'], prog['sequence'], unitary_dict, measure_dict, herm_dict) :
-        return {'unitary': unitary_dict, 'measure': measure_dict, 'herm': herm_dict}
+    if check_iter(prog['qvar'], prog['sequence'], pinfo, run_path) :
+        return pinfo
     else:
         return None
     
 
-def check_iter(var_ls : list, sequence : list, unitary_dict : dict, measure_dict : dict, herm_dict : dict):
+def check_iter(var_ls : list, sequence : list, pinfo : dict, run_path):
     for sentence in sequence:
         if sentence[0] == 'SKIP':
             pass
@@ -148,7 +177,7 @@ def check_iter(var_ls : list, sequence : list, unitary_dict : dict, measure_dict
             if not check_variable(var_ls, sentence[1]):
                 return False
             # check the unitary
-            if not check_unitary(sentence[2], unitary_dict, sentence[1]):
+            if not check_unitary(sentence[2], pinfo['unitary'], sentence[1], run_path):
                 return False
 
         elif sentence[0] == 'IF':
@@ -156,36 +185,37 @@ def check_iter(var_ls : list, sequence : list, unitary_dict : dict, measure_dict
             if not check_variable(var_ls, sentence[2]):
                 return False
             # check the measure existence
-            if not check_measure(sentence[1], measure_dict, sentence[2]):
+            if not check_measure(sentence[1], pinfo['measure'], sentence[2], run_path):
                 return False
             # check the two subprograms
-            if not check_iter(var_ls, sentence[3], unitary_dict, measure_dict, herm_dict):
+            if not check_iter(var_ls, sentence[3], pinfo, run_path):
                 return False
-            if not check_iter(var_ls, sentence[4], unitary_dict, measure_dict, herm_dict):
+            if not check_iter(var_ls, sentence[4], pinfo, run_path):
                 return False
         
         elif sentence[0] == 'WHILE':
+            pinfo['while_exists'] = True
             # check the hermitian operators
             for herm_tuple in sentence[1]:
                 if not check_variable(var_ls, herm_tuple[1]):
                     return False
-                if not check_hermitian(herm_tuple[0], herm_dict, herm_tuple[1]):
+                if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path):
                     return False
             # check the variables
             if not check_variable(var_ls, sentence[3]):
                 return False
             # check the measure existence
-            if not check_measure(sentence[2], measure_dict, sentence[3]):
+            if not check_measure(sentence[2], pinfo['measure'], sentence[3], run_path):
                 return False
             # check the subprogram
-            if not check_iter(var_ls, sentence[4], unitary_dict, measure_dict, herm_dict):
+            if not check_iter(var_ls, sentence[4], pinfo, run_path):
                 return False
         
         elif sentence[0] == 'NONDET_CHOICE':
             # check the two subprograms
-            if not check_iter(var_ls, sentence[1], unitary_dict, measure_dict, herm_dict):
+            if not check_iter(var_ls, sentence[1], pinfo, run_path):
                 return False
-            if not check_iter(var_ls, sentence[2], unitary_dict, measure_dict, herm_dict):
+            if not check_iter(var_ls, sentence[2], pinfo, run_path):
                 return False
         
         else:

@@ -4,9 +4,12 @@
 # parser for nondeterministic quantum programs
 # ------------------------------------------------------------
 
+from msilib import sequence
 import ply.yacc as yacc
 
 from NQPV_lexer import tokens, lexer
+
+from NQPV_ast import *
 
 # program declaration section
 def p_prog(p):
@@ -17,6 +20,14 @@ def p_prog(p):
         'sequence' : p[4],
         'post-cond' : p[5]
     }
+
+# prog to code
+def prog_to_code(p, prefix):
+    r = prefix + "qvar "+ vls_to_code(p['qvar']) +"\n\n"
+    r += prefix + "{ " + predicate_to_code(p['pre-cond']) + " }\n\n"
+    r += sequence_to_code(p['sequence'], prefix) + "\n\n"
+    r += prefix + "{ " + predicate_to_code(p['post-cond']) + " }\n"
+    return r
 
 def p_sequence_form(p):
     'sequence : sentence'
@@ -41,40 +52,34 @@ def p_sentence(p):
 
 def p_nondet_choice(p):
     'nondet_choice : LBRAKET sequence NONDET_CHOICE sequence RBRAKET'
-    p[0] = ('NONDET_CHOICE', p[2], p[4])
+    p[0] = NondetStruct(p)
 
 def p_if(p):
     'if : IF ID id_ls THEN sequence ELSE sequence END'
-    p[0] = ('IF', p[2], p[3], p[5], p[7])
+    p[0] = IfStruct(p)
 
 def p_while(p):
     'while : inv_ls WHILE ID id_ls DO sequence END'
-    p[0] = ('WHILE', p[1], p[3], p[4], p[6])
+    p[0] = WhileStruct(p)
 
 
 def p_skip(p):
     'skip : SKIP'
-    p[0] = ('SKIP',)
+    p[0] = SkipStruct(p)
 
 def p_abort(p):
     'abort : ABORT'
-    p[0] = ('ABORT',)
+    p[0] = AbortStruct(p)
 
 def p_unitary(p):
     '''unitary : id_ls MUL_EQ ID
                 | ID MUL_EQ ID'''
-    if isinstance(p[1], list):
-        p[0] = ('UNITARY', p[1], p[3])
-    else:
-        p[0] = ('UNITARY', [p[1]], p[3])
+    p[0] = UnitaryStruct(p)
 
 def p_init(p):
     '''init : id_ls ASSIGN ZERO
             | ID ASSIGN ZERO'''
-    if isinstance(p[1], list): 
-        p[0] = ('INIT', p[1])
-    else:
-        p[0] = ('INIT', [p[1]])
+    p[0] = InitStruct(p)
 
 #define the invariants
 def p_inv_end(p):

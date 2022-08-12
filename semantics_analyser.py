@@ -164,58 +164,58 @@ def check(prog : dict, run_path):
 
 def check_iter(var_ls : list, sequence : list, pinfo : dict, run_path):
     for sentence in sequence:
-        if sentence[0] == 'SKIP':
+        if sentence.label == 'SKIP':
             pass
-        elif sentence[0] == 'ABORT':
+        elif sentence.label == 'ABORT':
             pass
-        elif sentence[0] == 'INIT':
+        elif sentence.label == 'INIT':
             # check the variables
-            if not check_variable(var_ls, sentence[1]):
+            if not check_variable(var_ls, sentence.vls):
                 return False
-        elif sentence[0] == 'UNITARY':
+        elif sentence.label == 'UNITARY':
             # check the variables
-            if not check_variable(var_ls, sentence[1]):
+            if not check_variable(var_ls, sentence.vls):
                 return False
             # check the unitary
-            if not check_unitary(sentence[2], pinfo['unitary'], sentence[1], run_path):
+            if not check_unitary(sentence.unitary, pinfo['unitary'], sentence.vls, run_path):
                 return False
 
-        elif sentence[0] == 'IF':
+        elif sentence.label == 'IF':
             # check the variables
-            if not check_variable(var_ls, sentence[2]):
+            if not check_variable(var_ls, sentence.measure_vls):
                 return False
             # check the measure existence
-            if not check_measure(sentence[1], pinfo['measure'], sentence[2], run_path):
+            if not check_measure(sentence.measure, pinfo['measure'], sentence.measure_vls, run_path):
                 return False
             # check the two subprograms
-            if not check_iter(var_ls, sentence[3], pinfo, run_path):
+            if not check_iter(var_ls, sentence.S0, pinfo, run_path):
                 return False
-            if not check_iter(var_ls, sentence[4], pinfo, run_path):
+            if not check_iter(var_ls, sentence.S1, pinfo, run_path):
                 return False
         
-        elif sentence[0] == 'WHILE':
+        elif sentence.label == 'WHILE':
             pinfo['while_exists'] = True
             # check the hermitian operators
-            for herm_tuple in sentence[1]:
+            for herm_tuple in sentence.inv:
                 if not check_variable(var_ls, herm_tuple[1]):
                     return False
                 if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path):
                     return False
             # check the variables
-            if not check_variable(var_ls, sentence[3]):
+            if not check_variable(var_ls, sentence.measure_vls):
                 return False
             # check the measure existence
-            if not check_measure(sentence[2], pinfo['measure'], sentence[3], run_path):
+            if not check_measure(sentence.measure, pinfo['measure'], sentence.measure_vls, run_path):
                 return False
             # check the subprogram
-            if not check_iter(var_ls, sentence[4], pinfo, run_path):
+            if not check_iter(var_ls, sentence.S, pinfo, run_path):
                 return False
         
-        elif sentence[0] == 'NONDET_CHOICE':
+        elif sentence.label == 'NONDET_CHOICE':
             # check the two subprograms
-            if not check_iter(var_ls, sentence[1], pinfo, run_path):
+            if not check_iter(var_ls, sentence.S0, pinfo, run_path):
                 return False
-            if not check_iter(var_ls, sentence[2], pinfo, run_path):
+            if not check_iter(var_ls, sentence.S1, pinfo, run_path):
                 return False
         
         else:

@@ -5,13 +5,16 @@
 # ------------------------------------------------------------
 
 import os
+import numpy as np
 
 from tools import msg, ver_label, lineno_added
 
+from NQPV_ast import *
+import NQPV_lexer, NQPV_parser, NQPV_la
 
-import NQPV_lexer,NQPV_parser
 import semantics_analyser
 from semantics_analyser import check
+import backward_transformer
 from backward_transformer import wlp_verify
 
 def verifiy_reset():
@@ -22,9 +25,11 @@ def verifiy_reset():
     NQPV_parser.silent = True
     semantics_analyser.error_info = ""
     semantics_analyser.silent = True
+    backward_transformer.error_info = ""
+    backward_transformer.silent = True
 
 
-def verify(folder_path, silent = False, total_correctness = False):
+def verify(folder_path, silent = False, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
 
     verifiy_reset()
 
@@ -66,6 +71,10 @@ def verify(folder_path, silent = False, total_correctness = False):
     else:
         msg("property to verify: Partial Correctness\n\n", silent, p_output)
 
+    msg("intermediate preconditions preservved: "+("Yes" if preserve_pre else "No") + "\n\n", silent, p_output)
+    msg("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n\n", silent, p_output)
+    msg("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n\n", silent, p_output)
+
     msg("--------------------------------------------\n", silent, p_output)
     msg("<prog> \n\n", silent, p_output)
     msg(lineno_added(prog_str), silent, p_output)
@@ -101,17 +110,99 @@ def verify(folder_path, silent = False, total_correctness = False):
 
     msg("verification starts, calculating weakest (liberal) preconditions...\n\n", silent, None)
 
-    v_result = wlp_verify(ast, pinfo)
+    v_result = wlp_verify(ast, pinfo, preserve_pre)
+
+    if backward_transformer.error_info != "":
+        msg(backward_transformer.error_info, False, p_output)
 
     # declare the result
     if v_result:
-        msg("\nVerification Result: Property holds.\n\n", silent, p_output)
+        msg("Verification Result: Property holds.\n\n", silent, p_output)
     else:
         # check whether there is while structures
         if pinfo['while_exists']:
-            msg("\nVerification Result: Property cannot be determined. A suitable loop invariant may be sufficient.\n\n", silent, p_output)
+            msg("Verification Result: Property cannot be determined. A suitable loop invariant may be sufficient.\n\n", silent, p_output)
         else:
-            msg("\nVerification Result: Property does not hold.\n\n", silent, p_output)
+            msg("Verification Result: Property does not hold.\n\n", silent, p_output)
+
+    # show the proof outline
+    
+    print("(proof outline shown in 'output.txt)\n\n", end='')
+    msg("--------------------------------------------\n", True, p_output)
+    msg("<prog proof outline> \n\n", True, p_output)
+    msg(lineno_added(NQPV_parser.prog_to_code(ast, "")), True, p_output)
+
+
+
+    # show the operators in the output
+    if opt_in_output:
+
+        # prompt that the operator output is hidden in cmd
+        if not silent:
+            print("(operators shown in 'output.txt')\n\n", end='')
+        
+        msg("\n\n--------------------------------------------\n", True, p_output)
+        msg("<unitary operators> \n\n", True, p_output)
+
+        for id in pinfo['unitary']:
+            msg(id + "\n", True, p_output)
+            msg(str(NQPV_la.tensor_to_matrix(pinfo['unitary'][id])), True, p_output)
+            msg("\n\n", True, p_output)
+        
+        msg("--------------------------------------------\n", True, p_output)
+
+        msg("<Hermitian operators> \n\n", True, p_output)
+
+        for id in pinfo['herm']:
+            msg(id + "\n", True, p_output)
+            msg(str(NQPV_la.tensor_to_matrix(pinfo['herm'][id])), True, p_output)
+            msg("\n\n", True, p_output)
+        
+        msg("--------------------------------------------\n", True, p_output)
+
+        msg("<measurement operators> \n\n", True, p_output)
+
+        for id in pinfo['measure']:
+            msg(id + " RESULT0 \n", True, p_output)
+            msg(str(NQPV_la.tensor_to_matrix(pinfo['measure'][id][0])), True, p_output)
+            msg("\n\n", True, p_output)
+            msg(id + " RESULT1 \n", True, p_output)
+            msg(str(NQPV_la.tensor_to_matrix(pinfo['measure'][id][1])), True, p_output)
+            msg("\n\n", True, p_output)
+        
+        msg("--------------------------------------------\n", True, p_output)
+
+        if preserve_pre:
+            msg("<Hermitians for intermediate preconditions> \n\n", True, p_output)
+
+            for id in pinfo['im_pre-cond']:
+                msg(id + "\n", True, p_output)
+                msg(str(NQPV_la.tensor_to_matrix(pinfo['im_pre-cond'][id])), True, p_output)
+                msg("\n\n", True, p_output)
+            
+            msg("--------------------------------------------\n", True, p_output)
+
+    # save the related operaters
+    if save_opt:
+        print("Saving operators...\n\n", end='')
+
+        for id in pinfo['unitary']:
+            print("unitary: " + id + ".npy ... ", end='')
+            np.save(folder_path + id + ".npy", pinfo['unitary'][id])
+            print("done\n", end = '')
+        for id in pinfo['measure']:
+            print("measurement: " + id + ".npy ... ", end='')
+            np.save(folder_path + id + ".npy", pinfo['measure'][id])
+            print("done\n", end = '')
+        for id in pinfo['herm']:
+            print("Hermitian Operator: " + id + ".npy ... ", end='')
+            np.save(folder_path + id + ".npy", pinfo['herm'][id])
+            print("done\n", end = '')
+        for id in pinfo['im_pre-cond']:
+            print("Hermitian Operator: " + id + ".npy ... ", end='')
+            np.save(folder_path + id + ".npy", pinfo['im_pre-cond'][id])
+            print("done\n", end = '')
+
 
     # close the output file
     p_output.close()

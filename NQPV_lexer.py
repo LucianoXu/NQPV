@@ -15,14 +15,14 @@ reserved = {
     'do' : 'DO',
     'end' : 'END',
     'qvar' : 'QVAR',
-    'inv' : 'INV',
-    '0' : 'ZERO'
+    'inv' : 'INV'
 }
 
 # List of token names.
 tokens = [
     'ID',
     'ASSIGN',
+    'ZERO',
     'MUL_EQ',
     'SEMICOLON',
     'NONDET_CHOICE',
@@ -37,6 +37,7 @@ tokens = [
 
 # Regular expression rules for simple tokens
 t_ASSIGN = r':='
+t_ZERO = r'0'
 t_MUL_EQ = r'\*='
 t_SEMICOLON = r';'
 t_NONDET_CHOICE = r'[#]'

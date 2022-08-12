@@ -4,9 +4,14 @@
 # linear algebra tools needed in this verifier
 # ------------------------------------------------------------
 
+from tools import err
+
 import numpy as np
 
 EPS = 1e-12
+
+error_info = ""
+silent = False
 
 def complex_norm(c):
     return np.sqrt(c * np.conj(c)).real
@@ -16,13 +21,15 @@ def check_unity(m, m_id):
     check whether tensor m is unitary
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
     '''
+    global error_info, silent
+
     if len(m.shape) % 2 == 1:
-        print("The dimension of '" + m_id + "' is invalid for an unitary.")
+        error_info += err("Error: The dimension of '" + m_id + "' is invalid for an unitary.\n\n", silent)
         return False
 
     for dim in m.shape:
         if dim != 2:
-            print("The dimension of '" + m_id + "' is invalid for an unitary.")
+            error_info += err("Error: The dimension of '" + m_id + "' is invalid for an unitary.\n\n", silent)
             return False
     
     # calculate the dim for matrix
@@ -33,7 +40,7 @@ def check_unity(m, m_id):
     zero_check = (matrix @ np.transpose(np.conj(matrix))) - np.eye(dim_m)
     diff = np.sqrt(complex_norm(np.max(zero_check)))
     if diff > EPS:
-        print("'" + m_id + "' is not an unitary matrix." )
+        error_info += err("Error: '" + m_id + "' is not an unitary matrix.\n\n", silent)
         return False
     return True
 
@@ -42,13 +49,14 @@ def check_hermitian_predicate(m, m_id):
     check whether tensor m is hermitian and 0 <= m <= I
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
     '''
+    global error_info, silent
     if len(m.shape) % 2 == 1:
-        print("The dimension of '" + m_id + "' is invalid for an Hermitian operator.")
+        error_info += err("Error: The dimension of '" + m_id + "' is invalid for an Hermitian operator.\n\n", silent)
         return False
 
     for dim in m.shape:
         if dim != 2:
-            print("The dimension of '" + m_id + "' is invalid for an Hermitian operator.")
+            error_info += err("Error: The dimension of '" + m_id + "' is invalid for an Hermitian operator.\n\n", silent)
             return False
     
     # calculate the dim for matrix
@@ -59,13 +67,13 @@ def check_hermitian_predicate(m, m_id):
     zero_check = matrix - np.transpose(np.conj(matrix))
     diff = np.sqrt(complex_norm(np.max(zero_check)))
     if diff > EPS:
-        print("'" + m_id + "' is not an Hermitian operator." )
+        error_info += err("Error: '" + m_id + "' is not an Hermitian operator.\n\n", silent)
         return False
 
     # check 0 <= matrix <= I
     e_vals = np.linalg.eigvals(matrix)
     if np.any(e_vals < 0 - EPS) or np.any(e_vals > 1 + EPS):
-        print("The requirement 0 <= '" + m_id + "' <= I is not satisfied.")
+        error_info += err("Error: The requirement 0 <= '" + m_id + "' <= I is not satisfied.\n\n", silent)
         return False
         
     return True
@@ -77,13 +85,14 @@ def check_measure(m, m_id):
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices. 
         The first index of m corresponds to measurement result 0 or 1.
     '''
+    global error_info, silent
     if len(m.shape) % 2 == 0:
-        print("The dimension of '" + m_id + "' is invalid for a measurement.")
+        error_info += err("Error: The dimension of '" + m_id + "' is invalid for a measurement.\n\n", silent)
         return False
 
     for dim in m.shape:
         if dim != 2:
-            print("The dimension of '" + m_id + "' is invalid for a measurement.")
+            error_info += err("Error: The dimension of '" + m_id + "' is invalid for a measurement.\n\n", silent)
             return False
     
     # calculate the dim for matrix
@@ -97,7 +106,7 @@ def check_measure(m, m_id):
     zero_check = (m0.conj().transpose() @ m0 + m1.conj().transpose() @ m1) - np.eye(dim_m)
     diff = np.sqrt(complex_norm(np.max(zero_check)))
     if diff > EPS:
-        print("'" + m_id + "' does not satisfy the normalization requirement of a measurement." )
+        error_info += err("Error: '" + m_id + "' does not satisfy the normalization requirement of a measurement.\n\n", silent)
         return False
     return True
     

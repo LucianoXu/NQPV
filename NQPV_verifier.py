@@ -19,6 +19,8 @@ from backward_transformer import wlp_verify
 
 def verifiy_reset():
     # clean up the error info
+    NQPV_la.error_info = ""
+    NQPV_la.silent = True
     NQPV_lexer.error_info = ""
     NQPV_lexer.silent = True
     NQPV_parser.error_info = ""
@@ -71,7 +73,7 @@ def verify(folder_path, silent = False, total_correctness = False, preserve_pre 
     else:
         msg("property to verify: Partial Correctness\n\n", silent, p_output)
 
-    msg("intermediate preconditions preservved: "+("Yes" if preserve_pre else "No") + "\n\n", silent, p_output)
+    msg("intermediate preconditions preserved: "+("Yes" if preserve_pre else "No") + "\n\n", silent, p_output)
     msg("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n\n", silent, p_output)
     msg("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n\n", silent, p_output)
 
@@ -99,7 +101,11 @@ def verify(folder_path, silent = False, total_correctness = False, preserve_pre 
     pinfo = check(ast, folder_path)
     if pinfo is None:
         # it means there is error in the semantic analysis
-        msg(semantics_analyser.error_info, False, p_output)
+        if semantics_analyser.error_info != "":
+            msg(semantics_analyser.error_info, False, p_output)
+        elif NQPV_la.error_info != "":
+            msg(NQPV_la.error_info, False, p_output)
+
         msg("\nAbort: semantic analysis not passed.\n", False, p_output)
         p_output.close()
         return
@@ -117,17 +123,17 @@ def verify(folder_path, silent = False, total_correctness = False, preserve_pre 
 
     # declare the result
     if v_result:
-        msg("Verification Result: Property holds.\n\n", silent, p_output)
+        msg("Verification Result: Property holds.\n\n", False, p_output)
     else:
         # check whether there is while structures
         if pinfo['while_exists']:
-            msg("Verification Result: Property cannot be determined. A suitable loop invariant may be sufficient.\n\n", silent, p_output)
+            msg("Verification Result: Property cannot be determined. A suitable loop invariant may be sufficient.\n\n", False, p_output)
         else:
-            msg("Verification Result: Property does not hold.\n\n", silent, p_output)
+            msg("Verification Result: Property does not hold.\n\n", False, p_output)
 
     # show the proof outline
     
-    print("(proof outline shown in 'output.txt)\n\n", end='')
+    msg("(proof outline shown in 'output.txt)\n\n", silent, None)
     msg("--------------------------------------------\n", True, p_output)
     msg("<prog proof outline> \n\n", True, p_output)
     msg(lineno_added(NQPV_parser.prog_to_code(ast, "")), True, p_output)
@@ -184,24 +190,24 @@ def verify(folder_path, silent = False, total_correctness = False, preserve_pre 
 
     # save the related operaters
     if save_opt:
-        print("Saving operators...\n\n", end='')
+        msg("Saving operators...\n\n", silent, None)
 
         for id in pinfo['unitary']:
-            print("unitary: " + id + ".npy ... ", end='')
+            msg("unitary: " + id + ".npy ... ", silent, None)
             np.save(folder_path + id + ".npy", pinfo['unitary'][id])
-            print("done\n", end = '')
+            msg("done\n", silent, None)
         for id in pinfo['measure']:
-            print("measurement: " + id + ".npy ... ", end='')
+            msg("measurement: " + id + ".npy ... ", silent, None)
             np.save(folder_path + id + ".npy", pinfo['measure'][id])
-            print("done\n", end = '')
+            msg("done\n", silent, None)
         for id in pinfo['herm']:
-            print("Hermitian Operator: " + id + ".npy ... ", end='')
+            msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
             np.save(folder_path + id + ".npy", pinfo['herm'][id])
-            print("done\n", end = '')
+            msg("done\n", silent, None)
         for id in pinfo['im_pre-cond']:
-            print("Hermitian Operator: " + id + ".npy ... ", end='')
+            msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
             np.save(folder_path + id + ".npy", pinfo['im_pre-cond'][id])
-            print("done\n", end = '')
+            msg("done\n", silent, None)
 
 
     # close the output file

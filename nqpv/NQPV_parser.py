@@ -4,12 +4,11 @@
 # parser for nondeterministic quantum programs
 # ------------------------------------------------------------
 
-from msilib import sequence
 import ply.yacc as yacc
 
-from NQPV_lexer import tokens, lexer
+from .NQPV_lexer import tokens, lexer
 
-from NQPV_ast import *
+from .NQPV_ast import *
 
 # program declaration section
 def p_prog(p):
@@ -123,7 +122,7 @@ def p_id_ls_start(p):
 
 # Error rule for syntax errors
 
-from tools import err
+from .tools import err
 
 error_info = ""
 silent = False

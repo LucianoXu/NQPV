@@ -12,10 +12,10 @@
 # ------------------------------------------------------------
 
 import numpy as np
-import NQPV_la
+from . import NQPV_la
 
 # store the error information
-from tools import err
+from .tools import err
 error_info = ""
 silent = False
 
@@ -36,17 +36,17 @@ def check_variable(var_ls : list, check_ls : list):
         used_qvar.append(var)
     return True
 
-def check_unitary(id, unitary_dict, var_ls, run_path):
+def check_unitary(id, unitary_dict, var_ls, run_path, lib_path):
     global error_info, silent
 
     if id in unitary_dict:
         pass
     else:
         try:
-            loaded = np.load("./unitary/" + id + ".npy")
+            loaded = np.load(lib_path + "/unitary/" + id + ".npy")
         except:
             try:
-                loaded = np.load(run_path + id + ".npy")
+                loaded = np.load(run_path + "/" + id + ".npy")
             except:
                 error_info += err("Error: unitary '" + id +".npy' not found\n", silent)
                 return False
@@ -66,17 +66,17 @@ def check_unitary(id, unitary_dict, var_ls, run_path):
 
 
 
-def check_measure(id, measure_dict, var_ls, run_path):
+def check_measure(id, measure_dict, var_ls, run_path, lib_path):
     global error_info, silent
 
     if id in measure_dict:
         pass
     else:
         try:
-            loaded = np.load("./measure/"+ id + ".npy")
+            loaded = np.load(lib_path + "/measure/" + id + ".npy")
         except:
             try:
-                loaded = np.load(run_path + id + ".npy")
+                loaded = np.load(run_path + "/" + id + ".npy")
             except:
                 error_info += err("Error: measurement '" + id +".npy' not found\n", silent)
                 return False
@@ -96,7 +96,7 @@ def check_measure(id, measure_dict, var_ls, run_path):
         return False
 
 
-def check_hermitian(id, herm_dict, var_ls, run_path):
+def check_hermitian(id, herm_dict, var_ls, run_path, lib_path):
     # check whether the hermitian is suitable
     global error_info, silent
 
@@ -104,10 +104,10 @@ def check_hermitian(id, herm_dict, var_ls, run_path):
         pass
     else:
         try:
-            loaded = np.load("./herm/" + id + ".npy")
+            loaded = np.load(lib_path + "/herm/" + id + ".npy")
         except:
             try:
-                loaded = np.load(run_path + id + ".npy")
+                loaded = np.load(run_path + "/" + id + ".npy")
             except:
                 error_info += err("Error: hermitian operator '" + id +".npy' not found\n", silent)
                 return False
@@ -127,7 +127,7 @@ def check_hermitian(id, herm_dict, var_ls, run_path):
 
 
 # check the semantics of prog. load and return the operators
-def check(prog : dict, run_path):
+def check(prog : dict, run_path, lib_path):
     global error_info, silent
 
     if prog == None:
@@ -148,21 +148,21 @@ def check(prog : dict, run_path):
     for herm_tuple in prog['pre-cond']:
         if not check_variable(prog['qvar'], herm_tuple[1]):
             return None
-        if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path):
+        if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path, lib_path):
             return None
     for herm_tuple in prog['post-cond']:
         if not check_variable(prog['qvar'], herm_tuple[1]):
             return None
-        if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path):
+        if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path, lib_path):
             return None
 
-    if check_iter(prog['qvar'], prog['sequence'], pinfo, run_path) :
+    if check_iter(prog['qvar'], prog['sequence'], pinfo, run_path, lib_path) :
         return pinfo
     else:
         return None
     
 
-def check_iter(var_ls : list, sequence : list, pinfo : dict, run_path):
+def check_iter(var_ls : list, sequence : list, pinfo : dict, run_path, lib_path):
     for sentence in sequence:
         if sentence.label == 'SKIP':
             pass
@@ -177,7 +177,7 @@ def check_iter(var_ls : list, sequence : list, pinfo : dict, run_path):
             if not check_variable(var_ls, sentence.vls):
                 return False
             # check the unitary
-            if not check_unitary(sentence.unitary, pinfo['unitary'], sentence.vls, run_path):
+            if not check_unitary(sentence.unitary, pinfo['unitary'], sentence.vls, run_path, lib_path):
                 return False
 
         elif sentence.label == 'IF':
@@ -185,12 +185,12 @@ def check_iter(var_ls : list, sequence : list, pinfo : dict, run_path):
             if not check_variable(var_ls, sentence.measure_vls):
                 return False
             # check the measure existence
-            if not check_measure(sentence.measure, pinfo['measure'], sentence.measure_vls, run_path):
+            if not check_measure(sentence.measure, pinfo['measure'], sentence.measure_vls, run_path, lib_path):
                 return False
             # check the two subprograms
-            if not check_iter(var_ls, sentence.S0, pinfo, run_path):
+            if not check_iter(var_ls, sentence.S0, pinfo, run_path, lib_path):
                 return False
-            if not check_iter(var_ls, sentence.S1, pinfo, run_path):
+            if not check_iter(var_ls, sentence.S1, pinfo, run_path, lib_path):
                 return False
         
         elif sentence.label == 'WHILE':
@@ -199,23 +199,23 @@ def check_iter(var_ls : list, sequence : list, pinfo : dict, run_path):
             for herm_tuple in sentence.inv:
                 if not check_variable(var_ls, herm_tuple[1]):
                     return False
-                if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path):
+                if not check_hermitian(herm_tuple[0], pinfo['herm'], herm_tuple[1], run_path, lib_path):
                     return False
             # check the variables
             if not check_variable(var_ls, sentence.measure_vls):
                 return False
             # check the measure existence
-            if not check_measure(sentence.measure, pinfo['measure'], sentence.measure_vls, run_path):
+            if not check_measure(sentence.measure, pinfo['measure'], sentence.measure_vls, run_path, lib_path):
                 return False
             # check the subprogram
-            if not check_iter(var_ls, sentence.S, pinfo, run_path):
+            if not check_iter(var_ls, sentence.S, pinfo, run_path, lib_path):
                 return False
         
         elif sentence.label == 'NONDET_CHOICE':
             # check the two subprograms
-            if not check_iter(var_ls, sentence.S0, pinfo, run_path):
+            if not check_iter(var_ls, sentence.S0, pinfo, run_path, lib_path):
                 return False
-            if not check_iter(var_ls, sentence.S1, pinfo, run_path):
+            if not check_iter(var_ls, sentence.S1, pinfo, run_path, lib_path):
                 return False
         
         else:

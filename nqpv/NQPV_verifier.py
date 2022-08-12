@@ -7,15 +7,15 @@
 import os
 import numpy as np
 
-from tools import msg, ver_label, lineno_added
+from .tools import msg, ver_label, lineno_added
 
-from NQPV_ast import *
-import NQPV_lexer, NQPV_parser, NQPV_la
+from .NQPV_ast import *
+from . import NQPV_lexer, NQPV_parser, NQPV_la
 
-import semantics_analyser
-from semantics_analyser import check
-import backward_transformer
-from backward_transformer import wlp_verify
+from . import semantics_analyser
+from .semantics_analyser import check
+from . import backward_transformer
+from .backward_transformer import wlp_verify
 
 def verifiy_reset():
     # clean up the error info
@@ -31,7 +31,7 @@ def verifiy_reset():
     backward_transformer.silent = True
 
 
-def verify(folder_path, silent = False, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
+def verify(folder_path, lib_path = "", silent = False, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
 
     verifiy_reset()
 
@@ -43,22 +43,27 @@ def verify(folder_path, silent = False, total_correctness = False, preserve_pre 
     msg("running path: " + os.getcwd() +"\n\n", silent, None)
 
     # detect the file
-    if folder_path[-1] != '/':
-        folder_path += '/'
+    if folder_path[-1] == '/' or folder_path[-1] == '\\':
+        folder_path = folder_path[:-1]
+    if lib_path != "":
+        if lib_path[-1] == '/' or lib_path[-1] == '\\':
+            lib_path += lib_path[:-1]
+
+    
     try:
-        p_prog = open(folder_path + 'prog', 'r')
+        p_prog = open(folder_path + '/prog', 'r')
         prog_str = p_prog.read()
         p_prog.close()
     except:
-        print("Error: program file '" + folder_path + "prog' not found.")
+        print("Error: program file '" + folder_path + "/prog' not found.")
         return
 
     
     # create the output file
     try:
-        p_output = open(folder_path + 'output.txt', 'w')
+        p_output = open(folder_path + '/output.txt', 'w')
     except:
-        print("Error: cannot create output file '" + folder_path + "output.txt'.")
+        print("Error: cannot create output file '" + folder_path + "/output.txt'.")
         return
 
     # add the beginning of output.txt
@@ -98,7 +103,7 @@ def verify(folder_path, silent = False, total_correctness = False, preserve_pre 
 
     # semantic analysis
     msg("semantic analysis ...\n\n", silent, None)
-    pinfo = check(ast, folder_path)
+    pinfo = check(ast, folder_path, lib_path)
     if pinfo is None:
         # it means there is error in the semantic analysis
         if semantics_analyser.error_info != "":
@@ -194,19 +199,19 @@ def verify(folder_path, silent = False, total_correctness = False, preserve_pre 
 
         for id in pinfo['unitary']:
             msg("unitary: " + id + ".npy ... ", silent, None)
-            np.save(folder_path + id + ".npy", pinfo['unitary'][id])
+            np.save(folder_path + "/" + id + ".npy", pinfo['unitary'][id])
             msg("done\n", silent, None)
         for id in pinfo['measure']:
             msg("measurement: " + id + ".npy ... ", silent, None)
-            np.save(folder_path + id + ".npy", pinfo['measure'][id])
+            np.save(folder_path + "/" + id + ".npy", pinfo['measure'][id])
             msg("done\n", silent, None)
         for id in pinfo['herm']:
             msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
-            np.save(folder_path + id + ".npy", pinfo['herm'][id])
+            np.save(folder_path + "/" + id + ".npy", pinfo['herm'][id])
             msg("done\n", silent, None)
         for id in pinfo['im_pre-cond']:
             msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
-            np.save(folder_path + id + ".npy", pinfo['im_pre-cond'][id])
+            np.save(folder_path + "/" + id + ".npy", pinfo['im_pre-cond'][id])
             msg("done\n", silent, None)
 
 

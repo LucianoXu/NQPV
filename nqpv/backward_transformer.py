@@ -5,11 +5,11 @@
 # it calculates the weakest (liberal) precondition of a given program abstract syntax tree
 # ------------------------------------------------------------
 
-from tools import err
+from .tools import err
 
-from NQPV_ast import *
-import NQPV_la
-from set_order import sqsubseteq
+from .NQPV_ast import *
+from . import NQPV_la
+from .set_order import sqsubseteq
 
 error_info = ""
 silent = False

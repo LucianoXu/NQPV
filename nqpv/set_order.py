@@ -4,7 +4,7 @@
 # decide the partial order of Hermitian operator sets, using SDP
 # ------------------------------------------------------------
 
-from NQPV_la import EPS
+from .NQPV_la import EPS
 
 import numpy as np
 import cvxpy as cp

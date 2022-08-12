@@ -5,7 +5,7 @@
 # ------------------------------------------------------------
 
 import numpy as np
-import NQPV_la
+from . import NQPV_la
 
 # transform m to the (2,2,2,...) form
 def to_shape_2(m):
@@ -62,10 +62,10 @@ def save_unitary(path, id, unitary):
         print("The given tensor is not unitary.")
         return False
     
-    if path[-1] != '/':
-        path += '/'
+    if path[-1] == '/' or path[-1] == '\\':
+        path = path[:-1]
     
-    np.save(path + id + ".npy", m)
+    np.save(path + "/" + id + ".npy", m)
 
 def save_hermitian(path, id, herm):
     m = to_shape_2(herm)
@@ -77,10 +77,10 @@ def save_hermitian(path, id, herm):
         print("The given tensor is not a valid Hermitian predicate.")
         return False
     
-    if path[-1] != '/':
-        path += '/'
+    if path[-1] == '/' or path[-1] == '\\':
+        path = path[:-1]
     
-    np.save(path + id + ".npy", m)
+    np.save(path + "/" + id + ".npy", m)
 
 def save_measurement(path, id, measure):
     m = to_shape_3(measure)
@@ -92,8 +92,8 @@ def save_measurement(path, id, measure):
         print("The given tensor is not a valid measurement.")
         return False
     
-    if path[-1] != '/':
-        path += '/'
+    if path[-1] == '/' or path[-1] == '\\':
+        path = path[:-1]
     
-    np.save(path + id + ".npy", m)
+    np.save(path + "/" + id + ".npy", m)
 

@@ -70,7 +70,7 @@ t_ignore = ' \t'
 
 # Error handling rule
 
-from tools import err
+from .tools import err
 
 error_info = ""
 silent = False

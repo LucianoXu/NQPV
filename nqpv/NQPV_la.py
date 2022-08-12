@@ -4,7 +4,7 @@
 # linear algebra tools needed in this verifier
 # ------------------------------------------------------------
 
-from tools import err
+from .tools import err
 
 import numpy as np
 

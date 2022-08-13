@@ -8,7 +8,7 @@ from .tools import err
 
 import numpy as np
 
-EPS = 1e-12
+EPS = 1e-7
 
 error_info = ""
 silent = False

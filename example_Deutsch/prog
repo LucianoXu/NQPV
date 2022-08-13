@@ -1,0 +1,29 @@
+qvar [q q1 q2]
+
+{ I[q] }
+[q1 q2] := 0;
+q1 *= H;
+q2 *= X;
+q2 *= H;
+if M01[q] then
+    ( 
+        [q1 q2] *= CX
+    #
+        q1 *= X;
+        [q1 q2] *= CX;
+        q1 *= X
+    )
+else
+    (
+        skip
+    #
+        q2 *= X
+    )
+end;
+q1 *= H;
+if M01[q1] then
+    skip
+else
+    skip
+end
+{ Hpost[q q1] }

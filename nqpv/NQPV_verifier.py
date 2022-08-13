@@ -33,6 +33,10 @@ def verifiy_reset():
 
 def verify(folder_path, lib_path = "", silent = False, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
 
+    if total_correctness:
+        print("total correctness not supported yet")
+        return
+
     verifiy_reset()
 
     msg("\n= Nondeterministic Quantum Program Verifier Output = \n\n", silent, None)

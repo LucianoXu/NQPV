@@ -66,6 +66,7 @@ def save_unitary(path, id, unitary):
         path = path[:-1]
     
     np.save(path + "/" + id + ".npy", m)
+    return True
 
 def save_hermitian(path, id, herm):
     m = to_shape_2(herm)
@@ -81,6 +82,7 @@ def save_hermitian(path, id, herm):
         path = path[:-1]
     
     np.save(path + "/" + id + ".npy", m)
+    return True
 
 def save_measurement(path, id, measure):
     m = to_shape_3(measure)
@@ -96,4 +98,5 @@ def save_measurement(path, id, measure):
         path = path[:-1]
     
     np.save(path + "/" + id + ".npy", m)
+    return True
 

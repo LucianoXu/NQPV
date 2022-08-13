@@ -6,6 +6,7 @@
 import ply.lex as lex
 
 reserved = {
+    'qvar' : 'QVAR',
     'skip': 'SKIP',
     'abort' : 'ABORT',
     'if': 'IF',
@@ -14,7 +15,6 @@ reserved = {
     'while': 'WHILE',
     'do' : 'DO',
     'end' : 'END',
-    'qvar' : 'QVAR',
     'inv' : 'INV'
 }
 

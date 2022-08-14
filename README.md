@@ -10,8 +10,12 @@ NQPV is written in pure Python. It can be easily installed through PyPI. To do t
 pip install nqpv
 ```
 
-
 Github repository: https://github.com/LucianoXu/NQPV. Example codes can be found there.
+
+Dependence: this tool depends on the following python packages.
+- ply
+- numpy
+- cvxpy
 
 ## Introduction
 This assistant tool is an implementation of [the article], and please refer to this article for more detailed information. Briefly speaking, formal verification means to check whether particular properties hold for the given program, with the solid gurantee from mathematics. This tool, NQPV, mainly focuses on the partial correctness of quantum programs, which says that initial quantum states satisfying the precondition will also satisfy the postcondition when they terminate after the program computation. 

@@ -7,7 +7,7 @@ NQPV is an assistant tool for the formal verification of nondeterministic quantu
 ## Install
 NQPV is written in pure Python. It can be easily installed through PyPI. To do this, after installing Python3 and pip, open a command prompt and run this command:
 ```
-pip install nqpv
+pip install NQPV
 ```
 
 Github repository: https://github.com/LucianoXu/NQPV. Example codes can be found there.
@@ -43,6 +43,13 @@ If you found the formal description of the grammar hard to understand, you may r
 
 The whole *prog* should contain the four part mentioned above.
 
+> prog ::= <br>
+>  qvar [ id_ls ] <br>
+>  { herm_ls } <br>
+> sequence <br>
+> { herm_ls }
+
+<!--
 > $$
 \begin{aligned}
  \mathrm{prog} ::=\ & \mathrm{qvar}\ [\ \mathrm{id\_ls}\ ]\\
@@ -51,44 +58,77 @@ The whole *prog* should contain the four part mentioned above.
     & \{\ \mathrm{herm\_ls} \}
 \end{aligned}
 > $$
+-->
 
 The first line indicates all the quantum variables. The second and forth line indicates the pre and post conditions. The third line indicates the sequence of quantum program. 
 
-$\mathrm{id\_ls}$ is a list of one or more identifiers. 
+
+"id_ls" is a list of one or more identifiers. 
+> id_ls ::= <br>
+> id <br>
+> | id_ls id
+
+<!--
 > $$
 \begin{aligned}
  \mathrm{id\_ls} ::=\ & \mathrm{id} \\
                     &|\ \mathrm{id\_ls}\quad \mathrm{id}
 \end{aligned}
 > $$
+-->
 
-$\mathrm{herm\_ls}$ is a list of one or more operators.  
+"herm_ls" is a list of one or more operators.  
+> herm_ls ::= <br>
+> id [ id_ls ] <br>
+> | herm_ls id [ id_ls ]
+
+
+<!--
 > $$
 \begin{aligned}
  \mathrm{herm\_ls} ::=\ & \mathrm{id}\ [\ \mathrm{id\_ls}\ ]\\
                     &|\ \mathrm{herm\_ls}\quad  \mathrm{id}\ [\ \mathrm{id\_ls}\ ]
 \end{aligned}
 > $$
+-->
 
-$\mathrm{id}\ [\ \mathrm{id\_ls}\ ]$ describes a particular operator, with the identifier list specifying the Hilbert space of the operator. For example, 
+"id [ id_ls ]" describes a particular operator, with the identifier list specifying the Hilbert space of the operator. For example, 
 $$
 \mathrm{P0}\ [\ \mathrm{q1}\ ]
 $$
-may refer to a Herimitian operator $\ket{0}\bra{0}$ on the space of variable $\mathrm{q1}$, and 
+may refer to a Herimitian operator |0><0| on the space of variable q1, and 
 $$
 \mathrm{CX}\ [\ \mathrm{q2}\ \mathrm{q1}\ ]
 $$
-may refer to the controlled-X gate with $\mathrm{q2}$ being the control and $\mathrm{q1}$ being the target.
+may refer to the controlled-X gate with q2 being the control and q1 being the target.
 
-$\mathrm{sequence}$ is a list of programs, which are composed by sequential combination.
+"sequence" is a list of programs, which are composed by sequential combination.
+
+> sequence ::= <br>
+> sentence <br>
+> | sequence sentence
+
+<!--
 > $$
 \begin{aligned}
  \mathrm{sequence} ::=\ & \mathrm{sentence}\\
                     &|\ \mathrm{sequence};\  \mathrm{sentence}
 \end{aligned}
 > $$
+-->
 
-And $\mathrm{sentence}$ is just a piece of program, which can be skip, abort, initialization, unitary transformation, if, while and nondeterministic choice.
+And "sentence" is just a piece of program, which can be skip, abort, initialization, unitary transformation, if, while and nondeterministic choice.
+
+> sentence ::= <br>
+> skip <br>
+> | abort <br>
+> | [ id_ls ] := 0 <br>
+> | [ id_ls ] *= id <br>
+> | if id [ id_ls ] then sequence else sequence end <br>
+> | { inv : herm_ls } while id [  id_ls ] do sequence end <br>
+> | ( sequence \# sequence)
+
+<!--
 > $$
 \begin{aligned}
  \mathrm{sentence} ::=\ & \mathrm{skip}\\
@@ -101,6 +141,7 @@ And $\mathrm{sentence}$ is just a piece of program, which can be skip, abort, in
             &|\ (\ \mathrm{sequence}\ \#\ \mathrm{sequence}\ )
 \end{aligned}
 > $$
+-->
 
 The last rule of the grammar above corresponds to the nondeterministic choice.
 
@@ -121,19 +162,19 @@ To work with this tool, all operators (unitary operators, Hermitian operators an
 
 The library is a folder, and you can of course copy your own operator files into the folder. Also note that if an operator file is named "**id**.npy", it will be referred in the *prog* file with the same identifier **id**.
 
-For an operator on $n$ qubits, the data saved in the ".npy" file are rank $2*n$ tensors for unitaries and Hermitians, and rank $(2*n + 1)$ tensors for measurement operator sets. The $2*n$ indices are all 2 dimensional, sorted in the particular order: the first $n$ indices are the "row indices" of the corresponding "matrix", while the second $n$ indices are the corresponding "column indices".
+For an operator on n qubits, the data saved in the ".npy" file are rank 2\*n tensors for unitaries and Hermitians, and rank (2\*n + 1) tensors for measurement operator sets. The 2\*n indices are all 2 dimensional, sorted in the particular order: the first n indices are the "row indices" of the corresponding "matrix", while the second n indices are the corresponding "column indices".
 
-NQPV provides the methods to create the ".npy" file for operators from **numpy.ndarray** objects. The NumPy object can be rank $2*n$ tensors or a $(2^n*2^n)$ matrices.
+NQPV provides the methods to create the ".npy" file for operators from **numpy.ndarray** objects. The NumPy object can be rank 2\*n tensors or a (2^n\*2^n) matrices.
 
 > **nqpv.save_unitary (path, id, unitary)<br>**
 > Check and save the unitary operator. <br>
-> This method will check whether the claimed unitary operator $U$ satisfies $U^\dagger U = I$.
+> This method will check whether the claimed unitary operator U satisfies dagger(U)\*U = I.
 > - Parameters : 
 >   - **path** : string <br>
 >       The folder path to save the newly created operator.
 >   - **id** : string <br>
 >       The identifier of the unitary operator. The operator will be save in the file "**id**.npy"
->   - **unitary** : **numpy.ndarray**, $(2^n*2^n)$ matrix or rank $2*n$ tensor <br>
+>   - **unitary** : **numpy.ndarray**, (2^n\*2^n) matrix or rank 2\*n tensor <br>
 >       The NumPy object of the unitary operator.
 > - Returns : bool <br>
 >   Whether the operator is successfully saved.
@@ -141,29 +182,29 @@ NQPV provides the methods to create the ".npy" file for operators from **numpy.n
 
 > **nqpv.save_hermitian (path, id, herm)<br>**
 > Check and save the Hermitian operator. <br>
-> This method will check whether the claimed Hermitian operator $H$ satisfies $H = H^\dagger$ and $\boldsymbol{0}\sqsubseteq H \sqsubseteq I$.
+> This method will check whether the claimed Hermitian operator H satisfies H = dagger(H) and $\boldsymbol{0}\sqsubseteq H \sqsubseteq I$.
 > - Parameters : 
 >   - **path** : string <br>
 >       The folder path to save the newly created operator.
 >   - **id** : string <br>
 >       The identifier of the Hermitian operator. The operator will be save in the file "**id**.npy"
->   - **herm** : **numpy.ndarray**, $(2^n*2^n)$ matrix or rank $2*n$ tensor <br>
+>   - **herm** : **numpy.ndarray**, (2^n\*2^n) matrix or rank 2\*n tensor <br>
 >       The NumPy object of the Hermitian operator.
 > - Returns : bool <br>
 >   Whether the operator is successfully saved.
 
 
-The extra (2 dimensional) index at the beginning of the measurement tensor is for the two possible results. For example, if $M$ is a tensor for the measurement operator set, then $M[0]$ represents the measurement operator for result 0 and $M[1]$ the result 1.
+The extra (2 dimensional) index at the beginning of the measurement tensor is for the two possible results. For example, if M is a tensor for the measurement operator set, then M[0] represents the measurement operator for result 0 and M[1] the result 1.
 
 > **nqpv.save_measurement (path, id, measure)<br>**
 > Check and save the measurement operator set. <br>
-> This method will check whether the claimed measurement operator set $M$ satisfies $M[0]^\dagger M[0] + M[1]^\dagger M[1] = I$.
+> This method will check whether the claimed measurement operator set M satisfies dagger(M[0])\*M[0] + dagger(M[1])\*M[1] = I.
 > - Parameters : 
 >   - **path** : string <br>
 >       The folder path to save the newly created operator.
 >   - **id** : string <br>
 >       The identifier of the measurement operator set. The operator will be save in the file "**id**.npy"
->   - **herm** : **numpy.ndarray**, $(2*2^n*2^n)$ tensor or rank $(2*n + 1)$ tensor <br>
+>   - **herm** : **numpy.ndarray**, (2\*2^n\*2^n) tensor or rank (2\*n + 1) tensor <br>
 >       The NumPy object of the measurement operator set. Note that the first index is for the possible measurement results.
 > - Returns : bool <br>
 >   Whether the operator is successfully saved.
@@ -200,7 +241,7 @@ The verification report 'output.txt' will include at least the following informa
 Here the syntactic analysis checks whether the content in *prog* can be properly interpreted with the grammar. The semantic analysis afterwards checks whether there is any problem in the meaning of the verification task. It will mainly examine the following aspects:
 - whether all operators mentioned can be found,
 - whether there are repeat identifiers in some identifier list, and
-- whether the qubit number of operators and identifier lists matches. For example, $\mathrm{CX}\ [\ \mathrm{q1}\ ]$ or $\mathrm{X}\ [\ \mathrm{q1}\ \mathrm{q2}\ ]$ will not be acceptable.
+- whether the qubit number of operators and identifier lists matches. For example, CX [ q1 ] or X [ q1 q2 ] will not be acceptable.
 
 If there are syntactic or semantic errors, the report will stop there, providing the error information. Otherwise it will continue verifying and provide the following information:
 - the verification result (property holds / does not hold / not determined yet),

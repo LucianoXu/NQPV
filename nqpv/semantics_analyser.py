@@ -135,7 +135,8 @@ def check(prog : dict, run_path, lib_path):
         return None
 
     # check the declared qvar, ensure the uniqueness
-    check_variable(prog['qvar'], prog['qvar'])
+    if not check_variable(prog['qvar'], prog['qvar']):
+        return None
 
     pinfo = {
         'unitary' : {},

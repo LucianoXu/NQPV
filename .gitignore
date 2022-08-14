@@ -1,6 +1,6 @@
 # package build
 /dist
-/nqpv/NQPV.egg-info
+*.egg-info
 
 __pycache__
 

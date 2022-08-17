@@ -1,6 +1,21 @@
+<!--
+ Copyright 2022 Yingte Xu
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
 # NQPV - Nondeterministic Quantum Program Verifier
 
-**Version: 0.1**
+**Version: 0.1b**
 
 NQPV is an assistant tool for the formal verification of nondeterministic quantum programs.
 
@@ -106,7 +121,7 @@ may refer to the controlled-X gate with q2 being the control and q1 being the ta
 
 > sequence ::= <br>
 > sentence <br>
-> | sequence sentence
+> | sequence ; sentence
 
 <!--
 > $$
@@ -151,7 +166,7 @@ This section describes how the verification tool is used, the corresponding API 
 
 ### Operator Creation
 
-To work with this tool, all operators (unitary operators, Hermitian operators and operators of measurement) must be provided. That is to say, there should be a corresponding NumPy binary file ".npy" for the data, either in the same folder with *prog*, or in a particular *operator library*. NQPV provides a methode to create an operator library.
+To work with this tool, all operators (unitary operators, Hermitian operators and operators of measurement) must be provided. That is to say, there should be a corresponding NumPy binary file ".npy" for the data, either in the same folder with *prog*, or in a particular *operator library*. NQPV provides a method to create an operator library.
 
 > **nqpv.lib_create (lib_path)<br>**
 > Creates a library of commonly used operators at the specified location. 
@@ -214,7 +229,7 @@ The extra (2 dimensional) index at the beginning of the measurement tensor is fo
 The method to conduct a verification task is the following one:
 
 > **nqpv.verify (folder_path, lib_path = "", silent = False, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False)<br>**
-> Conduct the verification task, and produce a 'output.txt' report.
+> Conduct the verification task, and produce an 'output.txt' report.
 > 
 > - Parameters: 
 >   - **folder_path** : string <br>

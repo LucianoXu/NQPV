@@ -64,9 +64,12 @@ t_RBRAKET = r'\)'
 t_LBRACE = r'{'
 t_RBRACE = r'}'
 
+
+
+# close #8
 # use // to comment a line
 def t_COMMENT(t):
-    r'//.*'
+    r'(/\*(.|\n)*?\*/)|(//.*)'
     pass
 
 def t_ID(t):

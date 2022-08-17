@@ -70,11 +70,11 @@ def verify(folder_path, lib_path = "", silent = False, total_correctness = False
 
     
     try:
-        p_prog = open(folder_path + '/prog', 'r')
+        p_prog = open(folder_path + '/prog.nqpv', 'r')
         prog_str = p_prog.read()
         p_prog.close()
     except:
-        print("Error: program file '" + folder_path + "/prog' not found.")
+        print("Error: program file '" + folder_path + "/prog.nqpv' not found.")
         return
 
     
@@ -106,7 +106,11 @@ def verify(folder_path, lib_path = "", silent = False, total_correctness = False
     msg(lineno_added(prog_str), silent, p_output)
     msg("\n\n--------------------------------------------\n\n", silent, p_output)
 
-    
+    # check whether the file is empty
+    if prog_str == "":
+        msg("Program file '" + folder_path + "/prog.nqpv' is empty.", False, p_output)
+        return
+
     # syntactic analysis, produce the abstract syntax tree
     msg("syntactic analysis ...\n\n", silent, None)
     ast = NQPV_parser.parser.parse(prog_str)

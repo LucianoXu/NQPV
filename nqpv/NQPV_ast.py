@@ -139,16 +139,30 @@ class WhileStruct(SyntaxStruct):
 
 class NondetStruct(SyntaxStruct):
     def __init__(self, p):
-        self.label = "NONDET_CHOICE"
-        self.lineno = p.slice[3].lineno
-        self.S0 = p[2]
-        self.S1 = p[4]
+        # cloning is also supported
+        if isinstance(p, NondetStruct):
+            self.label = p.label
+            self.lineno = p.lineno
+            self.S_ls = p.S_ls
+        else:
+            self.label = "NONDET_CHOICE"
+            self.lineno = p.slice[3].lineno
+            self.S_ls = [p[2], p[4]]
+
+    def append(self, p):
+        '''
+        return a new NondetStruct object
+        '''
+        new_obj = NondetStruct(self)
+        new_obj.S_ls = new_obj.S_ls + [p[3]]
+        return new_obj
     
     def sentence_to_code(self, prefix):
         r = prefix + "(\n"
-        r += sequence_to_code(self.S0, prefix + '\t') + "\n"
-        r += prefix + "#\n"
-        r += sequence_to_code(self.S1, prefix + '\t') + "\n"
+        r += sequence_to_code(self.S_ls[0], prefix + '\t') + "\n"
+        for i in range(1, len(self.S_ls)):
+            r += prefix + "#\n"
+            r += sequence_to_code(self.S_ls[i], prefix + '\t') + "\n"
         r += prefix + ")"
         return r
 

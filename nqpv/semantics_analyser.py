@@ -228,11 +228,10 @@ def check_iter(var_ls : list, sequence : list, pinfo : dict, run_path, lib_path)
                 return False
         
         elif sentence.label == 'NONDET_CHOICE':
-            # check the two subprograms
-            if not check_iter(var_ls, sentence.S0, pinfo, run_path, lib_path):
-                return False
-            if not check_iter(var_ls, sentence.S1, pinfo, run_path, lib_path):
-                return False
+            # check the subprograms
+            for sub_sequence in sentence.S_ls:
+                if not check_iter(var_ls, sub_sequence, pinfo, run_path, lib_path):
+                    return False
         
         else:
             raise Exception("Unknown program structure.")

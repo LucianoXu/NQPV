@@ -166,13 +166,13 @@ def wlp_iter(sequence: list, qvar: list, postcond: list, pinfo: dict, preserve_p
 
         
         elif sentence.label == 'NONDET_CHOICE':
-            pre0 = wlp_iter(sentence.S0, qvar, cur_postcond, pinfo, preserve_pre)
-            if pre0 is None:
-                return None
-            pre1 = wlp_iter(sentence.S1, qvar, cur_postcond, pinfo, preserve_pre)
-            if pre1 is None:
-                return None
-            cur_postcond = pre0 + pre1
+            next_cur_postcond = []
+            for sub_sequence in sentence.S_ls:
+                pre = wlp_iter(sub_sequence, qvar, cur_postcond, pinfo, preserve_pre)
+                if pre is None:
+                    return None
+                next_cur_postcond = next_cur_postcond + pre
+            cur_postcond = next_cur_postcond
 
         else:
             raise Exception("Unknown program structure.")

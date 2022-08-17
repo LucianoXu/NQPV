@@ -65,8 +65,21 @@ def p_sentence(p):
     p[0] = p[1]
 
 def p_nondet_choice(p):
-    'nondet_choice : LBRAKET sequence NONDET_CHOICE sequence RBRAKET'
+    'nondet_choice : nondet_choice_pre RBRAKET'
+    p[0] = p[1]
+
+def p_nondet_choice_append(p):
+    '''
+    nondet_choice_pre : nondet_choice_pre NONDET_CHOICE sequence
+    '''
+    p[0] = p[1].append(p)
+
+def p_nondet_choice_start(p):
+    '''
+    nondet_choice_pre : LBRAKET sequence NONDET_CHOICE sequence
+    '''
     p[0] = NondetStruct(p)
+    
 
 def p_if(p):
     'if : IF ID id_ls THEN sequence ELSE sequence END'

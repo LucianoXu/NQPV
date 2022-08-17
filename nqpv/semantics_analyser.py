@@ -25,35 +25,34 @@
 #   - whether the unitary/measurement/hermitian operataor matches the variable lists
 #
 # ------------------------------------------------------------
+from __future__ import annotations
+from typing import Any, List, Dict
+
+from .logsystem import LogSystem
 
 import numpy as np
 from . import NQPV_la
 
 # store the error information
-from .tools import err
-error_info = ""
-silent = False
+channel : str = "main"
 
 #check whether the variables in check_ls are predefined in var_ls
-def check_variable(var_ls : list, check_ls : list):
-    global error_info, silent
+def check_variable(var_ls : List[str], check_ls : List[str]) -> bool:
 
     used_qvar = []
     for var in check_ls:
         # check whether the variable is defined in qvar
         if var not in var_ls:
-            error_info += err("Error: variable '" + var + "' not defined in qvar\n", silent)
+            LogSystem.channels[channel].append("Error: variable '" + var + "' not defined in qvar")
             return False
         # check whether the variable has been used
         if var in used_qvar:
-            error_info += err("Error: Variable '" + var + "' appeared more than once in the variable list "+str(check_ls) + ".\n", silent)
+            LogSystem.channels[channel].append("Error: Variable '" + var + "' appeared more than once in the variable list "+str(check_ls) + ".")
             return False
         used_qvar.append(var)
     return True
 
-def check_unitary(id, unitary_dict, var_ls, run_path, lib_path):
-    global error_info, silent
-
+def check_unitary(id : str, unitary_dict : Dict[str,np.ndarray], var_ls : List[str], run_path : str, lib_path : str) -> bool:
     if id in unitary_dict:
         pass
     else:
@@ -63,7 +62,7 @@ def check_unitary(id, unitary_dict, var_ls, run_path, lib_path):
             try:
                 loaded = np.load(run_path + "/" + id + ".npy")
             except:
-                error_info += err("Error: unitary '" + id +".npy' not found\n", silent)
+                LogSystem.channels[channel].append("Error: unitary '" + id +".npy' not found")
                 return False
 
         # check for valid unitary
@@ -76,13 +75,12 @@ def check_unitary(id, unitary_dict, var_ls, run_path, lib_path):
     if (len(var_ls) * 2 == len(unitary_dict[id].shape)):
         return True
     else:
-        error_info += err("Error: The dimensions of unitary '" + id + "' and qvars " + str(var_ls) + " do not match.\n", silent)
+        LogSystem.channels[channel].append("Error: The dimensions of unitary '" + id + "' and qvars " + str(var_ls) + " do not match.")
         return False
 
 
 
-def check_measure(id, measure_dict, var_ls, run_path, lib_path):
-    global error_info, silent
+def check_measure(id : str, measure_dict : Dict[str,np.ndarray], var_ls : List[str], run_path : str, lib_path : str) -> bool:
 
     if id in measure_dict:
         pass
@@ -93,7 +91,7 @@ def check_measure(id, measure_dict, var_ls, run_path, lib_path):
             try:
                 loaded = np.load(run_path + "/" + id + ".npy")
             except:
-                error_info += err("Error: measurement '" + id +".npy' not found\n", silent)
+                LogSystem.channels[channel].append("Error: measurement '" + id +".npy' not found")
                 return False
 
         # check for valid measurement
@@ -107,13 +105,12 @@ def check_measure(id, measure_dict, var_ls, run_path, lib_path):
     if (len(var_ls) * 2 + 1 == len(measure_dict[id].shape)):
         return True
     else:
-        error_info += err("Error: The dimensions of measurement '" + id + "' and qvars " + str(var_ls) + " do not match.\n", silent)
+        LogSystem.channels[channel].append("Error: The dimensions of measurement '" + id + "' and qvars " + str(var_ls) + " do not match.")
         return False
 
 
-def check_hermitian(id, herm_dict, var_ls, run_path, lib_path):
+def check_hermitian(id : str, herm_dict : Dict[str, np.ndarray], var_ls : List[str], run_path : str, lib_path : str) -> bool:
     # check whether the hermitian is suitable
-    global error_info, silent
 
     if id in herm_dict:
         pass
@@ -124,7 +121,7 @@ def check_hermitian(id, herm_dict, var_ls, run_path, lib_path):
             try:
                 loaded = np.load(run_path + "/" + id + ".npy")
             except:
-                error_info += err("Error: hermitian operator '" + id +".npy' not found\n", silent)
+                LogSystem.channels[channel].append("Error: hermitian operator '" + id +".npy' not found")
                 return False
 
         # check for valid unitary
@@ -137,16 +134,15 @@ def check_hermitian(id, herm_dict, var_ls, run_path, lib_path):
     if (len(var_ls) * 2 == len(herm_dict[id].shape)):
         return True
     else:
-        error_info += err("Error: The dimensions of hermitian '" + id + "' and qvars " + str(var_ls) + " do not match.\n", silent)
+        LogSystem.channels[channel].append("Error: The dimensions of hermitian '" + id + "' and qvars " + str(var_ls) + " do not match.")
         return False
 
 
 # check the semantics of prog. load and return the operators
-def check(prog : dict, run_path, lib_path):
-    global error_info, silent
+def check(prog : Dict[str, Any], run_path : str, lib_path : str) -> None | Dict[str , Dict[str , np.ndarray]]:
 
     if prog == None:
-        error_info += err("Error: The input abstract syntax tree is invalid.\n", silent)
+        LogSystem.channels[channel].append("Error: The input abstract syntax tree is invalid.")
         return None
 
     # check the declared qvar, ensure the uniqueness

@@ -20,16 +20,19 @@
 # it calculates the weakest (liberal) precondition of a given program abstract syntax tree
 # ------------------------------------------------------------
 
-from .tools import err
+from __future__ import annotations
+from typing import Any, List, Dict
+
+from .logsystem import LogSystem
 
 from .NQPV_ast import *
 from . import NQPV_la
 from .set_order import sqsubseteq
 
-error_info = ""
-silent = False
+# report channel
+channel : str = "main"
 
-def wlp_verify(prog : dict, pinfo : dict, preserve_pre):
+def wlp_verify(prog : dict, pinfo : dict, preserve_pre) -> bool:
     '''
     calculates the weakest liberal precondition
     prog: the given abstract syntax tree
@@ -80,7 +83,7 @@ def insert_im_precond(pinfo: dict, pre_m_ls : list):
     
 
 
-def wlp_iter(sequence: list, qvar: list, postcond: list, pinfo: dict, preserve_pre):
+def wlp_iter(sequence: list, qvar: list, postcond: list, pinfo: dict, preserve_pre) -> None | List:
     '''
     input:
         sequence: sequence of program sentences
@@ -159,7 +162,7 @@ def wlp_iter(sequence: list, qvar: list, postcond: list, pinfo: dict, preserve_p
                 if sqsubseteq(inv, calculated_pre):
                     temp += proposed_pre
                 else:
-                    error_info += err("(line "+str(sentence.lineno)+")\tFailure: The given invariant '" + predicate_to_code(sentence.inv) + "' is invalid.\n\n", silent)
+                    LogSystem.channels[channel].append("(line "+str(sentence.lineno)+")\tFailure: The given invariant '" + predicate_to_code(sentence.inv) + "' is invalid.\n")
                     return None
 
             cur_postcond = temp

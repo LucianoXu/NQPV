@@ -18,6 +18,12 @@
 #
 # tokenizer for nondeterministic quantum programs
 # ------------------------------------------------------------
+from __future__ import annotations
+from typing import Any, List
+
+from .logsystem import LogSystem
+
+
 import ply.lex as lex
 
 reserved = {
@@ -88,31 +94,12 @@ t_ignore = ' \t'
 
 # Error handling rule
 
-from .tools import err
-
-error_info = ""
-silent = False
+channel = "main"
 
 def t_error(t):
-    global error_info, silent
-    cur_info = "(line " + str(t.lineno) + ")\tSyntax Error. Illegal character '" + t.value[0] + "'. \n"
-    error_info += err(cur_info, silent)
+    LogSystem.channels[channel].append("(line " + str(t.lineno) + ")\tSyntax Error. Illegal character '" + t.value[0] + "'.")
     t.lexer.skip(1)
 
 
 # Build the lexer
 lexer = lex.lex()
-
-# test the lexer
-if __name__ == '__main__':
-
-    data = '''
-    '''
-
-    lexer.input(data)
-
-    while True:
-        tok = lexer.token()
-        if not tok:
-            break
-        print(tok)

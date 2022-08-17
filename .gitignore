@@ -8,4 +8,7 @@ __pycache__
 parsetab.py
 *.npy
 
+# for testing
+test.py
+example/prog.nqpv
 output.txt

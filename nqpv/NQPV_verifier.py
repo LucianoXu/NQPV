@@ -18,11 +18,15 @@
 #
 # method 'verify' provides the user interface of the whole verifier
 # ------------------------------------------------------------
+from __future__ import annotations
+from typing import Any, List, Dict
 
 import os
 import numpy as np
 
-from .tools import msg, ver_label, lineno_added
+from .logsystem import LogSystem
+
+from .tools import ver_label, lineno_added
 
 from .NQPV_ast import *
 from . import NQPV_lexer, NQPV_parser, NQPV_la
@@ -32,21 +36,24 @@ from .semantics_analyser import check
 from . import backward_transformer
 from .backward_transformer import wlp_verify
 
+# report channel
+channel = "main"
+channel_cmd = "cmd"
+
 def verifiy_reset():
     # clean up the error info
-    NQPV_la.error_info = ""
-    NQPV_la.silent = True
-    NQPV_lexer.error_info = ""
-    NQPV_lexer.silent = True
-    NQPV_parser.error_info = ""
-    NQPV_parser.silent = True
-    semantics_analyser.error_info = ""
-    semantics_analyser.silent = True
-    backward_transformer.error_info = ""
-    backward_transformer.silent = True
+    
+    if channel not in LogSystem.channels:
+        LogSystem(channel)
+    
+    if channel_cmd not in LogSystem.channels:
+        LogSystem(channel_cmd)
+
+    LogSystem.channels[channel].summary()
+    LogSystem.channels[channel_cmd].summary()
 
 
-def verify(folder_path, lib_path = "", silent = False, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
+def verify(folder_path, lib_path = "", total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
 
     if total_correctness:
         print("total correctness not supported yet")
@@ -54,12 +61,15 @@ def verify(folder_path, lib_path = "", silent = False, total_correctness = False
 
     verifiy_reset()
 
-    msg("\n= Nondeterministic Quantum Program Verifier Output = \n\n", silent, None)
+    ch_cmd = LogSystem.channels[channel_cmd]
 
-    msg("Version: " + ver_label + "\n\n", silent, None)
+    ch_cmd.append("\n= Nondeterministic Quantum Program Verifier Output = \n")
+    ch_cmd.append("Version: " + ver_label + "\n")
 
     # Prompt the running path
-    msg("running path: " + os.getcwd() +"\n\n", silent, None)
+    ch_cmd.append("running path: " + os.getcwd() +"\n")
+
+    print(ch_cmd.summary(drop=False))
 
     # detect the file
     if folder_path[-1] == '/' or folder_path[-1] == '\\':
@@ -86,85 +96,77 @@ def verify(folder_path, lib_path = "", silent = False, total_correctness = False
         return
 
     # add the beginning of output.txt
-    p_output.write("\n= Nondeterministic Quantum Program Verifier Output = \n\n")
-    p_output.write("Version: " + ver_label + "\n\n")
-    p_output.write("running path: " + os.getcwd() +"\n\n")
 
-    msg("folder path: "+ folder_path + "\n\n", silent, p_output)
+    ch_cmd.summary(p_output)
+
+    ch_cmd.single("folder path: "+ folder_path + "\n", p_output, True)
 
     if total_correctness:
-        msg("property to verify: Total Correctness\n\n", silent, p_output)
+        ch_cmd.single("property to verify: Total Correctness\n", p_output, True)
     else:
-        msg("property to verify: Partial Correctness\n\n", silent, p_output)
+        ch_cmd.single("property to verify: Partial Correctness\n", p_output, True)
 
-    msg("intermediate preconditions preserved: "+("Yes" if preserve_pre else "No") + "\n\n", silent, p_output)
-    msg("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n\n", silent, p_output)
-    msg("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n\n", silent, p_output)
+    ch_cmd.single("intermediate preconditions preserved: "+("Yes" if preserve_pre else "No") + "\n", p_output, True)
+    ch_cmd.single("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n", p_output, True)
+    ch_cmd.single("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n", p_output, True)
 
-    msg("--------------------------------------------\n", silent, p_output)
-    msg("<prog> \n\n", silent, p_output)
-    msg(lineno_added(prog_str), silent, p_output)
-    msg("\n\n--------------------------------------------\n\n", silent, p_output)
+    ch_cmd.single("--------------------------------------------", p_output, True)
+    ch_cmd.single("<prog>\n", p_output, True)
+    ch_cmd.single(lineno_added(prog_str), p_output, True)
+    ch_cmd.single("\n--------------------------------------------\n", p_output, True)
 
     # check whether the file is empty
     if prog_str == "":
-        msg("Program file '" + folder_path + "/prog.nqpv' is empty.", False, p_output)
+        ch_cmd.single("Program file '" + folder_path + "/prog.nqpv' is empty.", p_output, True)
+        p_output.close()
         return
 
     # syntactic analysis, produce the abstract syntax tree
-    msg("syntactic analysis ...\n\n", silent, None)
+    ch_cmd.single("syntactic analysis ...\n", None, True)
     ast = NQPV_parser.parser.parse(prog_str)
-    if NQPV_lexer.error_info != "" or NQPV_parser.error_info != "":
-        if NQPV_lexer.error_info != "":
-            msg(NQPV_lexer.error_info, False, p_output)
-        else:
-            msg(NQPV_parser.error_info, False, p_output)
-        msg("\nAbort: syntactic analysis not passed.\n", False, p_output)
+    if not LogSystem.channels[channel].empty:
+        LogSystem.channels[channel].summary(p_output, True, True)
+        ch_cmd.single("\nAbort: syntactic analysis not passed.\n", p_output, True)
         p_output.close()
         return
-    msg("syntactic analysis passed.\n\n", silent, p_output)
+    ch_cmd.single("syntactic analysis passed.\n", p_output, True)
 
     # semantic analysis
-    msg("semantic analysis ...\n\n", silent, None)
+    ch_cmd.single("semantic analysis ...\n", None, True)
     pinfo = check(ast, folder_path, lib_path)
     if pinfo is None:
         # it means there is error in the semantic analysis
-        if semantics_analyser.error_info != "":
-            msg(semantics_analyser.error_info, False, p_output)
-        elif NQPV_la.error_info != "":
-            msg(NQPV_la.error_info, False, p_output)
-
-        msg("\nAbort: semantic analysis not passed.\n", False, p_output)
+        LogSystem.channels[channel].summary(p_output, True, True)
+        ch_cmd.single("\nAbort: semantic analysis not passed.\n", p_output, True)
         p_output.close()
         return
-    msg("semantic analysis passed.\n\n", silent, p_output)
+    ch_cmd.single("semantic analysis passed.\n", p_output, True)
 
 
     # start verification
-
-    msg("verification starts, calculating weakest (liberal) preconditions...\n\n", silent, None)
+    ch_cmd.single("verification starts, calculating weakest (liberal) preconditions...\n", p_output, True)
 
     v_result = wlp_verify(ast, pinfo, preserve_pre)
 
-    if backward_transformer.error_info != "":
-        msg(backward_transformer.error_info, False, p_output)
+    if not LogSystem.channels[channel].empty:
+        LogSystem.channels[channel].summary(p_output, True, True)
 
     # declare the result
     if v_result:
-        msg("Verification Result: Property holds.\n\n", False, p_output)
+        ch_cmd.single("Verification Result: Property holds.\n", p_output, True)
     else:
         # check whether there is while structures
         if pinfo['while_exists']:
-            msg("Verification Result: Property cannot be determined. A suitable loop invariant may be sufficient.\n\n", False, p_output)
+            ch_cmd.single("Verification Result: Property cannot be determined. A suitable loop invariant may be sufficient.\n", p_output, True)
         else:
-            msg("Verification Result: Property does not hold.\n\n", False, p_output)
+            ch_cmd.single("Verification Result: Property does not hold.\n", p_output, True)
 
     # show the proof outline
     
-    msg("(proof outline shown in 'output.txt)\n\n", silent, None)
-    msg("--------------------------------------------\n", True, p_output)
-    msg("<prog proof outline> \n\n", True, p_output)
-    msg(lineno_added(NQPV_parser.prog_to_code(ast, "")), True, p_output)
+    ch_cmd.single("(proof outline shown in 'output.txt)\n", None, True)
+    ch_cmd.single("--------------------------------------------", p_output, True)
+    ch_cmd.single("<prog proof outline> \n", p_output, True)
+    ch_cmd.single(lineno_added(NQPV_parser.prog_to_code(ast, "")), p_output, True)
 
 
 
@@ -172,71 +174,70 @@ def verify(folder_path, lib_path = "", silent = False, total_correctness = False
     if opt_in_output:
 
         # prompt that the operator output is hidden in cmd
-        if not silent:
-            print("(operators shown in 'output.txt')\n\n", end='')
+        print("(operators shown in 'output.txt')\n\n", end='')
         
-        msg("\n\n--------------------------------------------\n", True, p_output)
-        msg("<unitary operators> \n\n", True, p_output)
+        ch_cmd.single("\n--------------------------------------------", p_output, True)
+        ch_cmd.single("<unitary operators> \n", p_output, True)
 
         for id in pinfo['unitary']:
-            msg(id + "\n", True, p_output)
-            msg(str(NQPV_la.tensor_to_matrix(pinfo['unitary'][id])), True, p_output)
-            msg("\n\n", True, p_output)
+            ch_cmd.single(id ,p_output, True)
+            ch_cmd.single(str(NQPV_la.tensor_to_matrix(pinfo['unitary'][id])), p_output, True)
+            ch_cmd.single("\n", p_output, True)
         
-        msg("--------------------------------------------\n", True, p_output)
+        ch_cmd.single("--------------------------------------------", p_output, True)
 
-        msg("<Hermitian operators> \n\n", True, p_output)
+        ch_cmd.single("<Hermitian operators> \n", p_output, True)
 
         for id in pinfo['herm']:
-            msg(id + "\n", True, p_output)
-            msg(str(NQPV_la.tensor_to_matrix(pinfo['herm'][id])), True, p_output)
-            msg("\n\n", True, p_output)
+            ch_cmd.single(id, p_output, True)
+            ch_cmd.single(str(NQPV_la.tensor_to_matrix(pinfo['herm'][id])), p_output, True)
+            ch_cmd.single("\n", p_output, True)
         
-        msg("--------------------------------------------\n", True, p_output)
+        ch_cmd.single("--------------------------------------------", p_output, True)
 
-        msg("<measurement operators> \n\n", True, p_output)
+        ch_cmd.single("<measurement operators> \n", p_output, True)
 
         for id in pinfo['measure']:
-            msg(id + " RESULT0 \n", True, p_output)
-            msg(str(NQPV_la.tensor_to_matrix(pinfo['measure'][id][0])), True, p_output)
-            msg("\n\n", True, p_output)
-            msg(id + " RESULT1 \n", True, p_output)
-            msg(str(NQPV_la.tensor_to_matrix(pinfo['measure'][id][1])), True, p_output)
-            msg("\n\n", True, p_output)
+            ch_cmd.single(id + " RESULT0 ", p_output, True)
+            ch_cmd.single(str(NQPV_la.tensor_to_matrix(pinfo['measure'][id][0])), p_output, True)
+            ch_cmd.single("\n", p_output, True)
+            ch_cmd.single(id + " RESULT1 ", p_output, True)
+            ch_cmd.single(str(NQPV_la.tensor_to_matrix(pinfo['measure'][id][1])), p_output, True)
+            ch_cmd.single("\n", p_output, True)
         
-        msg("--------------------------------------------\n", True, p_output)
+        ch_cmd.single("--------------------------------------------", p_output, True)
 
         if preserve_pre:
-            msg("<Hermitians for intermediate preconditions> \n\n", True, p_output)
+            ch_cmd.single("<Hermitians for intermediate preconditions> \n", p_output, True)
 
             for id in pinfo['im_pre-cond']:
-                msg(id + "\n", True, p_output)
-                msg(str(NQPV_la.tensor_to_matrix(pinfo['im_pre-cond'][id])), True, p_output)
-                msg("\n\n", True, p_output)
+                ch_cmd.single(id, p_output, True)
+                ch_cmd.single(str(NQPV_la.tensor_to_matrix(pinfo['im_pre-cond'][id])), p_output, True)
+                ch_cmd.single("\n", p_output, True)
             
-            msg("--------------------------------------------\n", True, p_output)
+            ch_cmd.single("--------------------------------------------", p_output, True)
 
     # save the related operaters
     if save_opt:
-        msg("Saving operators...\n\n", silent, None)
+        ch_cmd.single("Saving operators...\n", None, True)
 
         for id in pinfo['unitary']:
-            msg("unitary: " + id + ".npy ... ", silent, None)
+            ch_cmd.single("unitary: " + id + ".npy ... ", None, True)
             np.save(folder_path + "/" + id + ".npy", pinfo['unitary'][id])
-            msg("done\n", silent, None)
+            ch_cmd.single("done\n", None, True)
         for id in pinfo['measure']:
-            msg("measurement: " + id + ".npy ... ", silent, None)
+            ch_cmd.single("measurement: " + id + ".npy ... ", None, True)
             np.save(folder_path + "/" + id + ".npy", pinfo['measure'][id])
-            msg("done\n", silent, None)
+            ch_cmd.single("done\n", None, True)
         for id in pinfo['herm']:
-            msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
+            ch_cmd.single("Hermitian Operator: " + id + ".npy ... ", None, True)
             np.save(folder_path + "/" + id + ".npy", pinfo['herm'][id])
-            msg("done\n", silent, None)
+            ch_cmd.single("done\n", None, True)
         if preserve_pre:
             for id in pinfo['im_pre-cond']:
-                msg("Hermitian Operator: " + id + ".npy ... ", silent, None)
+                ch_cmd.single("Hermitian Operator: " + id + ".npy ... ", None, True)
                 np.save(folder_path + "/" + id + ".npy", pinfo['im_pre-cond'][id])
-                msg("done\n", silent, None)
+                ch_cmd.single("done\n", None, True)
 
 
     # close the output file

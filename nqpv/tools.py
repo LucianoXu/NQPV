@@ -21,19 +21,6 @@
 
 ver_label = "0.1"
 
-def err(txt, silent):
-    if not silent:
-        print(txt, end='')
-    return txt
-
-
-def msg(txt, silent, p_output):
-    # message the text in the cmd and write in the output file
-    if not silent:
-        print(txt, end='')
-    if p_output is not None:
-        p_output.write(txt)
-
 def lineno_added(txt):
     '''
     Add an line number in front of each line

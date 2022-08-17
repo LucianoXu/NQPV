@@ -41,13 +41,36 @@ def precondition_to_code(precond):
         r += " " + precond[i] + "[qvar]"
     return r
 
+class QvarLsStruct:
+    # list of all variables in consideration
+    qvar = []
+
+    def __init__(self, _data):
+        # if is the whole qvar list
+        if _data == "qvar":
+            self.data = "qvar"
+        # if is a copy construction
+        elif isinstance(_data, QvarLsStruct):
+            self.data = _data.data
+        # if is a singal identifier
+        elif isinstance(_data, str):
+            self.data = [_data]
+        else:
+            raise Exception("invalid input")
+    
+    
+
+    
+
 class SyntaxStruct:
-    # structure label
-    label = ""
-    # line number in the source code
-    lineno = 0
-    # precondition
-    pre_cond = []
+
+    def __init__(self):
+        # structure label
+        self.label = ""
+        # line number in the source code
+        self.lineno = 0
+        # precondition
+        self.pre_cond = []
 
     def to_code(self, prefix):
         r = ""

@@ -19,6 +19,11 @@
 # parser for nondeterministic quantum programs
 # ------------------------------------------------------------
 
+from __future__ import annotations
+from typing import Any, List
+
+from .logsystem import LogSystem
+
 import ply.yacc as yacc
 
 from .NQPV_lexer import tokens, lexer
@@ -150,15 +155,10 @@ def p_id_ls_start(p):
 
 # Error rule for syntax errors
 
-from .tools import err
-
-error_info = ""
-silent = False
+channel = "main"
 
 def p_error(p):
-    global error_info, silent
-    cur_info = "(line " + str(p.lineno) + ")\tSyntax error in input: '" + str(p.value) + "'. \n"
-    error_info += err(cur_info, silent)
+    LogSystem.channels[channel].append("(line " + str(p.lineno) + ")\tSyntax error in input: '" + str(p.value) + "'.")
 
 
 # Build the lexer

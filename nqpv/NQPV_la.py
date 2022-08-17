@@ -18,60 +18,61 @@
 #
 # linear algebra tools needed in this verifier
 # ------------------------------------------------------------
+from __future__ import annotations
+from typing import Any, List
 
-from .tools import err
+from .logsystem import LogSystem
 
 import numpy as np
 
-EPS = 1e-7
+EPS : float = 1e-7
 
-error_info = ""
-silent = False
 
-def complex_norm(c):
+# the channel for informations in this module
+channel : str = "main"
+
+def complex_norm(c : np.floating) -> complex:
     return np.sqrt(c * np.conj(c)).real
 
-def check_unity(m, m_id):
+def check_unity(m : np.ndarray, m_id : str) -> bool:
     '''
     check whether tensor m is unitary
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
     '''
-    global error_info, silent
 
     if len(m.shape) % 2 == 1:
-        error_info += err("Error: The dimension of '" + m_id + "' is invalid for an unitary.\n\n", silent)
+        LogSystem.channels[channel].append("Error: The dimension of '" + m_id + "' is invalid for an unitary.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            error_info += err("Error: The dimension of '" + m_id + "' is invalid for an unitary.\n\n", silent)
+            LogSystem.channels[channel].append("Error: The dimension of '" + m_id + "' is invalid for an unitary.")
             return False
     
     # calculate the dim for matrix
-    dim_m = 2**(len(m.shape)//2)
+    dim_m : int = 2**(len(m.shape)//2)
     matrix = m.reshape((dim_m, dim_m))
 
     # check the maximum of U^dagger @ U - I
     zero_check = (matrix @ np.transpose(np.conj(matrix))) - np.eye(dim_m)
     diff = np.sqrt(complex_norm(np.max(zero_check)))
     if diff > EPS:
-        error_info += err("Error: '" + m_id + "' is not an unitary matrix.\n\n", silent)
+        LogSystem.channels[channel].append("Error: '" + m_id + "' is not an unitary matrix.")
         return False
     return True
 
-def check_hermitian_predicate(m, m_id):
+def check_hermitian_predicate(m : np.ndarray, m_id : str) -> bool:
     '''
     check whether tensor m is hermitian and 0 <= m <= I
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
     '''
-    global error_info, silent
     if len(m.shape) % 2 == 1:
-        error_info += err("Error: The dimension of '" + m_id + "' is invalid for an Hermitian operator.\n\n", silent)
+        LogSystem.channels[channel].append("Error: The dimension of '" + m_id + "' is invalid for an Hermitian operator.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            error_info += err("Error: The dimension of '" + m_id + "' is invalid for an Hermitian operator.\n\n", silent)
+            LogSystem.channels[channel].append("Error: The dimension of '" + m_id + "' is invalid for an Hermitian operator.")
             return False
     
     # calculate the dim for matrix
@@ -79,35 +80,34 @@ def check_hermitian_predicate(m, m_id):
     matrix = m.reshape((dim_m, dim_m))
 
     # check the maximum of U^dagger @ U - I
-    zero_check = matrix - np.transpose(np.conj(matrix))
+    zero_check = matrix - np.transpose(np.conj(matrix))  # type: ignore
     diff = np.sqrt(complex_norm(np.max(zero_check)))
     if diff > EPS:
-        error_info += err("Error: '" + m_id + "' is not an Hermitian operator.\n\n", silent)
+        LogSystem.channels[channel].append("Error: '" + m_id + "' is not an Hermitian operator.")
         return False
 
     # check 0 <= matrix <= I
     e_vals = np.linalg.eigvals(matrix)
     if np.any(e_vals < 0 - EPS) or np.any(e_vals > 1 + EPS):
-        error_info += err("Error: The requirement 0 <= '" + m_id + "' <= I is not satisfied.\n\n", silent)
+        LogSystem.channels[channel].append("Error: The requirement 0 <= '" + m_id + "' <= I is not satisfied.")
         return False
         
     return True
 
 
-def check_measure(m, m_id):
+def check_measure(m : np.ndarray, m_id : str):
     '''
     check whether tensor m is a valid measurement
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices. 
         The first index of m corresponds to measurement result 0 or 1.
     '''
-    global error_info, silent
     if len(m.shape) % 2 == 0:
-        error_info += err("Error: The dimension of '" + m_id + "' is invalid for a measurement.\n\n", silent)
+        LogSystem.channels[channel].append("Error: The dimension of '" + m_id + "' is invalid for a measurement.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            error_info += err("Error: The dimension of '" + m_id + "' is invalid for a measurement.\n\n", silent)
+            LogSystem.channels[channel].append("Error: The dimension of '" + m_id + "' is invalid for a measurement.")
             return False
     
     # calculate the dim for matrix
@@ -121,17 +121,17 @@ def check_measure(m, m_id):
     zero_check = (m0.conj().transpose() @ m0 + m1.conj().transpose() @ m1) - np.eye(dim_m)
     diff = np.sqrt(complex_norm(np.max(zero_check)))
     if diff > EPS:
-        error_info += err("Error: '" + m_id + "' does not satisfy the normalization requirement of a measurement.\n\n", silent)
+        LogSystem.channels[channel].append("Error: '" + m_id + "' does not satisfy the normalization requirement of a measurement.")
         return False
     return True
     
-def eye_tensor(qubitn):
+def eye_tensor(qubitn : int) -> np.ndarray:
     '''
     return the identity matrix of 'qubitn' qubits, in the form of a (2,2,2,...) tensor, row indices in the front.
     '''
     return np.eye(2**qubitn).reshape((2,)*qubitn*2)
 
-def hermitian_contract(qvar: list, H, qvar_act : list, M):
+def hermitian_contract(qvar: List[str], H : np.ndarray, qvar_act : List[str], M : np.ndarray) -> np.ndarray:
     '''
     conduct the transformation M.H.M^dagger and return the result hermitian operator
     qvar: name sequence of qubits in H
@@ -184,7 +184,7 @@ def hermitian_contract(qvar: list, H, qvar_act : list, M):
     temp2 = np.tensordot(temp1, np.conjugate(M), (iH_right_ls, iM_ls)).transpose(rearrange_HMd)
     return temp2
 
-def dagger(M):
+def dagger(M : np.ndarray) -> np.ndarray:
     '''
     for a tensor M with shape (2,2,2,...), return M^dagger
     Note: M should have been already checked
@@ -194,7 +194,7 @@ def dagger(M):
     return np.conjugate(M).transpose(trans)
     
 
-def hermitian_init(qvar: list, H, qvar_init: list):
+def hermitian_init(qvar: List[str], H : np.ndarray, qvar_init: List[str]) -> np.ndarray:
     '''
     initialize hermitian operator H at variables 'qvar_init'
     '''
@@ -211,13 +211,13 @@ def hermitian_init(qvar: list, H, qvar_init: list):
     
     return tempH
 
-def tensor_to_matrix(t):
+def tensor_to_matrix(t : np.ndarray) -> np.ndarray:
     nM = len(t.shape)//2
     ndim = 2**nM
     return t.reshape((ndim, ndim))
 
 
-def hermitian_extend(qvar: list, H, qvar_H: list):
+def hermitian_extend(qvar: List[str], H : np.ndarray, qvar_H: List[str]) -> np.ndarray:
     '''
     extend the given hermitian operator, according to all variables qvar, and return
     '''

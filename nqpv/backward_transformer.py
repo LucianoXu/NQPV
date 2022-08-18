@@ -25,7 +25,7 @@ from typing import Any, List, Dict
 
 from .logsystem import LogSystem
 
-from .NQPV_ast import *
+from .syntaxes.NQPV_ast import *
 from . import NQPV_la
 from .set_order import sqsubseteq
 

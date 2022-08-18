@@ -28,29 +28,34 @@ from .logsystem import LogSystem
 
 from .tools import ver_label, lineno_added
 
-from .NQPV_ast import *
-from . import NQPV_lexer, NQPV_parser, NQPV_la
+from .syntaxes.NQPV_ast import *
+from .syntaxes import NQPV_lexer, NQPV_parser 
+from . import NQPV_la
 
-from . import semantics_analyser
-from .semantics_analyser import check
+from .semantics import semantics_analyser
+from .semantics.semantics_analyser import check
 from . import backward_transformer
 from .backward_transformer import wlp_verify
 
 # report channel
 channel = "main"
 channel_cmd = "cmd"
+channel_witness = "witness"
 
 def verifiy_reset():
     # clean up the error info
     
     if channel not in LogSystem.channels:
         LogSystem(channel)
+    LogSystem.channels[channel].summary()
     
     if channel_cmd not in LogSystem.channels:
         LogSystem(channel_cmd)
-
-    LogSystem.channels[channel].summary()
     LogSystem.channels[channel_cmd].summary()
+
+    if channel_witness not in LogSystem.channels:
+        LogSystem(channel_witness)
+    LogSystem.channels[channel_witness].summary()
 
 
 def verify(folder_path, lib_path = "", total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
@@ -149,7 +154,7 @@ def verify(folder_path, lib_path = "", total_correctness = False, preserve_pre =
     v_result = wlp_verify(ast, pinfo, preserve_pre)
 
     if not LogSystem.channels[channel].empty:
-        LogSystem.channels[channel].summary(p_output, True, True)
+        LogSystem.channels[channel].summary(p_output, True)
 
     # declare the result
     if v_result:
@@ -160,6 +165,9 @@ def verify(folder_path, lib_path = "", total_correctness = False, preserve_pre =
             ch_cmd.single("Verification Result: Property cannot be determined. A suitable loop invariant may be sufficient.\n", p_output, True)
         else:
             ch_cmd.single("Verification Result: Property does not hold.\n", p_output, True)
+
+    if not LogSystem.channels[channel_witness].empty:
+        LogSystem.channels[channel_witness].summary(p_output, True)
 
     # show the proof outline
     

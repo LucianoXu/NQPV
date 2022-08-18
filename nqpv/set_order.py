@@ -18,6 +18,14 @@
 #
 # decide the partial order of Hermitian operator sets, using SDP
 # ------------------------------------------------------------
+from __future__ import annotations
+from typing import Any, List
+
+
+from .logsystem import LogSystem
+
+# define the channel to save the witness
+channel_witness = "witness"
 
 from .NQPV_la import EPS
 
@@ -61,6 +69,9 @@ def sqsubseteq(setA : list, setB : list) -> bool:
 
         # if a solution has been found
         if X.value is not None:
+            LogSystem.channels[channel_witness].append(
+                "Order relation not satisfied. Density operator witnessed: \n" + str(X.value)
+            )
             return False
 
     return True

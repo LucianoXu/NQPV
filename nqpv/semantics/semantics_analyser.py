@@ -28,10 +28,10 @@
 from __future__ import annotations
 from typing import Any, List, Dict
 
-from .logsystem import LogSystem
+from ..logsystem import LogSystem
 
 import numpy as np
-from . import NQPV_la
+from .. import NQPV_la
 
 # store the error information
 channel : str = "main"

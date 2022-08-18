@@ -21,7 +21,7 @@
 from __future__ import annotations
 from typing import Any, List
 
-from .logsystem import LogSystem
+from ..logsystem import LogSystem
 
 
 import ply.lex as lex

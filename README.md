@@ -141,7 +141,7 @@ And "sentence" is just a piece of program, which can be skip, abort, initializat
 > | [ id_ls ] *= id <br>
 > | if id [ id_ls ] then sequence else sequence end <br>
 > | { inv : herm_ls } while id [  id_ls ] do sequence end <br>
-> | ( sequence \# sequence)
+> | ( sequence \# sequence \# ... \# sequence)
 
 <!--
 > $$
@@ -158,7 +158,7 @@ And "sentence" is just a piece of program, which can be skip, abort, initializat
 > $$
 -->
 
-The last rule of the grammar above corresponds to the nondeterministic choice.
+The last rule of the grammar above corresponds to the (multiple) nondeterministic choice.
 
 ## Verification Procedure and API
 
@@ -228,7 +228,7 @@ The extra (2 dimensional) index at the beginning of the measurement tensor is fo
 
 The method to conduct a verification task is the following one:
 
-> **nqpv.verify (folder_path, lib_path = "", silent = False, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False)<br>**
+> **nqpv.verify (folder_path, lib_path = "", total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False)<br>**
 > Conduct the verification task, and produce an 'output.txt' report.
 > 
 > - Parameters: 
@@ -236,8 +236,6 @@ The method to conduct a verification task is the following one:
 >       The folder of the verification task, relative to the run path. It should contain the *prog* file and the operator files mentioned in *prog* (if not in the operator library).
 >   - **lib_path** : string <br>
 >       The folder path of an operator library, relative to the run path. If provided, the verifier will also search in the library for the operators mentioned in *prog*.
->   - **silent** : bool <br>
->       Whether this method produces a lot of output in the command prompt. If **True**, only critical information is shown.
 >   - **total_correctness** : bool <br>
 >       Whether to verify in the sense of total correctness. If **False**, only partial correctness is considered. **(Keep this switch off since total correctness has not been considered yet.)**
 >   - **preserve_pre** : bool <br>
@@ -288,7 +286,7 @@ This example shows that the error correction code here is robust against single 
     [q1 q2] := 0;
     [q q1] *= CX;
     [q q2] *= CX;
-    (((skip # q *= X) # q1 *= X) # q2 *= X);
+    (skip # q *= X # q1 *= X # q2 *= X);
     [q q1] *= CX;
     [q q2] *= CX;
     [q1 q2 q] *= CCX

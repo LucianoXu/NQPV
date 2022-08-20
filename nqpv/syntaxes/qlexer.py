@@ -14,20 +14,22 @@
 '''
 
 # ------------------------------------------------------------
-# NQPV_lexer.py
+# qlexer.py
 #
 # tokenizer for nondeterministic quantum programs
 # ------------------------------------------------------------
 from __future__ import annotations
 from typing import Any, List
 
-from ..logsystem import LogSystem
-
-
 import ply.lex as lex
 
+from ..logsystem import LogSystem
+
+# channel
+channel = "syntax"
+
+
 reserved = {
-    'qvar' : 'QVAR',
     'skip': 'SKIP',
     'abort' : 'ABORT',
     'if': 'IF',
@@ -92,9 +94,6 @@ def t_newline(t):
 # A string containing ignored characters (spaces and tabs)
 t_ignore = ' \t'
 
-# Error handling rule
-
-channel = "main"
 
 def t_error(t):
     LogSystem.channels[channel].append("(line " + str(t.lineno) + ")\tSyntax Error. Illegal character '" + t.value[0] + "'.")

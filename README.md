@@ -15,7 +15,7 @@
 
 # NQPV - Nondeterministic Quantum Program Verifier
 
-**Version: 0.1b**
+**Version: 0.2b**
 
 NQPV is an assistant tool for the formal verification of nondeterministic quantum programs.
 

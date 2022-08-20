@@ -14,39 +14,21 @@
 '''
 
 # ------------------------------------------------------------
-# tools.py
+# settings.py
 #
-# define the tools used in this verifier
+# define the settings of this verifier
 # ------------------------------------------------------------
 
-def code_add_prefix(code : str, prefix : str) -> str:
-    '''
-    Add an prefix in front of each line
-    '''
+from . import semantics
 
-    r = prefix + code
+class Settings:
+    version : str = "0.1"
+    
+    @staticmethod
+    def EPS() -> float:
+        return semantics.Precision.EPS()
 
-    i = 0
-    while i < len(r):
-        if r[i] == '\n':
-            r = r[:i+1] + prefix + r[i+1:]
-        i += 1
-
-    return r
-
-def lineno_added(txt):
-    '''
-    Add an line number in front of each line
-    '''
-    line_no = 1
-    r = str(line_no) + '\t\t' + txt
-    line_no += 1
-
-    i = 0
-    while i < len(r):
-        if r[i] == '\n':
-            r = r[:i+1] + str(line_no) + '\t\t' + r[i+1:]
-            line_no += 1
-        i += 1
-
-    return r
+    @staticmethod
+    def SetEPS(eps : float) -> None:
+        semantics.Precision.SetEPS(eps)
+    

@@ -20,7 +20,7 @@
 # ------------------------------------------------------------
 
 import numpy as np
-from . import NQPV_la
+from .semantics import qLA
 
 # transform m to the (2,2,2,...) form
 def to_shape_2(m):
@@ -73,7 +73,7 @@ def save_unitary(path, id, unitary):
         print("The shape of the given tensor is invalid.")
         return False
     
-    if not NQPV_la.check_unity(m, id):
+    if not qLA.check_unity(m):
         print("The given tensor is not unitary.")
         return False
     
@@ -89,7 +89,7 @@ def save_hermitian(path, id, herm):
         print("The shape of the given tensor is invalid.")
         return False
     
-    if not NQPV_la.check_hermitian_predicate(m, id):
+    if not qLA.check_hermitian_predicate(m):
         print("The given tensor is not a valid Hermitian predicate.")
         return False
     
@@ -105,7 +105,7 @@ def save_measurement(path, id, measure):
         print("The shape of the given tensor is invalid.")
         return False
     
-    if not NQPV_la.check_measure(m, id):
+    if not qLA.check_measure(m):
         print("The given tensor is not a valid measurement.")
         return False
     

@@ -149,10 +149,11 @@ def verify(folder_path, total_correctness = False, preserve_pre = False, opt_in_
     # start verification
     ch_cmd.single("verification starts, calculating weakest (liberal) preconditions...\n", p_output, True)
 
-    print(ast)
 
     print(ast.proof_check())
 
+    print(ast)
+    
     LogSystem.channels[channel_semantics].summary(p_output, True, True)
 
     LogSystem.channels[channel_witness].summary(p_output, True, True)

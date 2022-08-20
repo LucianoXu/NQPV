@@ -22,8 +22,8 @@
 # ------------------------------------------------------------
 
 from __future__ import annotations
-from io import TextIOWrapper
 from typing import Any, List, Dict
+from io import TextIOWrapper
 
 class LogSystem:
 

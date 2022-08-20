@@ -24,6 +24,8 @@ from typing import Any, List, Dict
 
 import numpy as np
 
+from nqpv.semantics.id_env import IdEnv
+
 from . import qLA
 from .qLA import np_eps_equal, Precision
 
@@ -74,24 +76,6 @@ class OptEnv:
     # the library of all Operators
     lib : Dict[str, Operator] = {}
 
-    # the number postfix for automatic namings
-    _auto_naming_num = 0
-
-    # the prefix for automaitc namings
-    _auto_naming_prefix = "OP"
-
-    @staticmethod
-    def auto_name() -> str:
-        '''
-        Get a unique name of operators, which has not been used in the library.
-        '''
-        r = OptEnv._auto_naming_prefix + str(OptEnv._auto_naming_num)
-        OptEnv._auto_naming_num += 1
-        while r in OptEnv.lib:
-            r = OptEnv._auto_naming_prefix + str(OptEnv._auto_naming_num)
-            OptEnv._auto_naming_num += 1
-        return r
-
     @staticmethod
     def append(m : np.ndarray, proposed_name : str = "", repeat_detect = True) -> str:
         '''
@@ -106,18 +90,22 @@ class OptEnv:
                 if np_eps_equal(OptEnv.lib[id].data, m, Precision.EPS()):
                     return id
         
+        # decide the name
         if proposed_name == "":
-            auto_name = OptEnv.auto_name()
-            OptEnv.lib[auto_name] = Operator(m, auto_name)
-            return auto_name
+            # auto
+            name = IdEnv.opt_auto_name()
 
         else:
-            if proposed_name in OptEnv.lib:
+            # proposed
+            if proposed_name in OptEnv.lib or proposed_name in IdEnv.id_qvar:
                 raise Exception("The id has been used in the operator environment.")
 
-            OptEnv.lib[proposed_name] = Operator(m, proposed_name)
+            name = proposed_name
 
-            return proposed_name
+        # append in the library
+        OptEnv.lib[name] = Operator(m, name)
+        IdEnv.id_opt.add(name)
+        return name
     
     @staticmethod
     def get_opt(id : str) -> Operator | None:

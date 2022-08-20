@@ -90,7 +90,7 @@ class QProg:
             return False
 
         # insert the weakest preconditon to the end of the preconditions
-        inserted = Preconditions.append(self.pres, wp)
+        inserted = Preconditions.append(self.pres.full_extension(), wp)
         if inserted is None:
             raise Exception("unexpected situation")
 
@@ -144,6 +144,17 @@ class Preconditions:
         
         r = Preconditions(obj)
         r.pres.append(pre)
+        return r
+    
+    def full_extension(self) -> Preconditions:
+        '''
+        return the full extension
+        '''
+        r = Preconditions([])
+        for pre in self.pres:
+            r = Preconditions.append(r, pre.full_extension())
+        if r is None:
+            raise Exception("unexpected situation")
         return r
 
     def __str__(self) -> str:

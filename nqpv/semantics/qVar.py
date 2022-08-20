@@ -22,6 +22,8 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
+from nqpv.semantics.id_env import IdEnv
+
 from ..logsystem import LogSystem
 
 # log channel for this module
@@ -31,16 +33,22 @@ class QvarLs:
     # list of all variables in consideration
     qvar : List[str] = []
 
-    def __new__(cls, input_data : str | QvarLs | None):
+    def __new__(cls, input_data : str | List[str] | QvarLs | None):
         if input_data is None:
             LogSystem.channels[channel].append("The input for quantum variable list is invalid.")
             return None
 
-        # if is the whole qvar list
-        if input_data == "qvar":
-            instance = super().__new__(cls)
-            instance._data = "qvar"
-            return instance
+        # if is the whole qvar list or a first element
+        elif isinstance(input_data, str):
+            if input_data == "qvar":
+                instance = super().__new__(cls)
+                instance._data = "qvar"
+                return instance
+            else:
+                instance = super().__new__(cls)
+                instance._data = ()
+                new_instance = QvarLs.append(instance, input_data)
+                return new_instance
 
         # if is a copy construction
         elif isinstance(input_data, QvarLs):
@@ -48,17 +56,13 @@ class QvarLs:
             instance._data = input_data._data
             return instance
 
-        # if is a singal identifier
-        elif isinstance(input_data, str):
-            if input_data not in QvarLs.qvar:
-                QvarLs.qvar.append(input_data)
-
+        # if it is an empty list (initialization)
+        elif input_data == []:
             instance = super().__new__(cls)
-            instance._data = (input_data,)
+            instance._data = ()
             return instance
         else:
-            LogSystem.channels[channel].append("invalid input")
-            return None
+            raise Exception("unexpected situation")
 
 
     def __init__(self, input_data : str | QvarLs | None):
@@ -76,7 +80,7 @@ class QvarLs:
             LogSystem.channels[channel].append("The quantum variable list is invalid.")
             return None
 
-        if isinstance(obj._data, str):
+        if obj._data == "qvar":
             LogSystem.channels[channel].append("Qvar list of qvar cannot be appended.")
             return None
 
@@ -86,11 +90,20 @@ class QvarLs:
             return None
         
         if append_id not in QvarLs.qvar:
+            # check whether this id has been used by operators
+            if append_id in IdEnv.id_opt:
+                LogSystem.channels[channel].append("This identifier has been used by the operators.")
+                return None
+            # append in the env
             QvarLs.qvar.append(append_id)
+            IdEnv.id_qvar.add(append_id)
 
-        result = QvarLs(obj)
-        result._data = obj._data + (append_id,)
-        return result
+        if isinstance(obj._data, tuple):
+            result = QvarLs(obj)
+            result._data = obj._data + (append_id,)
+            return result
+        else:
+            raise Exception("unexpected situation")
 
 
     @property

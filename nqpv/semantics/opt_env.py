@@ -14,7 +14,7 @@
 '''
 
 # ------------------------------------------------------------
-# optEnv.py
+# opt_env.py
 #
 # provide the environment of operators
 # ------------------------------------------------------------
@@ -22,18 +22,18 @@
 from __future__ import annotations
 from typing import Any, List, Dict
 
-from nqpv.logsystem import LogSystem
+import numpy as np
 
 from . import qLA
 from .qLA import np_eps_equal, Precision
 
-import numpy as np
+from ..logsystem import LogSystem
 
 # log channel for this module
 channel : str = "semantics"
 
 # description of all operator properties in consideration
-OptProperty = {
+opt_property = {
     'unitary' : qLA.check_unity,
     'hermitian predicate' : qLA.check_hermitian_predicate,
     'measurement' : qLA.check_measure,
@@ -54,15 +54,15 @@ class Operator:
     def check_property(self, property : str) -> bool:
         '''
         check whether this operator has the specified property
-        property : a string, must be one key of OptProperty
+        property : a string, must be one key of opt_property
         '''
         if property in self.tags:
             return self.tags[property]
         
-        if property not in OptProperty:
+        if property not in opt_property:
             raise Exception("Unknown Property.")
         
-        result = OptProperty[property](self.data)
+        result = opt_property[property](self.data)
         self.tags[property] = result
         return result
     

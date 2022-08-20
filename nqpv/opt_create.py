@@ -18,12 +18,15 @@
 #
 # provides methods to create and verify 
 # ------------------------------------------------------------
+from __future__ import annotations
+
+import os
 
 import numpy as np
 from .semantics import qLA
 
 # transform m to the (2,2,2,...) form
-def to_shape_2(m):
+def to_shape_2(m : np.ndarray) -> np.ndarray | None:
     # check whether m already satisfies the requirements
     flag = True
     for dim in m.shape:
@@ -45,7 +48,7 @@ def to_shape_2(m):
         return None
 
 # transform m to the (2,2,2,...) form (for measurements)
-def to_shape_3(m):
+def to_shape_3(m : np.ndarray) -> np.ndarray | None:
     # check whether m already satisfies the requirements
     flag = True
     for dim in m.shape:
@@ -67,7 +70,7 @@ def to_shape_3(m):
         return None
 
 
-def save_unitary(path, id, unitary):
+def save_unitary(path : str, id : str, unitary : np.ndarray) -> bool:
     m = to_shape_2(unitary)
     if m is None:
         print("The shape of the given tensor is invalid.")
@@ -76,14 +79,11 @@ def save_unitary(path, id, unitary):
     if not qLA.check_unity(m):
         print("The given tensor is not unitary.")
         return False
-    
-    if path[-1] == '/' or path[-1] == '\\':
-        path = path[:-1]
-    
-    np.save(path + "/" + id + ".npy", m)
+        
+    np.save(os.path.join(path, id + ".npy"), m)
     return True
 
-def save_hermitian(path, id, herm):
+def save_hermitian(path : str, id : str, herm : np.ndarray) -> bool:
     m = to_shape_2(herm)
     if m is None:
         print("The shape of the given tensor is invalid.")
@@ -92,14 +92,11 @@ def save_hermitian(path, id, herm):
     if not qLA.check_hermitian_predicate(m):
         print("The given tensor is not a valid Hermitian predicate.")
         return False
-    
-    if path[-1] == '/' or path[-1] == '\\':
-        path = path[:-1]
-    
-    np.save(path + "/" + id + ".npy", m)
+        
+    np.save(os.path.join(path, id + ".npy"), m)
     return True
 
-def save_measurement(path, id, measure):
+def save_measurement(path : str, id : str, measure : np.ndarray) -> bool:
     m = to_shape_3(measure)
     if m is None:
         print("The shape of the given tensor is invalid.")
@@ -108,10 +105,7 @@ def save_measurement(path, id, measure):
     if not qLA.check_measure(m):
         print("The given tensor is not a valid measurement.")
         return False
-    
-    if path[-1] == '/' or path[-1] == '\\':
-        path = path[:-1]
-    
-    np.save(path + "/" + id + ".npy", m)
+        
+    np.save(os.path.join(path, id + ".npy"), m)
     return True
 

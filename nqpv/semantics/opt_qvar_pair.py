@@ -14,7 +14,7 @@
 '''
 
 # ------------------------------------------------------------
-# optQvarPair.py
+# opt_qvar_pair.py
 #
 # The description for paired operators and quantum variables
 # ------------------------------------------------------------
@@ -27,7 +27,7 @@ from typing import Any, List, Dict
 import numpy as np
 
 from .qLA import eye_tensor
-from .optEnv import Operator, OptEnv
+from .opt_env import Operator, OptEnv
 from .qVar import QvarLs
 
 from ..logsystem import LogSystem
@@ -64,7 +64,7 @@ def check_hermitian_predicate_qvls(opt : Operator, qvls : QvarLs) -> bool:
         LogSystem.channels[channel].append("Error: The dimensions of hermitian '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
         return False
 
-PairCheck = {
+pair_check = {
     'unitary' : check_unitary_qvls,
     'hermitian predicate' : check_hermitian_predicate_qvls,
     'measurement' : check_measure_qvls,
@@ -73,7 +73,7 @@ PairCheck = {
 class OptQvarPair:
     
     def __new__(cls, opt : Operator | None, qvls : QvarLs | None, type : str = ""):
-        if type not in PairCheck and type != "":
+        if type not in pair_check and type != "":
             raise Exception("Unknown type")
 
         # check whether the operator is valid
@@ -113,7 +113,7 @@ class OptQvarPair:
     def check_property(self, property : str) -> bool:
         '''
         check whether this pair has the specified property
-        property : a string, must be one key of OptProperty
+        property : a string, must be one key of opt_property
         '''
         if property in self.tags:
             return self.tags[property]
@@ -124,7 +124,7 @@ class OptQvarPair:
             return False
 
         # check whether the opt operator and the qvls variable list match with each other.
-        if not PairCheck[property](self.opt, self.qvls):
+        if not pair_check[property](self.opt, self.qvls):
             self.tags[property] = False
             return False
 

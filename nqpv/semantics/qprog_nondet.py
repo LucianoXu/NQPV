@@ -14,7 +14,7 @@
 '''
 
 # ------------------------------------------------------------
-# qprogNondet.py
+# qprog_nondet.py
 #
 # nondeterministic choice structure
 # ------------------------------------------------------------
@@ -23,11 +23,11 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple, Sequence
 
-from .optEnv import Operator, OptEnv
+from .opt_env import Operator, OptEnv
 from .qVar import QvarLs
-from .optQvarPair import OptQvarPair
+from .opt_qvar_pair import OptQvarPair
 from .qPre import QPredicate
-from .qprogStd import QProg, QProgSequence, Preconditions
+from .qprog_std import QProg, QProgSequence, Preconditions
 
 from ..logsystem import LogSystem
 from ..tools import code_add_prefix

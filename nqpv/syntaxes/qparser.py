@@ -24,17 +24,13 @@ from typing import Any, List
 
 import ply.yacc as yacc
 
-from nqpv.semantics.optEnv import OptEnv
-
-
-
-
 from .qlexer import tokens, lexer
 
-from ..semantics import qprogStd, qprogNondet, qProofOutline
+from ..semantics import qprog_nondet, qprog_proof_outline, qprog_std
 from ..semantics.qVar import QvarLs
 from ..semantics.qPre import QPredicate
-from ..semantics.optQvarPair import OptQvarPair
+from ..semantics.opt_env import OptEnv
+from ..semantics.opt_qvar_pair import OptQvarPair
 
 from ..logsystem import LogSystem
 
@@ -46,15 +42,15 @@ channel = "syntax"
 # program declaration section
 def p_prog(p):
     'prog : predicate sequence predicate'
-    p[0] = qProofOutline.QProofOutline(p[1], p[2], p[3])
+    p[0] = qprog_proof_outline.QProofOutline(p[1], p[2], p[3])
 
 def p_sequence_append(p):
     'sequence : sequence SEMICOLON sentence'
-    p[0] = qprogStd.QProgSequence.append(p[1], p[3])
+    p[0] = qprog_std.QProgSequence.append(p[1], p[3])
 
 def p_sequence_form(p):
     'sequence : sentence'
-    p[0] = qprogStd.QProgSequence(p[1])
+    p[0] = qprog_std.QProgSequence(p[1])
 
 
 def p_sentence(p):
@@ -71,57 +67,57 @@ def p_sentence(p):
 
 def p_nondet_choice(p):
     'nondet_choice : nondet_choice_pre sequence RBRAKET'
-    p[0] = qprogNondet.QProgNondet.append(p[1], p[2])
+    p[0] = qprog_nondet.QProgNondet.append(p[1], p[2])
 
 def p_nondet_choice_append(p):
     '''
     nondet_choice_pre : nondet_choice_pre sequence NONDET_CHOICE
     '''
-    p[0] = qprogNondet.QProgNondet.append(p[1], p[2])
+    p[0] = qprog_nondet.QProgNondet.append(p[1], p[2])
 
 def p_nondet_choice_start(p):
     '''
     nondet_choice_pre : LBRAKET sequence NONDET_CHOICE
     '''
-    p[0] = qprogNondet.QProgNondet(qprogStd.Preconditions([]), p[2])
+    p[0] = qprog_nondet.QProgNondet(qprog_std.Preconditions([]), p[2])
     
 
 def p_if(p):
     'if : IF ID id_ls THEN sequence ELSE sequence END'
     opt = OptEnv.get_opt(p[2])
-    p[0] = qprogStd.QProgIf(qprogStd.Preconditions([]), opt, p[3], p[5], p[7])
+    p[0] = qprog_std.QProgIf(qprog_std.Preconditions([]), opt, p[3], p[5], p[7])
 
 def p_while(p):
     'while : predicate_inv_pre WHILE ID id_ls DO sequence END'
     opt = OptEnv.get_opt(p[3])
-    p[0] = qprogStd.QProgWhile(qprogStd.Preconditions([]), p[1], opt, p[4], p[6])
+    p[0] = qprog_std.QProgWhile(qprog_std.Preconditions([]), p[1], opt, p[4], p[6])
 
 
 def p_skip(p):
     'skip : SKIP'
-    p[0] = qprogStd.QProgSkip(qprogStd.Preconditions([]))
+    p[0] = qprog_std.QProgSkip(qprog_std.Preconditions([]))
 
 def p_abort(p):
     'abort : ABORT'
-    p[0] = qprogStd.QProgAbort(qprogStd.Preconditions([]))
+    p[0] = qprog_std.QProgAbort(qprog_std.Preconditions([]))
 
 def p_unitary(p):
     '''unitary : id_ls MUL_EQ ID
                 | ID MUL_EQ ID'''
     opt = OptEnv.get_opt(p[3])
     if isinstance(p[1], QvarLs):
-        p[0] = qprogStd.QProgUnitary(qprogStd.Preconditions([]), opt, p[1])
+        p[0] = qprog_std.QProgUnitary(qprog_std.Preconditions([]), opt, p[1])
     else:
-        p[0] = qprogStd.QProgUnitary(qprogStd.Preconditions([]), opt, QvarLs(p[1]))
+        p[0] = qprog_std.QProgUnitary(qprog_std.Preconditions([]), opt, QvarLs(p[1]))
 
 
 def p_init(p):
     '''init : id_ls ASSIGN ZERO
             | ID ASSIGN ZERO'''
     if isinstance(p[1], QvarLs):
-        p[0] = qprogStd.QProgInit(qprogStd.Preconditions([]), p[1])
+        p[0] = qprog_std.QProgInit(qprog_std.Preconditions([]), p[1])
     else:
-        p[0] = qprogStd.QProgInit(qprogStd.Preconditions([]), QvarLs(p[1]))
+        p[0] = qprog_std.QProgInit(qprog_std.Preconditions([]), QvarLs(p[1]))
 
 #define the invariants
 def p_inv_end(p):

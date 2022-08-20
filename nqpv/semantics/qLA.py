@@ -14,7 +14,7 @@
 '''
 
 # ------------------------------------------------------------
-# qla.py
+# qLA.py
 #
 # quantum linear algebra tools needed in this verifier
 # ------------------------------------------------------------
@@ -37,7 +37,7 @@ class Precision:
         return Precision._EPS
 
     @staticmethod
-    def SetEPS(eps : float) -> None:
+    def set_EPS(eps : float) -> None:
         if eps <= 0.:
             raise Exception("illegal machine precision.")
         Precision._EPS = eps

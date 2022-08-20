@@ -20,11 +20,10 @@
 # load the tensors in the run path folder
 # ------------------------------------------------------------
 
-from genericpath import isdir
 import os
 
 from .logsystem import LogSystem
-from .semantics import optEnv
+from .semantics import opt_env
 
 import numpy as np
 
@@ -133,7 +132,7 @@ def optlib_inject() -> None:
     inject the commonly used operators into the optEnv
     '''
     for id in optlib:
-        optEnv.OptEnv.append(optlib[id], id, False)
+        opt_env.OptEnv.append(optlib[id], id, False)
 
 def optload_inject(run_path : str) -> bool:
     '''
@@ -146,10 +145,10 @@ def optload_inject(run_path : str) -> bool:
             if os.path.isfile(new_path):
                 if item.endswith(".npy"):
                     id = item[:-4]
-                    if id in optEnv.OptEnv.lib:
+                    if id in opt_env.OptEnv.lib:
                         LogSystem.channels[channel].append("Warning: the operator '" + id + "' appeared more than once.")
                     else:
-                        optEnv.OptEnv.append(np.load(new_path), id, False)
+                        opt_env.OptEnv.append(np.load(new_path), id, False)
             elif os.path.isdir(new_path):
                 if not optload_inject(new_path):
                     return False

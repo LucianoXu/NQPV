@@ -26,9 +26,9 @@ class Settings:
     
     @staticmethod
     def EPS() -> float:
-        return semantics.Precision.EPS()
+        return semantics.Precision.EPS()  # type: ignore
 
     @staticmethod
-    def SetEPS(eps : float) -> None:
-        semantics.Precision.SetEPS(eps)
+    def set_EPS(eps : float) -> None:
+        semantics.Precision.set_EPS(eps)  # type: ignore
     

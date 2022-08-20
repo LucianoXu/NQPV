@@ -27,9 +27,9 @@ import numpy as np
 import cvxpy as cp
 
 from .qLA import Precision, hermitian_extend
-from .optEnv import Operator, OptEnv
+from .opt_env import OptEnv
 from .qVar import QvarLs
-from .optQvarPair import OptQvarPair
+from .opt_qvar_pair import OptQvarPair
 
 from ..logsystem import LogSystem
 

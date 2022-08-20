@@ -14,7 +14,7 @@
 '''
 
 # ------------------------------------------------------------
-# qprogStd.py
+# qprog_std.py
 #
 # Define the structure framework for quantum programs, and provide the standard program.
 # Standard Quantum Programs: skip, abort, init, unitary, if, while, sequence composition
@@ -26,9 +26,9 @@ from typing import Any, List, Dict, Tuple, Sequence
 
 from . import qLA
 from .qLA import dagger, hermitian_contract, hermitian_init
-from .optEnv import Operator, OptEnv
+from .opt_env import Operator, OptEnv
 from .qVar import QvarLs
-from .optQvarPair import OptQvarPair
+from .opt_qvar_pair import OptQvarPair
 from .qPre import QPredicate
 
 from ..logsystem import LogSystem

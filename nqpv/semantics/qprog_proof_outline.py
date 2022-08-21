@@ -68,9 +68,9 @@ class QProofOutline:
         if not self.progs.proof_check():
             return False
 
-        self.pre = self.pre.full_extension()
+        full_pre = self.pre.full_extension()
         
-        if not QPredicate.sqsubseteq(self.pre, self.progs.progs[0].pres.pres[0]):
+        if not QPredicate.sqsubseteq(full_pre, self.progs.progs[0].pres.pres[0]):
             return False
         
         return True

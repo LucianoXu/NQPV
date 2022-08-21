@@ -62,8 +62,13 @@ def p_sentence(p):
         | if
         | while
         | nondet_choice
+        | predicate sentence
     '''
-    p[0] = p[1]
+    if isinstance(p[1], QPredicate):
+        p[0] = p[2]
+        p[0].pres = qprog_nondet.Preconditions.append(p[0].pres, p[1])
+    else:
+        p[0] = p[1]
 
 def p_nondet_choice(p):
     'nondet_choice : nondet_choice_pre sequence RBRAKET'

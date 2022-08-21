@@ -191,10 +191,14 @@ def verify(folder_path, total_correctness = False, opt_in_output = False, save_o
     # save the related operaters
     if save_opt:
         ch_info.single("Saving operators...\n", None, True)
-
-        for id in IdEnv.id_opt_used:
-            # ch_info.single(os.path.join(folder_path, id + ".npy")+" ... ", None, True)
-            np.save(os.path.join(folder_path , id + ".npy"), OptEnv.lib[id].data)
+        try:
+            if not os.path.exists(os.path.join(folder_path, "opt_saved")):
+                os.mkdir(os.path.join(folder_path, "opt_saved"))
+            for id in IdEnv.id_opt_used:
+                # ch_info.single(os.path.join(folder_path, id + ".npy")+" ... ", None, True)
+                np.save(os.path.join(folder_path ,"opt_saved", id + ".npy"), OptEnv.lib[id].data)
+        except:
+            LogSystem.channels["error"].single("Operator Saving Fails.", p_output, True)
 
 
     # close the output file

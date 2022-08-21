@@ -136,3 +136,6 @@ class OptQvarPair:
     
     def __str__(self) -> str:
         return str(self.opt) + str(self.qvls)
+
+    def __eq__(self, other) -> bool:
+        return self.opt.data == other.opt.data and self.qvls == other.qvls

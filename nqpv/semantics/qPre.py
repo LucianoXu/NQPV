@@ -87,10 +87,15 @@ class QPredicate:
             return None
 
         result = QPredicate(obj)
-        result.opts = obj.opts + (pair,)
-        if result.pos is None:
-            result.pos = pair.pos
-        return result
+
+        # check whether this pair has been in the list
+        if pair in obj.opts:
+            return result
+        else:
+            result.opts = obj.opts + (pair,)
+            if result.pos is None:
+                result.pos = pair.pos
+            return result
 
     def __str__(self) -> str:
         r = "{ " + str(self.opts[0])

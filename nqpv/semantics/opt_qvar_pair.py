@@ -32,16 +32,13 @@ from .qVar import QvarLs
 
 from ..logsystem import LogSystem
 
-# channel of this module
-channel : str = "semantics"
-
 def check_unitary_qvls(opt : Operator, qvls : QvarLs) -> bool:
 
     # check the dimension informaion
     if (len(qvls) * 2 == len(opt.data.shape)):
         return True
     else:
-        LogSystem.channels[channel].append("Error: The dimensions of unitary '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
+        LogSystem.channels["error"].append("Error: The dimensions of unitary '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
         return False
 
 
@@ -52,7 +49,7 @@ def check_measure_qvls(opt : Operator, qvls : QvarLs) -> bool:
     if (len(qvls) * 2 + 1 == len(opt.data.shape)):
         return True
     else:
-        LogSystem.channels[channel].append("Error: The dimensions of measurement '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
+        LogSystem.channels["error"].append("Error: The dimensions of measurement '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
         return False
 
 
@@ -61,7 +58,7 @@ def check_hermitian_predicate_qvls(opt : Operator, qvls : QvarLs) -> bool:
     if (len(qvls) * 2 == len(opt.data.shape)):
         return True
     else:
-        LogSystem.channels[channel].append("Error: The dimensions of hermitian '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
+        LogSystem.channels["error"].append("Error: The dimensions of hermitian '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
         return False
 
 pair_check = {
@@ -78,12 +75,12 @@ class OptQvarPair:
 
         # check whether the operator is valid
         if opt is None:
-            LogSystem.channels[channel].append("The operator here is invalid.")
+            LogSystem.channels["error"].append("The operator here is invalid.")
             return None
 
         # check whether qvls is valid
         if qvls is None:
-            LogSystem.channels[channel].append("The quantum variables here is invalid.")
+            LogSystem.channels["error"].append("The quantum variables here is invalid.")
             return None
 
 
@@ -95,7 +92,7 @@ class OptQvarPair:
         # check the required property
         if type != "":
             if not instance.check_property(type):
-                LogSystem.channels[channel].append(
+                LogSystem.channels["error"].append(
                     "The operator variable pair '" + str(instance) + "' does not satisfy the property '" + type + "'."
                     )
                 return None

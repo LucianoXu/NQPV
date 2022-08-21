@@ -27,9 +27,6 @@ from .semantics import opt_env
 
 import numpy as np
 
-# channel of report
-channel = "main"
-
 # the operation library
 optlib = {
     # unitary
@@ -134,19 +131,19 @@ def optlib_inject() -> None:
     for id in optlib:
         opt_env.OptEnv.append(optlib[id], id, False)
 
-def optload_inject(run_path : str) -> bool:
+def optload_inject(folder_path : str) -> bool:
     '''
     return whether the optload has been successfully done.
     '''
     try:
         
-        for item in os.listdir(run_path):
-            new_path = os.path.join(run_path, item)
+        for item in os.listdir(folder_path):
+            new_path = os.path.join(folder_path, item)
             if os.path.isfile(new_path):
                 if item.endswith(".npy"):
                     id = item[:-4]
                     if id in opt_env.OptEnv.lib:
-                        LogSystem.channels[channel].append("Warning: the operator '" + id + "' appeared more than once.")
+                        LogSystem.channels["warning"].append("Warning: the operator '" + id + "' appeared more than once.")
                     else:
                         opt_env.OptEnv.append(np.load(new_path), id, False)
             elif os.path.isdir(new_path):
@@ -156,7 +153,7 @@ def optload_inject(run_path : str) -> bool:
         return True
 
     except:
-        LogSystem.channels[channel].append("Error occured while loading operatiors in the folder " + run_path + ".")
+        LogSystem.channels["error"].append("Error occured while loading operatiors in the folder " + folder_path + ".")
         return False
 
 

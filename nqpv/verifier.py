@@ -20,6 +20,7 @@
 # ------------------------------------------------------------
 from __future__ import annotations
 from typing import Any, List, Dict
+from io import TextIOWrapper
 
 import os
 import numpy as np
@@ -35,42 +36,43 @@ from .syntaxes import *
 from .syntaxes import qlexer, qparser 
 
 
-# report channel
-channel = "main"
-channel_cmd = "cmd"
-channel_witness = "witness"
-channel_syntax = "syntax"
-channel_semantics = "semantics"
-
-def verifiy_reset(run_path : str) -> bool:
+def verifiy_reset(folder_path : str) -> bool:
     # clean up the error info
-    
-    if channel not in LogSystem.channels:
-        LogSystem(channel)
-    LogSystem.channels[channel].summary()
-    
-    if channel_cmd not in LogSystem.channels:
-        LogSystem(channel_cmd)
-    LogSystem.channels[channel_cmd].summary()
-
-    if channel_witness not in LogSystem.channels:
-        LogSystem(channel_witness)
-    LogSystem.channels[channel_witness].summary()
-
-    if channel_syntax not in LogSystem.channels:
-        LogSystem(channel_syntax)
-    LogSystem.channels[channel_syntax].summary()
-
-    if channel_semantics not in LogSystem.channels:
-        LogSystem(channel_semantics)
-    LogSystem.channels[channel_semantics].summary()
-
+        
+    LogSystem("info").summary()
+    LogSystem("warning", "Warning: ").summary()
+    LogSystem("error", "Error: ").summary()
+    LogSystem("witness").summary()
     optlib_inject()
 
-    if not optload_inject(run_path):
+    if not optload_inject(folder_path):
         return False
     
     return True
+
+def channel_check(pfile : TextIOWrapper | None, title : str = "") -> bool:
+    '''
+    summrize the channel "error", "warning" and "info" in order
+    If there is no error, return True. else return False.
+    '''
+
+    # begin the title
+    LogSystem.channels["info"].single(title, pfile, True)
+
+    num_error = len(LogSystem.channels["error"])
+    LogSystem.channels["error"].summary(pfile, True, True)
+    num_warning = len(LogSystem.channels["warning"])
+    LogSystem.channels["warning"].summary(pfile, True, True)
+    LogSystem.channels["info"].summary(pfile, True, True)
+
+    # summrize the number
+    LogSystem.channels["info"].single("Error (" + str(num_error) + "), Warning (" + str(num_warning) + ")",
+        pfile, True)
+
+    return num_error == 0
+
+    
+
 
 
 def verify(folder_path, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
@@ -79,20 +81,20 @@ def verify(folder_path, total_correctness = False, preserve_pre = False, opt_in_
         print("total correctness not supported yet")
         return
 
-    if not verifiy_reset(os.getcwd()):
-        LogSystem.channels[channel].summary(None, True, True)
+    if not verifiy_reset(os.path.join(os.getcwd(), folder_path)):
+        channel_check(None)
         return
 
 
-    ch_cmd = LogSystem.channels[channel_cmd]
+    ch_info = LogSystem.channels["info"]
 
-    ch_cmd.append("\n= Nondeterministic Quantum Program Verifier Output = \n")
-    ch_cmd.append("Version: " + Settings.version + "\n")
+    ch_info.append("\n= Nondeterministic Quantum Program Verifier Output = \n")
+    ch_info.append("Version: " + Settings.version + "\n")
 
     # Prompt the running path
-    ch_cmd.append("running path: " + os.getcwd() +"\n")
+    ch_info.append("running path: " + os.getcwd() +"\n")
 
-    print(ch_cmd.summary(drop=False))
+    ch_info.summary(None, True, False)
     
     try:
         p_prog = open(os.path.join(folder_path,'prog.nqpv'), 'r')
@@ -112,51 +114,47 @@ def verify(folder_path, total_correctness = False, preserve_pre = False, opt_in_
 
     # add the beginning of output.txt
 
-    ch_cmd.summary(p_output)
+    ch_info.summary(p_output)
 
-    ch_cmd.single("folder path: "+ folder_path + "\n", p_output, True)
+    ch_info.single("folder path: "+ folder_path + "\n", p_output, True)
 
     if total_correctness:
-        ch_cmd.single("property to verify: Total Correctness\n", p_output, True)
+        ch_info.single("property to verify: Total Correctness\n", p_output, True)
     else:
-        ch_cmd.single("property to verify: Partial Correctness\n", p_output, True)
+        ch_info.single("property to verify: Partial Correctness\n", p_output, True)
 
-    ch_cmd.single("intermediate preconditions preserved: "+("Yes" if preserve_pre else "No") + "\n", p_output, True)
-    ch_cmd.single("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n", p_output, True)
-    ch_cmd.single("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n", p_output, True)
+    ch_info.single("intermediate preconditions preserved: "+("Yes" if preserve_pre else "No") + "\n", p_output, True)
+    ch_info.single("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n", p_output, True)
+    ch_info.single("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n", p_output, True)
 
-    ch_cmd.single("--------------------------------------------", p_output, True)
-    ch_cmd.single("<prog>\n", p_output, True)
-    ch_cmd.single(lineno_added(prog_str), p_output, True)
-    ch_cmd.single("\n--------------------------------------------\n", p_output, True)
+    ch_info.single("--------------------------------------------", p_output, True)
+    ch_info.single("<prog>\n", p_output, True)
+    ch_info.single(lineno_added(prog_str), p_output, True)
+    ch_info.single("\n--------------------------------------------\n", p_output, True)
 
     # check whether the file is empty
     if prog_str == "":
-        ch_cmd.single("Program file '" + os.path.join(folder_path, 'prog.nqpv') + "' is empty.", p_output, True)
+        ch_info.single("Program file '" + os.path.join(folder_path, 'prog.nqpv') + "' is empty.", p_output, True)
         p_output.close()
         return
 
     # syntactic analysis, produce the abstract syntax tree
-    ch_cmd.single("syntactic and semantic analysis ...\n", None, True)
+    ch_info.single("syntactic and semantic analysis ...\n", None, True)
     ast = qparser.parser.parse(prog_str)
-    if not LogSystem.channels[channel_syntax].empty or not LogSystem.channels[channel_semantics].empty:
-        LogSystem.channels[channel_semantics].summary(p_output, True, True)
-        LogSystem.channels[channel_syntax].summary(p_output, True, True)
+    if not channel_check(p_output):
         p_output.close()
         return
-    ch_cmd.single("syntactic and semantic analysis passed.\n", p_output, True)
+    ch_info.single("syntactic and semantic analysis passed.\n", p_output, True)
 
     # start verification
-    ch_cmd.single("verification starts, calculating weakest (liberal) preconditions...\n", p_output, True)
+    ch_info.single("verification starts, calculating weakest (liberal) preconditions...\n", p_output, True)
 
 
     print(ast.proof_check())
 
     print(ast)
     
-    LogSystem.channels[channel_semantics].summary(p_output, True, True)
-
-    LogSystem.channels[channel_witness].summary(p_output, True, True)
+    channel_check(p_output)
 
     return
 

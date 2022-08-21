@@ -34,9 +34,6 @@ from .qPre import QPredicate
 from ..logsystem import LogSystem
 from ..tools import code_add_prefix
 
-# channel of this module
-channel : str = "semantics"
-
 class QProg:
 
     def __new__(cls, pres : Preconditions | None):
@@ -44,7 +41,7 @@ class QProg:
         instance = super().__new__(cls)
 
         if pres is None:
-            LogSystem.channels[channel].append("The preconditions provided here is invalid.")
+            LogSystem.channels["error"].append("The preconditions provided here is invalid.")
             return None
 
         instance.pres = pres
@@ -107,7 +104,7 @@ class Preconditions:
     '''
     def __new__(cls, data : Preconditions | QPredicate | None | List):
         if data is None:
-            LogSystem.channels[channel].append("The predicate provided here is invalid.")
+            LogSystem.channels["error"].append("The predicate provided here is invalid.")
             return None
 
         # check for copy construction
@@ -135,11 +132,11 @@ class Preconditions:
     @staticmethod
     def append(obj : Preconditions | None, pre : QPredicate | None) -> Preconditions | None:
         if obj is None:
-            LogSystem.channels[channel].append("The preconditions provided here is invalid.")
+            LogSystem.channels["error"].append("The preconditions provided here is invalid.")
             return None
 
         if pre is None:
-            LogSystem.channels[channel].append("The predicate provided here is invalid.")
+            LogSystem.channels["error"].append("The predicate provided here is invalid.")
             return None
         
         r = Preconditions(obj)
@@ -218,7 +215,7 @@ class QProgInit(QProg):
             return None
 
         if qvls is None:
-            LogSystem.channels[channel].append("The quantum variable list provided here is invalid.")
+            LogSystem.channels["error"].append("The quantum variable list provided here is invalid.")
             return None
 
         instance.label = "INIT"
@@ -258,7 +255,7 @@ class QProgUnitary(QProg):
             return None
 
         if m is None or qvls is None:
-            LogSystem.channels[channel].append("The operator or quantum variable list provided here is invalid.")
+            LogSystem.channels["error"].append("The operator or quantum variable list provided here is invalid.")
             return None
 
         instance.label = "UNITARY"
@@ -266,7 +263,7 @@ class QProgUnitary(QProg):
         # check whether a valid unitary pair can be constructed
         uPair =  OptQvarPair(m, qvls, "unitary")
         if uPair is None:
-            LogSystem.channels[channel].append("The construction of unitary transformation fails.")
+            LogSystem.channels["error"].append("The construction of unitary transformation fails.")
             return None
 
         instance.uPair = uPair  # type: ignore
@@ -307,13 +304,13 @@ class QProgIf(QProg):
         instance.label = "IF"
 
         if m is None or qvls is None or S1 is None or S0 is None:
-            LogSystem.channels[channel].append("The components for 'is' here are invalid.")
+            LogSystem.channels["error"].append("The components for 'is' here are invalid.")
             return None
 
         # check whether a valid unitary pair can be constructed
         mPair =  OptQvarPair(m, qvls, "measurement")
         if mPair is None:
-            LogSystem.channels[channel].append("The construction of measurement fails.")
+            LogSystem.channels["error"].append("The construction of measurement fails.")
             return None
 
         instance.mPair = mPair  # type: ignore
@@ -378,14 +375,14 @@ class QProgWhile(QProg):
         instance.label = "WHILE"
 
         if inv is None or m is None or qvls is None or S is None:
-            LogSystem.channels[channel].append("The components for 'while' here are invalid.")
+            LogSystem.channels["error"].append("The components for 'while' here are invalid.")
             return None
 
         instance.inv = data[1]  # type: ignore
         # check whether a valid unitary pair can be constructed
         mPair =  OptQvarPair(m, qvls, "measurement")
         if mPair is None:
-            LogSystem.channels[channel].append("The construction of measurement fails.")
+            LogSystem.channels["error"].append("The construction of measurement fails.")
             return None
 
         instance.mPair = mPair  # type: ignore
@@ -437,7 +434,7 @@ class QProgWhile(QProg):
         
         # check whether it is a valid invariant
         if not QPredicate.sqsubseteq(inv_ext, self.S.get_pre()):
-            LogSystem.channels[channel].append("This is not a valid loop invariant.")
+            LogSystem.channels["error"].append("This is not a valid loop invariant.")
             return None
         
         return this_pre
@@ -449,7 +446,7 @@ class QProgSequence:
     def __new__(cls, data : QProgSequence | QProg | None) :
         super().__new__(cls)
         if data is None:
-            LogSystem.channels[channel].append("The program provided here is invalid.")
+            LogSystem.channels["error"].append("The program provided here is invalid.")
             return None
 
         # check for copy construction
@@ -475,11 +472,11 @@ class QProgSequence:
     @staticmethod
     def append(obj : QProgSequence | None, prog : QProg | None) -> QProgSequence | None:
         if obj is None:
-            LogSystem.channels[channel].append("The program sequence provided here is invalid.")
+            LogSystem.channels["error"].append("The program sequence provided here is invalid.")
             return None
 
         if prog is None:
-            LogSystem.channels[channel].append("The program provided here is invalid.")
+            LogSystem.channels["error"].append("The program provided here is invalid.")
             return None
         
         r = QProgSequence(obj)

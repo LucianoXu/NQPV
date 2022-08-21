@@ -33,17 +33,12 @@ from .opt_qvar_pair import OptQvarPair
 
 from ..logsystem import LogSystem
 
-# channel of semantic analysis
-channel : str = "semantics"
-# define the channel to save the witness
-channel_witness = "witness"
-
 class QPredicate:
 
     def __new__(cls, data : OptQvarPair | QPredicate | None | List):
 
         if data is None:
-            LogSystem.channels[channel].append("The operator - variable pair provided here is invalid.")
+            LogSystem.channels["error"].append("The operator - variable pair provided here is invalid.")
             return None
 
         if isinstance(data, QPredicate):
@@ -53,7 +48,7 @@ class QPredicate:
 
         elif isinstance(data, OptQvarPair):
             if not data.check_property("hermitian predicate"):
-                LogSystem.channels[channel].append("The provided operator qvls pair is not 'hermitian predicate'.")
+                LogSystem.channels["error"].append("The provided operator qvls pair is not 'hermitian predicate'.")
                 return None
 
             instance = super().__new__(cls)
@@ -75,12 +70,12 @@ class QPredicate:
     @staticmethod
     def append(obj : QPredicate | None, pair: OptQvarPair | None) -> QPredicate | None:
         if pair is None or obj is None:
-            LogSystem.channels[channel].append("The components provided here are invalid.")
+            LogSystem.channels["error"].append("The components provided here are invalid.")
             return None
 
 
         if not pair.check_property("hermitian predicate"):
-            LogSystem.channels[channel].append("The provided operator qvls pair is not 'hermitian predicate'.")
+            LogSystem.channels["error"].append("The provided operator qvls pair is not 'hermitian predicate'.")
             return None
 
         result = QPredicate(obj)
@@ -163,7 +158,7 @@ class QPredicate:
 
                 sol_name = OptEnv.append(sol, "", False)
 
-                LogSystem.channels[channel_witness].append(
+                LogSystem.channels["witness"].append(
                     "Order relation not satisfied. Density operator witnessed: " + sol_name + ".\n"
                 )
                 return False

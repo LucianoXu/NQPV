@@ -32,14 +32,11 @@ from .qprog_std import QProg, QProgSequence
 
 from ..logsystem import LogSystem
 
-# channel
-channel = "semantics"
-
 class QProofOutline:
     def __new__(cls, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None):
         instance = super().__new__(cls)
         if pre is None or progs is None or post is None:
-            LogSystem.channels[channel].append("Error : Components provided invalid")
+            LogSystem.channels["error"].append("Error : Components provided invalid")
             return None
         
         instance.pre = pre

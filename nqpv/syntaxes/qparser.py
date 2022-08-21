@@ -34,10 +34,6 @@ from ..semantics.opt_qvar_pair import OptQvarPair
 
 from ..logsystem import LogSystem
 
-# Error rule for syntax errors
-
-channel = "syntax"
-
 
 # program declaration section
 def p_prog(p):
@@ -175,7 +171,7 @@ def p_id_ls_start(p):
 
 def p_error(p):
     if p is not None:
-        LogSystem.channels[channel].append("(line " + str(p.lineno) + ")\tSyntax error in input: '" + str(p.value) + "'.")
+        LogSystem.channels["error"].append("(line " + str(p.lineno) + ")\tSyntax error in input: '" + str(p.value) + "'.")
 
 
 # Build the lexer

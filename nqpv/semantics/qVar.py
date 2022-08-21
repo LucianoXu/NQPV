@@ -26,16 +26,13 @@ from nqpv.semantics.id_env import IdEnv
 
 from ..logsystem import LogSystem
 
-# log channel for this module
-channel : str = "semantics"
-
 class QvarLs:
     # list of all variables in consideration
     qvar : List[str] = []
 
     def __new__(cls, input_data : str | List[str] | QvarLs | None):
         if input_data is None:
-            LogSystem.channels[channel].append("The input for quantum variable list is invalid.")
+            LogSystem.channels["error"].append("The input for quantum variable list is invalid.")
             return None
 
         # if is the whole qvar list or a first element
@@ -77,22 +74,22 @@ class QvarLs:
         return a new QvarLs, in which the variable list is appended
         '''
         if obj is None:
-            LogSystem.channels[channel].append("The quantum variable list is invalid.")
+            LogSystem.channels["error"].append("The quantum variable list is invalid.")
             return None
 
         if obj._data == "qvar":
-            LogSystem.channels[channel].append("Qvar list of qvar cannot be appended.")
+            LogSystem.channels["error"].append("Qvar list of qvar cannot be appended.")
             return None
 
         if append_id in obj._data:
-            LogSystem.channels[channel].append("The same variable '" + append_id + 
+            LogSystem.channels["error"].append("The same variable '" + append_id + 
                 "' already appears in this list '" + str(obj._data) + ".")
             return None
         
         if append_id not in QvarLs.qvar:
             # check whether this id has been used by operators
             if append_id in IdEnv.id_opt:
-                LogSystem.channels[channel].append("This identifier has been used by the operators.")
+                LogSystem.channels["error"].append("This identifier has been used by the operators.")
                 return None
             # append in the env
             QvarLs.qvar.append(append_id)

@@ -32,9 +32,6 @@ from .qprog_std import QProg, QProgSequence, Preconditions
 from ..logsystem import LogSystem
 from ..tools import code_add_prefix
 
-# channel
-channel = "semantics"
-
 class QProgNondet(QProg):
     '''
     We will not allow intermediate assertions before Sequence, 
@@ -42,7 +39,7 @@ class QProgNondet(QProg):
     '''
     def __new__(cls, pres : Preconditions | None, data : QProgSequence | QProgNondet | None):
         if data is None:
-            LogSystem.channels[channel].append("The program provided here is invalid.")
+            LogSystem.channels["error"].append("The program provided here is invalid.")
             return None
 
         # examine whether it is a copy construction
@@ -70,7 +67,7 @@ class QProgNondet(QProg):
     @staticmethod
     def append(obj : QProgNondet | None, prog: QProgSequence | None) -> QProgNondet | None:
         if obj is None or prog is None:
-            LogSystem.channels[channel].append("The components provided for 'nondet choice' here are invalid.")
+            LogSystem.channels["error"].append("The components provided for 'nondet choice' here are invalid.")
             return None
 
         result = QProgNondet(None, obj) # type: ignore

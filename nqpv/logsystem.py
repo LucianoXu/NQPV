@@ -29,22 +29,38 @@ class LogSystem:
 
     channels : Dict[str, LogSystem] = {}
 
-    def __init__(self, name : str, end : str = "\n"):
+    def __new__(cls, name : str, prefix : str = "", end : str = "\n"):
+        '''
+        single case design
+        '''
+        if not isinstance(name, str) or not isinstance(prefix, str) or not isinstance(end, str):
+            raise Exception("invalid input")
+
+        if name not in LogSystem.channels:
+            channel = super().__new__(cls)
+
+
+            # the list to save all kinds of logs (not only string)
+            channel.logs = []
+            # how to begin an item when output
+            channel.prefix = prefix
+            # how to end an item when output
+            channel.end = end
+
+            LogSystem.channels[name] = channel
+
+        return LogSystem.channels[name]
+        
+
+    def __init__(self, name : str, prefix : str = "", end : str = "\n"):
         '''
         create a new channel
 
         name: channel name
         '''
-
-        # the list to save all kinds of logs (not only string)
-        self.logs : List[Any] = []
-        # how to end an item when output
-        if not isinstance(end, str):
-            raise Exception("invalid input")
-        self.end : str = end
-
-        LogSystem.channels[name] = self
-
+        self.logs : List[Any]
+        self.prefix : str
+        self.end : str
         
 
     @property
@@ -56,9 +72,9 @@ class LogSystem:
 
     def get_front(self, pfile : None | TextIOWrapper = None, cmd_print : bool = False, drop : bool = True) -> str:
         if drop:
-            result : str =  str(self.logs.pop(0)) + self.end
+            result : str =  self.prefix + str(self.logs.pop(0)) + self.end
         else:
-            result : str = self.logs[0]
+            result : str = self.prefix + self.logs[0] + self.end
         
         if pfile is not None:
             pfile.write(result)
@@ -70,9 +86,9 @@ class LogSystem:
 
     def get_back(self, pfile : None | TextIOWrapper = None, cmd_print : bool = False, drop : bool = True) -> str:
         if drop:
-            result : str =  str(self.logs.pop(len(self.logs)-1)) + self.end
+            result : str =  self.prefix + str(self.logs.pop(len(self.logs)-1)) + self.end
         else:
-            result : str = self.logs[len(self.logs)-1]
+            result : str = self.prefix + self.logs[len(self.logs)-1] + self.end
         
         if pfile is not None:
             pfile.write(result)
@@ -91,7 +107,7 @@ class LogSystem:
 
         result : str = ""
         for info in self.logs:
-            result += str(info) + self.end
+            result += self.prefix + str(info) + self.end
 
         if drop:
             self.logs.clear()
@@ -110,6 +126,9 @@ class LogSystem:
         '''
         self.append(data)
         return self.get_back(pfile, cmd_print, True)
+    
+    def __len__(self) -> int:
+        return len(self.logs)
 
 
 

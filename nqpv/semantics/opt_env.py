@@ -31,9 +31,6 @@ from .qLA import np_eps_equal, Precision
 
 from ..logsystem import LogSystem
 
-# log channel for this module
-channel : str = "semantics"
-
 # description of all operator properties in consideration
 opt_property = {
     'unitary' : qLA.check_unity,
@@ -110,7 +107,7 @@ class OptEnv:
     @staticmethod
     def get_opt(id : str) -> Operator | None:
         if id not in OptEnv.lib:
-            LogSystem.channels[channel].append("The operator '" + id + "' does not exist in the environment.")
+            LogSystem.channels["error"].append("The operator '" + id + "' does not exist in the environment.")
             return None
             
         return OptEnv.lib[id]

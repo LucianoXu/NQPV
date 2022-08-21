@@ -27,58 +27,66 @@ import numpy as np
 import cvxpy as cp
 
 from .qLA import Precision, hermitian_extend
-from .opt_env import OptEnv
+from .opt_env import Operator, OptEnv
 from .qVar import QvarLs
 from .opt_qvar_pair import OptQvarPair
 
 from ..logsystem import LogSystem
+from ..syntaxes.pos_info import PosInfo
 
 class QPredicate:
 
-    def __new__(cls, data : OptQvarPair | QPredicate | None | List):
+    def __new__(cls, data : OptQvarPair | QPredicate | None | List, pos : PosInfo | None):
 
         if data is None:
-            LogSystem.channels["error"].append("The operator - variable pair provided here is invalid.")
+            LogSystem.channels["error"].append("The operator variable pair for the predicate is invalid." + PosInfo.str(pos))
             return None
 
         if isinstance(data, QPredicate):
             instance = super().__new__(cls)
             instance.opts = data.opts
+            instance.pos = pos
             return instance
 
         elif isinstance(data, OptQvarPair):
             if not data.check_property("hermitian predicate"):
-                LogSystem.channels["error"].append("The provided operator qvls pair is not 'hermitian predicate'.")
+                LogSystem.channels["error"].append("The provided operator variable pair is not 'hermitian predicate'." + PosInfo.str(pos))
                 return None
 
             instance = super().__new__(cls)
             instance.opts = (data,)
+            instance.pos = pos
             return instance
         elif data == []:
             instance = super().__new__(cls)
             instance.opts = ()
+            instance.pos = pos
             return instance
         else:
             raise Exception("unexpected situation")
 
-    def __init__(self, data : OptQvarPair | QPredicate | None | List):
+    def __init__(self, data : OptQvarPair | QPredicate | None | List, pos : PosInfo | None):
         '''
         <may return None if construction failes>
         '''
         self.opts : Tuple[OptQvarPair,...] 
+        self.pos : PosInfo | None
 
     @staticmethod
-    def append(obj : QPredicate | None, pair: OptQvarPair | None) -> QPredicate | None:
-        if pair is None or obj is None:
-            LogSystem.channels["error"].append("The components provided here are invalid.")
+    def append(obj : QPredicate | None, pair: OptQvarPair | None, pos : PosInfo | None) -> QPredicate | None:
+        if obj is None:
+            LogSystem.channels["error"].append("The quantum predicate provided here is invalid." + PosInfo.str(pos))
+            return None
+        if pair is None:
+            LogSystem.channels["error"].append("The next hermitian predicate provided here is invalid." + PosInfo.str(pos))
             return None
 
 
         if not pair.check_property("hermitian predicate"):
-            LogSystem.channels["error"].append("The provided operator qvls pair is not 'hermitian predicate'.")
+            LogSystem.channels["error"].append("The operator variable pair for the quantum predicate is not 'hermitian predicate'." + PosInfo.str(pos))
             return None
 
-        result = QPredicate(obj)
+        result = QPredicate(obj, pos)
         result.opts = obj.opts + (pair,)
         return result
 
@@ -93,17 +101,19 @@ class QPredicate:
         '''
         return a quantum predicate with all hermitian operators fully extended
         '''
-        r = QPredicate([])
+        r = QPredicate([], PosInfo())
         for i in range(len(self.opts)):
-            m = hermitian_extend(tuple(QvarLs.qvar), self.opts[i].opt.data, self.opts[i].qvls.data)
+            m = hermitian_extend(tuple(QvarLs.qvar), self.opts[i].opt.data.data, self.opts[i].qvls.data)
             name = OptEnv.append(m)
             opt = OptQvarPair(
-                OptEnv.lib[name],
-                QvarLs("qvar")
+                Operator(OptEnv.lib[name], None),
+                QvarLs("qvar", None),
+                PosInfo()
             )
             r = QPredicate.append(
                 r, 
-                opt
+                opt,
+                None
             )
         if r is None:
             raise Exception("unexpected situation")
@@ -130,8 +140,8 @@ class QPredicate:
         # transform all the hermitian operators into matrices
         qubitn = len(QvarLs.qvar)
         dim = 2**qubitn
-        msetA = [pre.opt.data.reshape((dim, dim)) for pre in preA.opts]
-        msetB = [pre.opt.data.reshape((dim, dim)) for pre in preB.opts]
+        msetA = [pre.opt.data.data.reshape((dim, dim)) for pre in preA.opts]
+        msetB = [pre.opt.data.data.reshape((dim, dim)) for pre in preB.opts]
 
         for mB in msetB:
             X = cp.Variable((dim, dim), hermitian=True) # type: ignore
@@ -159,7 +169,9 @@ class QPredicate:
                 sol_name = OptEnv.append(sol, "", False)
 
                 LogSystem.channels["witness"].append(
-                    "Order relation not satisfied. Density operator witnessed: " + sol_name + ".\n"
+                    "\nOrder relation not satisfied: \n\t" + 
+                    str(preA) + " <= " + str(preB) + "\nDensity operator witnessed: " + sol_name + ".\n"
+                    + PosInfo.str(preA.pos) + PosInfo.str(preB.pos)
                 )
                 return False
 

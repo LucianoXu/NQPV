@@ -30,6 +30,7 @@ from .qPre import QPredicate
 from .qprog_std import QProg, QProgSequence, Preconditions
 
 from ..logsystem import LogSystem
+from ..syntaxes.pos_info import PosInfo
 from ..tools import code_add_prefix
 
 class QProgNondet(QProg):
@@ -37,40 +38,48 @@ class QProgNondet(QProg):
     We will not allow intermediate assertions before Sequence, 
     since they can always be considered as the preconditions of the first subprogram in the sequence.
     '''
-    def __new__(cls, pres : Preconditions | None, data : QProgSequence | QProgNondet | None):
+    def __new__(cls, pres : Preconditions | None, data : QProgSequence | QProgNondet | None, pos : PosInfo | None):
         if data is None:
-            LogSystem.channels["error"].append("The program provided here is invalid.")
+            LogSystem.channels["error"].append("The 'nondeterministic choice' program provided here is invalid." + PosInfo.str(pos))
             return None
 
         # examine whether it is a copy construction
         if isinstance(data, QProgNondet):
-            instance = super().__new__(cls, data.pres)
+            if pos is not None:
+                raise Exception("unexcepted situation")
+
+            instance = super().__new__(cls, data.pres, pos)
             if instance is None:
-                return None
+                raise Exception("unexpected situation")
+
             instance.label = "NONDET_CHOICE"
             instance.post = data.post
             instance.progs = data.progs   # type: ignore
             return instance 
 
-        instance = super().__new__(cls, pres)
+        instance = super().__new__(cls, pres, pos)
         if instance is None:
-            return None
+            raise Exception("unexpected situation")
+            
         instance.label = "NONDET_CHOICE"
         instance.progs = (data,)  # type: ignore
 
         return instance
     
-    def __init__(self, pres : Preconditions | None, data : QProgSequence | QProgNondet | None):
-        super().__init__(pres)
+    def __init__(self, pres : Preconditions | None, data : QProgSequence | QProgNondet | None, pos : PosInfo | None):
+        super().__init__(pres, pos)
         self.progs : Tuple[QProgSequence,...]
     
     @staticmethod
-    def append(obj : QProgNondet | None, prog: QProgSequence | None) -> QProgNondet | None:
-        if obj is None or prog is None:
-            LogSystem.channels["error"].append("The components provided for 'nondet choice' here are invalid.")
+    def append(obj : QProgNondet | None, prog: QProgSequence | None, pos : PosInfo | None) -> QProgNondet | None:
+        if obj is None:
+            LogSystem.channels["error"].append("The 'nondeterministic choice' program for composition is invalid." + PosInfo.str(pos))
+            return None
+        if prog is None:
+            LogSystem.channels["error"].append("The next program for 'nondeterministic choice' composition is invalid." + PosInfo.str(pos))
             return None
 
-        result = QProgNondet(None, obj) # type: ignore
+        result = QProgNondet(None, obj, None) # type: ignore
         result.progs = result.progs + (prog,)
         return result
 
@@ -85,13 +94,14 @@ class QProgNondet(QProg):
         if self.post is None:
             raise Exception("unexpected situation")
         
-        r = QPredicate([])
+        # These propositions are inserted, so position information is not applied.
+        r = QPredicate([], PosInfo())
         for prog in self.progs:
             prog.set_post(self.post)
             if not prog.proof_check():
                 return None
             for pre in prog.get_pre().opts:
-                r = QPredicate.append(r, pre)
+                r = QPredicate.append(r, pre, PosInfo())
         
         return r
         

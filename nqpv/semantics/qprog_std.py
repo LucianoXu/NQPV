@@ -32,11 +32,12 @@ from .opt_qvar_pair import OptQvarPair
 from .qPre import QPredicate
 
 from ..logsystem import LogSystem
+from ..syntaxes.pos_info import PosInfo
 from ..tools import code_add_prefix
 
 class QProg:
 
-    def __new__(cls, pres : Preconditions | None):
+    def __new__(cls, pres : Preconditions | None, pos : PosInfo | None):
         # data refers to the input from the yacc parser
         instance = super().__new__(cls)
 
@@ -46,13 +47,15 @@ class QProg:
 
         instance.pres = pres
         instance.post = None
+        instance.pos = pos
         return instance
 
-    def __init__(self, pres : Preconditions | None):
+    def __init__(self, pres : Preconditions | None, pos : PosInfo | None):
         self.label : str
         self.pres : Preconditions
         # this post condition is not specified by the user, but is given while weakest precondition calculus
         self.post : QPredicate | None
+        self.pos : PosInfo | None
     
     def __str__(self) -> str:
         raise Exception("__str__ not implemented yet")
@@ -87,7 +90,7 @@ class QProg:
             return False
 
         # insert the weakest preconditon to the end of the preconditions
-        inserted = Preconditions.append(self.pres.full_extension(), wp)
+        inserted = Preconditions.append(self.pres.full_extension(), wp, None)
         if inserted is None:
             raise Exception("unexpected situation")
 
@@ -95,6 +98,7 @@ class QProg:
         
         # check the partial orders
         if not self.pres.proof_check():
+            LogSystem.channels["info"].append("The proof does not hold for program structure +'" + self.label + "'." + PosInfo.str(self.pos))
             return False
         return True
 
@@ -102,44 +106,67 @@ class Preconditions:
     '''
     The class to contain the sequence of preconditions
     '''
-    def __new__(cls, data : Preconditions | QPredicate | None | List):
+    def __new__(cls, data : Preconditions | QPredicate | None | List, pos : PosInfo | None):
         if data is None:
-            LogSystem.channels["error"].append("The predicate provided here is invalid.")
+            LogSystem.channels["error"].append("The preconditions provided here is invalid." + PosInfo.str(pos))
             return None
 
         # check for copy construction
         if isinstance(data, Preconditions):
+            if pos is not None:
+                raise Exception("unexpected situation")
             instance = super().__new__(cls)
             instance.pres = data.pres
+            instance.pos = data.pos
             return instance
         
         # check for empty Preconditions
         if data == []:
             instance = super().__new__(cls)
             instance.pres = []
+            instance.pos = pos
             return instance
         if isinstance(data, QPredicate):
             instance = super().__new__(cls)
             instance.pres = [data]
+            instance.pos = pos
             return instance
         
         raise Exception("invalid input")
 
-    def __init__(self, data : Preconditions | QPredicate | None | List):
+    def __init__(self, data : Preconditions | QPredicate | None | List, pos : PosInfo | None):
         super().__init__()
         self.pres : List[QPredicate]
-
+        self.pos : PosInfo | None
+    
     @staticmethod
-    def append(obj : Preconditions | None, pre : QPredicate | None) -> Preconditions | None:
+    def insert_front(obj : Preconditions | None, pre : QPredicate | None, pos : PosInfo | None) -> Preconditions | None:
         if obj is None:
-            LogSystem.channels["error"].append("The preconditions provided here is invalid.")
+            LogSystem.channels["error"].append("The preconditions provided here is invalid." + PosInfo.str(pos))
             return None
 
         if pre is None:
-            LogSystem.channels["error"].append("The predicate provided here is invalid.")
+            LogSystem.channels["error"].append("The next quantum predicate provided here is invalid." + PosInfo.str(pos))
             return None
         
-        r = Preconditions(obj)
+        r = Preconditions(obj, None)
+        r.pres.insert(0, pre)
+        # update the new position
+        r.pos = pre.pos
+        return r
+    
+
+    @staticmethod
+    def append(obj : Preconditions | None, pre : QPredicate | None, pos : PosInfo | None) -> Preconditions | None:
+        if obj is None:
+            LogSystem.channels["error"].append("The preconditions provided here is invalid." + PosInfo.str(pos))
+            return None
+
+        if pre is None:
+            LogSystem.channels["error"].append("The next quantum predicate provided here is invalid." + PosInfo.str(pos))
+            return None
+        
+        r = Preconditions(obj, None)
         r.pres.append(pre)
         return r
     
@@ -147,9 +174,11 @@ class Preconditions:
         '''
         return the full extension
         '''
-        r = Preconditions([])
+        # inserted conditions, therefore no position information
+
+        r = Preconditions([], None)
         for pre in self.pres:
-            r = Preconditions.append(r, pre.full_extension())
+            r = Preconditions.append(r, pre.full_extension(), None)
         if r is None:
             raise Exception("unexpected situation")
         return r
@@ -175,8 +204,8 @@ class Preconditions:
 ##################### Implementations
 
 class QProgSkip(QProg):
-    def __new__(cls, pres: Preconditions | None):
-        instance = super().__new__(cls, pres)
+    def __new__(cls, pres: Preconditions | None, pos : PosInfo | None):
+        instance = super().__new__(cls, pres, pos)
         if instance is None:
             return None
 
@@ -190,8 +219,8 @@ class QProgSkip(QProg):
         return self.post
 
 class QProgAbort(QProg):
-    def __new__(cls, pres: Preconditions | None):
-        instance = super().__new__(cls, pres)
+    def __new__(cls, pres: Preconditions | None, pos : PosInfo | None):
+        instance = super().__new__(cls, pres, pos)
         if instance is None:
             return None
 
@@ -204,18 +233,18 @@ class QProgAbort(QProg):
     def _wp(self) -> QPredicate | None:
         m = qLA.eye_tensor(len(QvarLs.qvar))
         name = OptEnv.append(m)
-        opt = OptEnv.lib[name]
-        return QPredicate(OptQvarPair(opt, QvarLs("qvar")))
+        opt = Operator(OptEnv.lib[name], None)
+        return QPredicate(OptQvarPair(opt, QvarLs("qvar", None), None), None)
 
 
 class QProgInit(QProg):
-    def __new__(cls, pres: Preconditions | None, qvls: QvarLs | None):
-        instance = super().__new__(cls, pres)
+    def __new__(cls, pres: Preconditions | None, qvls: QvarLs | None, pos : PosInfo | None):
+        instance = super().__new__(cls, pres, pos)
         if instance is None:
-            return None
+            raise Exception("unexpected situation")
 
         if qvls is None:
-            LogSystem.channels["error"].append("The quantum variable list provided here is invalid.")
+            LogSystem.channels["error"].append("The quantum variable list provided here is invalid."+ PosInfo.str(pos))
             return None
 
         instance.label = "INIT"
@@ -224,8 +253,8 @@ class QProgInit(QProg):
 
         return instance
 
-    def __init__(self, pres: Preconditions | None, qvls: QvarLs | None):
-        super().__init__(pres)
+    def __init__(self, pres: Preconditions | None, qvls: QvarLs | None, pos : PosInfo | None):
+        super().__init__(pres, pos)
         self.qvls : QvarLs
 
     def __str__(self) -> str:
@@ -235,43 +264,50 @@ class QProgInit(QProg):
         if self.post is None:
             raise Exception("unexpected situation")
 
-        r = QPredicate([])
+        r = QPredicate([], None)
         for pair in self.post.opts:
-            m = hermitian_init(pair.qvls.data, pair.opt.data, self.qvls.data)
+            m = hermitian_init(pair.qvls.data, pair.opt.data.data, self.qvls.data)
             name = OptEnv.append(m)
             r = QPredicate.append(
                 r,
                 OptQvarPair(
-                    OptEnv.lib[name], pair.qvls
-                )
+                    Operator(OptEnv.lib[name],None), 
+                    pair.qvls, 
+                    None
+                ),
+                None
             )
 
         return r
 
 class QProgUnitary(QProg):
-    def __new__(cls, pres: Preconditions | None, m : Operator | None, qvls: QvarLs | None):
-        instance = super().__new__(cls, pres)
+    def __new__(cls, pres: Preconditions | None, m : Operator | None, qvls: QvarLs | None, pos : PosInfo | None):
+        instance = super().__new__(cls, pres, pos)
         if instance is None:
+            raise Exception("unexpected situation")
+
+        if m is None:
+            LogSystem.channels["error"].append("The operator provided here is invalid." + PosInfo.str(pos))
             return None
 
-        if m is None or qvls is None:
-            LogSystem.channels["error"].append("The operator or quantum variable list provided here is invalid.")
+        if qvls is None:
+            LogSystem.channels["error"].append("The quantum variable list provided here is invalid." + PosInfo.str(pos))
             return None
 
         instance.label = "UNITARY"
 
         # check whether a valid unitary pair can be constructed
-        uPair =  OptQvarPair(m, qvls, "unitary")
+        uPair =  OptQvarPair(m, qvls, None, "unitary")
         if uPair is None:
-            LogSystem.channels["error"].append("The construction of unitary transformation fails.")
+            LogSystem.channels["error"].append("The construction of unitary transformation fails." + PosInfo.str(pos))
             return None
 
         instance.uPair = uPair  # type: ignore
 
         return instance
     
-    def __init__(self, pres: Preconditions | None, m : Operator | None, qvls: QvarLs | None):
-        super().__init__(pres)
+    def __init__(self, pres: Preconditions | None, m : Operator | None, qvls: QvarLs | None, pos : PosInfo | None):
+        super().__init__(pres, pos)
         self.uPair : OptQvarPair
 
     def __str__(self) -> str:
@@ -281,36 +317,41 @@ class QProgUnitary(QProg):
         if self.post is None:
             raise Exception("unexpected situation")
 
-        r = QPredicate([])
+        r = QPredicate([], None)
         for pair in self.post.opts:
-            m = hermitian_contract(pair.qvls.data, pair.opt.data,
-                self.uPair.qvls.data, dagger(self.uPair.opt.data))
+            m = hermitian_contract(pair.qvls.data, pair.opt.data.data,
+                self.uPair.qvls.data, dagger(self.uPair.opt.data.data))
             name = OptEnv.append(m)
             r = QPredicate.append(
                 r,
                 OptQvarPair(
-                    OptEnv.lib[name], pair.qvls
-                )
+                    Operator(OptEnv.lib[name], None), 
+                    pair.qvls,
+                    None
+                ),
+                None
             )
                     
         return r
 
     
 class QProgIf(QProg):
-    def __new__(cls, pres: Preconditions | None, m : Operator | None, qvls: QvarLs | None, S1: QProgSequence | None, S0: QProgSequence | None):
-        instance = super().__new__(cls, pres)
+    def __new__(cls, pres: Preconditions | None, m : Operator | None, qvls: QvarLs | None, S1: QProgSequence | None, S0: QProgSequence | None,
+            pos : PosInfo | None):
+        instance = super().__new__(cls, pres, pos)
         if instance is None:
-            return None
+            raise Exception("unexpected situation")
+            
         instance.label = "IF"
 
         if m is None or qvls is None or S1 is None or S0 is None:
-            LogSystem.channels["error"].append("The components for 'is' here are invalid.")
+            LogSystem.channels["error"].append("The components for 'if' here are invalid." + PosInfo.str(pos))
             return None
 
         # check whether a valid unitary pair can be constructed
-        mPair =  OptQvarPair(m, qvls, "measurement")
+        mPair =  OptQvarPair(m, qvls, None, "measurement")
         if mPair is None:
-            LogSystem.channels["error"].append("The construction of measurement fails.")
+            LogSystem.channels["error"].append("The construction of measurement fails." + PosInfo.str(pos))
             return None
 
         instance.mPair = mPair  # type: ignore
@@ -319,8 +360,9 @@ class QProgIf(QProg):
 
         return instance
     
-    def __init__(self, pres: Preconditions | None, m : Operator | None, qvls: QvarLs | None, S1: QProgSequence | None, S0: QProgSequence | None):
-        super().__init__(pres)
+    def __init__(self, pres: Preconditions | None, m : Operator | None, qvls: QvarLs | None, S1: QProgSequence | None, S0: QProgSequence | None, 
+            pos : PosInfo | None):
+        super().__init__(pres, pos)
         self.mPair : OptQvarPair
         self.S1 : QProgSequence
         self.S0 : QProgSequence
@@ -347,42 +389,46 @@ class QProgIf(QProg):
         pre1 = self.S1.get_pre()
         pre0 = self.S0.get_pre()
 
-        r = QPredicate([])
+        r = QPredicate([], None)
 
         for pair0 in pre0.opts:
             for pair1 in pre1.opts:
-                m = hermitian_contract(pair0.qvls.data, pair0.opt.data, 
-                        self.mPair.qvls.data, self.mPair.opt.data[0]) +\
-                    hermitian_contract(pair1.qvls.data, pair1.opt.data, 
-                        self.mPair.qvls.data, self.mPair.opt.data[1])
+                m = hermitian_contract(pair0.qvls.data, pair0.opt.data.data, 
+                        self.mPair.qvls.data, self.mPair.opt.data.data[0]) +\
+                    hermitian_contract(pair1.qvls.data, pair1.opt.data.data, 
+                        self.mPair.qvls.data, self.mPair.opt.data.data[1])
                 name = OptEnv.append(m)
                 r = QPredicate.append(
                     r,
                     OptQvarPair(
-                        OptEnv.lib[name], pair0.qvls
-                    )
+                        Operator(OptEnv.lib[name], None), 
+                        pair0.qvls,
+                        None
+                    ),
+                    None
                 )
 
         return r
 
 
 class QProgWhile(QProg):
-    def __new__(cls, pres: Preconditions | None, inv: QPredicate | None, m : Operator | None, qvls: QvarLs | None, S: QProgSequence | None):
-        instance = super().__new__(cls, pres)
+    def __new__(cls, pres: Preconditions | None, inv: QPredicate | None, m : Operator | None, qvls: QvarLs | None, S: QProgSequence | None, 
+            pos : PosInfo | None):
+        instance = super().__new__(cls, pres, pos)
         if instance is None:
-            return None
+            raise Exception("unexpected situation")
 
         instance.label = "WHILE"
 
         if inv is None or m is None or qvls is None or S is None:
-            LogSystem.channels["error"].append("The components for 'while' here are invalid.")
+            LogSystem.channels["error"].append("The components for 'while' here are invalid." + PosInfo.str(pos))
             return None
 
         instance.inv = data[1]  # type: ignore
         # check whether a valid unitary pair can be constructed
-        mPair =  OptQvarPair(m, qvls, "measurement")
+        mPair =  OptQvarPair(m, qvls, None, "measurement")
         if mPair is None:
-            LogSystem.channels["error"].append("The construction of measurement fails.")
+            LogSystem.channels["error"].append("The construction of measurement fails." + PosInfo.str(pos))
             return None
 
         instance.mPair = mPair  # type: ignore
@@ -390,8 +436,9 @@ class QProgWhile(QProg):
 
         return instance
     
-    def __init__(self, pres: Preconditions | None, inv: QPredicate | None, m : Operator | None, qvls: QvarLs | None, S: QProgSequence | None):
-        super().__init__(pres)
+    def __init__(self, pres: Preconditions | None, inv: QPredicate | None, m : Operator | None, qvls: QvarLs | None, S: QProgSequence | None, 
+            pos : PosInfo | None):
+        super().__init__(pres, pos)
         self.inv : QPredicate
         self.mPair : OptQvarPair
         self.S : QProgSequence
@@ -408,20 +455,23 @@ class QProgWhile(QProg):
 
         inv_ext = self.inv.full_extension()
 
-        this_pre = QPredicate([])
+        this_pre = QPredicate([], None)
 
         for pair_post in self.post.opts:
             for pair_inv in inv_ext.opts:
-                m = hermitian_contract(pair_post.qvls.data, pair_post.opt.data, 
-                        self.mPair.qvls.data, self.mPair.opt.data[0]) +\
-                    hermitian_contract(pair_inv.qvls.data, pair_inv.opt.data, 
-                        self.mPair.qvls.data, self.mPair.opt.data[1])
+                m = hermitian_contract(pair_post.qvls.data, pair_post.opt.data.data, 
+                        self.mPair.qvls.data, self.mPair.opt.data.data[0]) +\
+                    hermitian_contract(pair_inv.qvls.data, pair_inv.opt.data.data, 
+                        self.mPair.qvls.data, self.mPair.opt.data.data[1])
                 name = OptEnv.append(m)
                 this_pre = QPredicate.append(
                     this_pre,
                     OptQvarPair(
-                        OptEnv.lib[name], pair_post.qvls
-                    )
+                        Operator(OptEnv.lib[name], None), 
+                        pair_post.qvls,
+                        None
+                    ),
+                    None
                 )
 
         if this_pre is None:
@@ -434,7 +484,7 @@ class QProgWhile(QProg):
         
         # check whether it is a valid invariant
         if not QPredicate.sqsubseteq(inv_ext, self.S.get_pre()):
-            LogSystem.channels["error"].append("This is not a valid loop invariant.")
+            LogSystem.channels["info"].append("This is not a valid loop invariant." + PosInfo.str(inv_ext.pos))
             return None
         
         return this_pre
@@ -443,25 +493,30 @@ class QProgWhile(QProg):
 
 
 class QProgSequence:
-    def __new__(cls, data : QProgSequence | QProg | None) :
+    def __new__(cls, data : QProgSequence | QProg | None, pos : PosInfo | None) :
         super().__new__(cls)
         if data is None:
-            LogSystem.channels["error"].append("The program provided here is invalid.")
+            LogSystem.channels["error"].append("The program sequence is invalid." + PosInfo.str(pos))
             return None
 
         # check for copy construction
         if isinstance(data, QProgSequence):
+            if pos is not None:
+                raise Exception("unexpected situation")
             instance = super().__new__(cls)
             instance.progs = data.progs
+            instance.pos = data.pos
             return instance
 
         instance = super().__new__(cls)
         instance.progs = [data]
+        instance.pos = pos
         return instance
 
-    def __init__(self, data : QProgSequence | QProg | None):
+    def __init__(self, data : QProgSequence | QProg | None, pos : PosInfo | None):
         super().__init__()
         self.progs : List[QProg]
+        self.pos : PosInfo | None
     
     def set_post(self, post : QPredicate) -> None:
         self.progs[-1].post = post
@@ -470,16 +525,16 @@ class QProgSequence:
         return self.progs[0].pres.get_pre()
 
     @staticmethod
-    def append(obj : QProgSequence | None, prog : QProg | None) -> QProgSequence | None:
+    def append(obj : QProgSequence | None, prog : QProg | None, pos : PosInfo | None) -> QProgSequence | None:
         if obj is None:
-            LogSystem.channels["error"].append("The program sequence provided here is invalid.")
+            LogSystem.channels["error"].append("The program sequence is invalid." + PosInfo.str(pos))
             return None
 
         if prog is None:
-            LogSystem.channels["error"].append("The program provided here is invalid.")
+            LogSystem.channels["error"].append("The next program for composition is invalid." + PosInfo.str(pos))
             return None
         
-        r = QProgSequence(obj)
+        r = QProgSequence(obj, None)
         r.progs.append(prog)
         return r
 

@@ -27,7 +27,6 @@ import numpy as np
 from ..logsystem import LogSystem
 
 
-
 # the class to set the precision
 class Precision:
     _EPS : float = 1e-7
@@ -59,6 +58,7 @@ def np_complex_norm(m : np.ndarray) -> np.ndarray:
     '''
     return np.sqrt(m.real * m.real + m.imag * m.imag)
 
+
 def check_unity(m : np.ndarray) -> bool:
     '''
     check whether tensor m is unitary
@@ -66,12 +66,12 @@ def check_unity(m : np.ndarray) -> bool:
     '''
 
     if len(m.shape) % 2 == 1:
-        LogSystem.channels["error"].append("Error: The dimension is invalid for an unitary.")
+        LogSystem.channels["error"].append("The dimension is invalid for an unitary operator.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            LogSystem.channels["error"].append("Error: The dimension is invalid for an unitary.")
+            LogSystem.channels["error"].append("The dimension is invalid for an unitary operator.")
             return False
     
     # calculate the dim for matrix
@@ -81,7 +81,7 @@ def check_unity(m : np.ndarray) -> bool:
     # check the equality of U^dagger @ U and I
 
     if not np_eps_equal(matrix @ np.transpose(np.conj(matrix)), np.eye(dim_m), Precision.EPS()):
-        LogSystem.channels["error"].append("Error: Not an unitary matrix.")
+        LogSystem.channels["error"].append("The operator is not unitary.")
         return False
     return True
 
@@ -92,12 +92,12 @@ def check_hermitian_predicate(m : np.ndarray) -> bool:
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
     '''
     if len(m.shape) % 2 == 1:
-        LogSystem.channels["error"].append("Error: The dimension is invalid for an Hermitian operator.")
+        LogSystem.channels["error"].append("The dimension is invalid for an Hermitian predicate.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            LogSystem.channels["error"].append("Error: The dimension of is invalid for an Hermitian operator.")
+            LogSystem.channels["error"].append("The dimension is invalid for an Hermitian predicate.")
             return False
     
     # calculate the dim for matrix
@@ -106,13 +106,13 @@ def check_hermitian_predicate(m : np.ndarray) -> bool:
 
     # check the equivalence of U^dagger @ U and I
     if not np_eps_equal(matrix, np.transpose(np.conj(matrix)), Precision.EPS()):
-        LogSystem.channels["error"].append("Error: Not an Hermitian operator.")
+        LogSystem.channels["error"].append("The operator is not a Hermitian operator.")
         return False
 
     # check 0 <= matrix <= I
     e_vals = np.linalg.eigvals(matrix)
     if np.any(e_vals < 0 - Precision.EPS()) or np.any(e_vals > 1 + Precision.EPS()):
-        LogSystem.channels["error"].append("Error: The requirement 0 <= Predicate <= I is not satisfied.")
+        LogSystem.channels["error"].append("The requirement 0 <= Predicate <= I is not satisfied.")
         return False
         
     return True
@@ -125,12 +125,12 @@ def check_measure(m : np.ndarray) -> bool:
         The first index of m corresponds to measurement result 0 or 1.
     '''
     if len(m.shape) % 2 == 0:
-        LogSystem.channels["error"].append("Error: The dimension is invalid for a measurement.")
+        LogSystem.channels["error"].append("The dimension is invalid for a measurement set.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            LogSystem.channels["error"].append("Error: The dimension is invalid for a measurement.")
+            LogSystem.channels["error"].append("The dimension is invalid for a measurement set.")
             return False
     
     # calculate the dim for matrix
@@ -142,7 +142,7 @@ def check_measure(m : np.ndarray) -> bool:
 
     # check the equivalence of U^dagger @ U and I
     if not np_eps_equal(m0.conj().transpose() @ m0 + m1.conj().transpose() @ m1, np.eye(dim_m), Precision.EPS()):
-        LogSystem.channels["error"].append("Error: Tensor does not satisfy the normalization requirement of a measurement.")
+        LogSystem.channels["error"].append("This tensor does not satisfy the normalization requirement of a measurement set.")
         return False
     return True
 

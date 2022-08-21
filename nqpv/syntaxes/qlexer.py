@@ -23,10 +23,9 @@ from typing import Any, List
 
 import ply.lex as lex
 
-from ..logsystem import LogSystem
+from nqpv.syntaxes.pos_info import PosInfo
 
-# channel
-channel = "syntax"
+from ..logsystem import LogSystem
 
 
 reserved = {
@@ -96,7 +95,7 @@ t_ignore = ' \t'
 
 
 def t_error(t):
-    LogSystem.channels[channel].append("(line " + str(t.lineno) + ")\tSyntax Error. Illegal character '" + t.value[0] + "'.")
+    LogSystem.channels["error"].append("Syntax Error. Illegal character '" + t.value[0] + "'." + str(PosInfo(t.lineno)))
     t.lexer.skip(1)
 
 

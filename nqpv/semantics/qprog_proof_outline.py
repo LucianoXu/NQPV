@@ -30,25 +30,34 @@ from .opt_qvar_pair import OptQvarPair
 from .qPre import QPredicate
 from .qprog_std import QProg, QProgSequence
 
+from ..syntaxes.pos_info import PosInfo
 from ..logsystem import LogSystem
 
 class QProofOutline:
-    def __new__(cls, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None):
-        instance = super().__new__(cls)
-        if pre is None or progs is None or post is None:
-            LogSystem.channels["error"].append("Error : Components provided invalid")
+    def __new__(cls, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None, pos : PosInfo | None):
+        if pre is None:
+            LogSystem.channels["error"].append("The precondition is invalid." + PosInfo.str(pos))
             return None
-        
+        if progs is None:
+            LogSystem.channels["error"].append("The programs is invalid." + PosInfo.str(pos))
+            return None
+        if post is None:
+            LogSystem.channels["error"].append("The postcondition is invalid." + PosInfo.str(pos))
+            return None
+
+        instance = super().__new__(cls)
         instance.pre = pre
         instance.progs = progs
         instance.post = post
+        instance.pos = pos
         return instance
 
-    def __init__(self, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None):
+    def __init__(self, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None, pos : PosInfo | None):
         super().__init__()
         self.pre : QPredicate
         self.progs : QProgSequence
         self.post : QPredicate
+        self.pos : PosInfo | None
     
     def __str__(self) -> str:
         r = str(self.pre) + "\n\n"
@@ -63,13 +72,16 @@ class QProofOutline:
         self.progs.set_post(self.post.full_extension())
 
         if not self.progs.proof_check():
+            LogSystem.channels["info"].append("The proof does not hold." + PosInfo.str(self.pos))
             return False
 
         full_pre = self.pre.full_extension()
         
         if not QPredicate.sqsubseteq(full_pre, self.progs.progs[0].pres.pres[0]):
+            LogSystem.channels["info"].append("The proof does not hold." + PosInfo.str(self.pos))
             return False
-        
+
+        LogSystem.channels["info"].append("The proof holds." + PosInfo.str(self.pos))
         return True
 
 

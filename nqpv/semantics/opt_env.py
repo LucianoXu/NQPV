@@ -24,11 +24,11 @@ from typing import Any, List, Dict
 
 import numpy as np
 
-from nqpv.semantics.id_env import IdEnv
-
 from . import qLA
 from .qLA import np_eps_equal, Precision
+from .id_env import IdEnv
 
+from ..syntaxes.pos_info import PosInfo
 from ..logsystem import LogSystem
 
 # description of all operator properties in consideration
@@ -38,7 +38,7 @@ opt_property = {
     'measurement' : qLA.check_measure,
 }    
 
-class Operator:
+class OperatorData:
     '''
     The class for a particular operator, including the property tags (unitary, Hermitian and so on)
     '''
@@ -68,10 +68,21 @@ class Operator:
     def __str__(self) -> str:
         return self.id
 
+class Operator:
+    '''
+    operator data with position information
+    '''
+    def __init__(self, opt : OperatorData, pos : PosInfo | None):
+        self.data : OperatorData = opt
+        self.pos : PosInfo | None = pos
+    
+    def __str__(self) -> str:
+        return str(self.data)
+
 class OptEnv:
 
     # the library of all Operators
-    lib : Dict[str, Operator] = {}
+    lib : Dict[str, OperatorData] = {}
 
     @staticmethod
     def append(m : np.ndarray, proposed_name : str = "", repeat_detect = True) -> str:
@@ -100,14 +111,14 @@ class OptEnv:
             name = proposed_name
 
         # append in the library
-        OptEnv.lib[name] = Operator(m, name)
+        OptEnv.lib[name] = OperatorData(m, name)
         IdEnv.id_opt.add(name)
         return name
     
     @staticmethod
-    def get_opt(id : str) -> Operator | None:
+    def get_opt(id : str, pos : PosInfo | None) -> Operator | None:
         if id not in OptEnv.lib:
-            LogSystem.channels["error"].append("The operator '" + id + "' does not exist in the environment.")
+            LogSystem.channels["error"].append("The operator '" + id + "' does not exist in the operator environment." + PosInfo.str(pos))
             return None
             
-        return OptEnv.lib[id]
+        return Operator(OptEnv.lib[id], pos)

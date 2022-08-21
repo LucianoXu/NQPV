@@ -143,7 +143,7 @@ def optload_inject(folder_path : str) -> bool:
                 if item.endswith(".npy"):
                     id = item[:-4]
                     if id in opt_env.OptEnv.lib:
-                        LogSystem.channels["warning"].append("Warning: the operator '" + id + "' appeared more than once.")
+                        LogSystem.channels["warning"].append("The operator '" + id + "' appeared more than once.")
                     else:
                         opt_env.OptEnv.append(np.load(new_path), id, False)
             elif os.path.isdir(new_path):

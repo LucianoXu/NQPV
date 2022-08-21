@@ -26,9 +26,9 @@ class Settings:
     
     @staticmethod
     def EPS() -> float:
-        return semantics.Precision.EPS()  # type: ignore
+        return semantics.qLA.Precision.EPS()  # type: ignore
 
     @staticmethod
     def set_EPS(eps : float) -> None:
-        semantics.Precision.set_EPS(eps)  # type: ignore
+        semantics.qLA.Precision.set_EPS(eps)  # type: ignore
     

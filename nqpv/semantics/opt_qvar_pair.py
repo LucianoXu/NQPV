@@ -30,15 +30,17 @@ from .qLA import eye_tensor
 from .opt_env import Operator, OptEnv
 from .qVar import QvarLs
 
+from ..syntaxes.pos_info import PosInfo
 from ..logsystem import LogSystem
 
 def check_unitary_qvls(opt : Operator, qvls : QvarLs) -> bool:
 
     # check the dimension informaion
-    if (len(qvls) * 2 == len(opt.data.shape)):
+    if (len(qvls) * 2 == len(opt.data.data.shape)):
         return True
     else:
-        LogSystem.channels["error"].append("Error: The dimensions of unitary '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
+        LogSystem.channels["error"].append("The dimensions of unitary '" + opt.data.id + 
+        "' and quantum variable list " + str(qvls) + " do not match." + PosInfo.str(opt.pos))
         return False
 
 
@@ -46,19 +48,21 @@ def check_measure_qvls(opt : Operator, qvls : QvarLs) -> bool:
 
     # check the dimension information
     # + 1 is for the extra dimension of 0-result and 1-result
-    if (len(qvls) * 2 + 1 == len(opt.data.shape)):
+    if (len(qvls) * 2 + 1 == len(opt.data.data.shape)):
         return True
     else:
-        LogSystem.channels["error"].append("Error: The dimensions of measurement '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
+        LogSystem.channels["error"].append("The dimensions of measurement '" + opt.data.id + "' and quantum variable list "
+         + str(qvls) + " do not match." + PosInfo.str(opt.pos))
         return False
 
 
 def check_hermitian_predicate_qvls(opt : Operator, qvls : QvarLs) -> bool:
     # check the dimension informaion
-    if (len(qvls) * 2 == len(opt.data.shape)):
+    if (len(qvls) * 2 == len(opt.data.data.shape)):
         return True
     else:
-        LogSystem.channels["error"].append("Error: The dimensions of hermitian '" + opt.id + "' and qvars " + str(qvls) + " do not match.")
+        LogSystem.channels["error"].append("The dimensions of Hermitian operator '" + opt.data.id +
+         "' and quantum variable list " + str(qvls) + " do not match." + PosInfo.str(opt.pos))
         return False
 
 pair_check = {
@@ -69,42 +73,44 @@ pair_check = {
 
 class OptQvarPair:
     
-    def __new__(cls, opt : Operator | None, qvls : QvarLs | None, type : str = ""):
+    def __new__(cls, opt : Operator | None, qvls : QvarLs | None, pos : PosInfo | None, type : str = ""):
         if type not in pair_check and type != "":
             raise Exception("Unknown type")
 
         # check whether the operator is valid
         if opt is None:
-            LogSystem.channels["error"].append("The operator here is invalid.")
+            LogSystem.channels["error"].append("The operator for the pair is invalid." + PosInfo.str(pos))
             return None
 
         # check whether qvls is valid
         if qvls is None:
-            LogSystem.channels["error"].append("The quantum variables here is invalid.")
+            LogSystem.channels["error"].append("The quantum variable list for the pair is invalid." + PosInfo.str(pos))
             return None
 
 
         instance = super().__new__(cls)
         instance.opt = opt
         instance.qvls = qvls
+        instance.pos = pos
         instance.tags = {}
 
         # check the required property
         if type != "":
             if not instance.check_property(type):
                 LogSystem.channels["error"].append(
-                    "The operator variable pair '" + str(instance) + "' does not satisfy the property '" + type + "'."
-                    )
+                    "The operator variable pair '" + str(instance) + "' does not satisfy the required property '" + type + "'."
+                    + PosInfo.str(pos))
                 return None
 
         return instance
 
-    def __init__(self, opt : Operator | None, qvls : QvarLs | None, type : str = ""):
+    def __init__(self, opt : Operator | None, qvls : QvarLs | None, pos : PosInfo | None, type : str = ""):
         '''
         <may return None if construction failes>
         '''
         self.opt : Operator
         self.qvls : QvarLs
+        self.pos : PosInfo | None
         self.tags : Dict[str, bool]
     
     def check_property(self, property : str) -> bool:
@@ -116,7 +122,7 @@ class OptQvarPair:
             return self.tags[property]
 
         # check whether the opt operator has the claimed property
-        if not self.opt.check_property(property):
+        if not self.opt.data.check_property(property):
             self.tags[property] = False
             return False
 

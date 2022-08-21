@@ -61,13 +61,19 @@ def channel_check(pfile : TextIOWrapper | None, title : str = "") -> bool:
 
     num_error = len(LogSystem.channels["error"])
     LogSystem.channels["error"].summary(pfile, True, True)
+
     num_warning = len(LogSystem.channels["warning"])
     LogSystem.channels["warning"].summary(pfile, True, True)
     LogSystem.channels["info"].summary(pfile, True, True)
 
+    num_witness = len(LogSystem.channels["witness"])
+    LogSystem.channels["witness"].summary(pfile, True, True)
+
     # summrize the number
-    LogSystem.channels["info"].single("Error (" + str(num_error) + "), Warning (" + str(num_warning) + ")",
-        pfile, True)
+    summary = "Error (" + str(num_error) + "), Warning (" + str(num_warning) + ")"
+    if num_witness > 0:
+        summary += ", witness reported"
+    LogSystem.channels["info"].single(summary, pfile, True)
 
     return num_error == 0
 
@@ -122,6 +128,8 @@ def verify(folder_path, total_correctness = False, preserve_pre = False, opt_in_
         ch_info.single("property to verify: Total Correctness\n", p_output, True)
     else:
         ch_info.single("property to verify: Partial Correctness\n", p_output, True)
+    
+    ch_info.single("precision: " + str(Settings.EPS()) + "\n", p_output, True)
 
     ch_info.single("intermediate preconditions preserved: "+("Yes" if preserve_pre else "No") + "\n", p_output, True)
     ch_info.single("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n", p_output, True)

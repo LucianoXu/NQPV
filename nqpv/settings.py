@@ -22,7 +22,7 @@
 from . import semantics
 
 class Settings:
-    version : str = "0.1"
+    version : str = "0.2b"
     
     @staticmethod
     def EPS() -> float:

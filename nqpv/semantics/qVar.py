@@ -22,7 +22,7 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
-from nqpv.semantics.id_env import IdEnv
+from ..id_env import IdEnv
 
 from ..syntaxes.pos_info import PosInfo
 

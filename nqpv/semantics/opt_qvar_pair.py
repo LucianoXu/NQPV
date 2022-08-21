@@ -73,25 +73,25 @@ pair_check = {
 
 class OptQvarPair:
     
-    def __new__(cls, opt : Operator | None, qvls : QvarLs | None, pos : PosInfo | None, type : str = ""):
+    def __new__(cls, opt : Operator | None, qvls : QvarLs | None, type : str = ""):
         if type not in pair_check and type != "":
             raise Exception("Unknown type")
 
         # check whether the operator is valid
         if opt is None:
-            LogSystem.channels["error"].append("The operator for the pair is invalid." + PosInfo.str(pos))
+            LogSystem.channels["error"].append("The operator for the pair is invalid.")
             return None
 
         # check whether qvls is valid
         if qvls is None:
-            LogSystem.channels["error"].append("The quantum variable list for the pair is invalid." + PosInfo.str(pos))
+            LogSystem.channels["error"].append("The quantum variable list for the pair is invalid." + PosInfo.str(opt.pos))
             return None
 
 
         instance = super().__new__(cls)
         instance.opt = opt
         instance.qvls = qvls
-        instance.pos = pos
+        instance.pos = opt.pos
         instance.tags = {}
 
         # check the required property
@@ -99,12 +99,12 @@ class OptQvarPair:
             if not instance.check_property(type):
                 LogSystem.channels["error"].append(
                     "The operator variable pair '" + str(instance) + "' does not satisfy the required property '" + type + "'."
-                    + PosInfo.str(pos))
+                    + PosInfo.str(opt.pos))
                 return None
 
         return instance
 
-    def __init__(self, opt : Operator | None, qvls : QvarLs | None, pos : PosInfo | None, type : str = ""):
+    def __init__(self, opt : Operator | None, qvls : QvarLs | None, type : str = ""):
         '''
         <may return None if construction failes>
         '''

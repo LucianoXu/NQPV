@@ -45,11 +45,11 @@ def p_prog(p):
 
 def p_sequence_append(p):
     'sequence : sequence SEMICOLON sentence'
-    p[0] = qprog_std.QProgSequence.append(p[1], p[3], PosInfo(p[3].pos))
+    p[0] = qprog_std.QProgSequence.append(p[1], p[3])
 
 def p_sequence_form(p):
     'sequence : sentence'
-    p[0] = qprog_std.QProgSequence(p[1], PosInfo(p[1].pos))
+    p[0] = qprog_std.QProgSequence(p[1])
 
 
 def p_sentence(p):
@@ -65,63 +65,63 @@ def p_sentence(p):
     '''
     if isinstance(p[1], QPredicate):
         p[0] = p[2]
-        p[0].pres = qprog_nondet.Preconditions.insert_front(p[0].pres, p[1], PosInfo(p[0].pos))
+        p[0].pres = qprog_nondet.Preconditions.insert_front(p[0].pres, p[1])
     else:
         p[0] = p[1]
 
 def p_nondet_choice(p):
     'nondet_choice : nondet_choice_pre sequence RBRAKET'
-    p[0] = qprog_nondet.QProgNondet.append(p[1], p[2], PosInfo(p[2].pos))
+    p[0] = qprog_nondet.QProgNondet.append(p[1], p[2])
 
 def p_nondet_choice_append(p):
     '''
     nondet_choice_pre : nondet_choice_pre sequence NONDET_CHOICE
     '''
-    p[0] = qprog_nondet.QProgNondet.append(p[1], p[2], PosInfo(p[2].pos))
+    p[0] = qprog_nondet.QProgNondet.append(p[1], p[2])
 
 def p_nondet_choice_start(p):
     '''
     nondet_choice_pre : LBRAKET sequence NONDET_CHOICE
     '''
-    p[0] = qprog_nondet.QProgNondet(qprog_std.Preconditions([], None), p[2], PosInfo(p.slice[3].lineno))
+    p[0] = qprog_nondet.QProgNondet(qprog_std.Preconditions([]), p[2])
     
 
 def p_if(p):
     'if : IF ID id_ls THEN sequence ELSE sequence END'
-    opt = OptEnv.get_opt(p[2], PosInfo(p.slice[2].lineno))
-    p[0] = qprog_std.QProgIf(qprog_std.Preconditions([], None), opt, p[3], p[5], p[7], PosInfo(p.slice[1].lineno))
+    opt = OptEnv.use_opt(p[2], PosInfo(p.slice[2].lineno))
+    p[0] = qprog_std.QProgIf(qprog_std.Preconditions([]), opt, p[3], p[5], p[7], PosInfo(p.slice[1].lineno))
 
 def p_while(p):
     'while : predicate_inv WHILE ID id_ls DO sequence END'
-    opt = OptEnv.get_opt(p[3], PosInfo(p.slice[3].lineno))
-    p[0] = qprog_std.QProgWhile(qprog_std.Preconditions([], None), p[1], opt, p[4], p[6], PosInfo(p.slice[2].lineno))
+    opt = OptEnv.use_opt(p[3], PosInfo(p.slice[3].lineno))
+    p[0] = qprog_std.QProgWhile(qprog_std.Preconditions([]), p[1], opt, p[4], p[6], PosInfo(p.slice[2].lineno))
 
 
 def p_skip(p):
     'skip : SKIP'
-    p[0] = qprog_std.QProgSkip(qprog_std.Preconditions([], None), PosInfo(p.slice[1].lineno))
+    p[0] = qprog_std.QProgSkip(qprog_std.Preconditions([]), PosInfo(p.slice[1].lineno))
 
 def p_abort(p):
     'abort : ABORT'
-    p[0] = qprog_std.QProgAbort(qprog_std.Preconditions([], None), PosInfo(p.slice[1].lineno))
+    p[0] = qprog_std.QProgAbort(qprog_std.Preconditions([]), PosInfo(p.slice[1].lineno))
 
 def p_unitary(p):
     '''unitary : id_ls MUL_EQ ID
                 | ID MUL_EQ ID'''
-    opt = OptEnv.get_opt(p[3], PosInfo(p.slice[3].lineno))
+    opt = OptEnv.use_opt(p[3], PosInfo(p.slice[3].lineno))
     if isinstance(p[1], QvarLs):
-        p[0] = qprog_std.QProgUnitary(qprog_std.Preconditions([], None), opt, p[1], PosInfo(p.slice[2].lineno))
+        p[0] = qprog_std.QProgUnitary(qprog_std.Preconditions([]), opt, p[1], PosInfo(p.slice[2].lineno))
     else:
-        p[0] = qprog_std.QProgUnitary(qprog_std.Preconditions([], None), opt, QvarLs(p[1], PosInfo(p.slice[1].lineno)), PosInfo(p.slice[2].lineno))
+        p[0] = qprog_std.QProgUnitary(qprog_std.Preconditions([]), opt, QvarLs(p[1], PosInfo(p.slice[1].lineno)), PosInfo(p.slice[2].lineno))
 
 
 def p_init(p):
     '''init : id_ls ASSIGN ZERO
             | ID ASSIGN ZERO'''
     if isinstance(p[1], QvarLs):
-        p[0] = qprog_std.QProgInit(qprog_std.Preconditions([], None), p[1], PosInfo(p.slice[2].lineno))
+        p[0] = qprog_std.QProgInit(qprog_std.Preconditions([]), p[1], PosInfo(p.slice[2].lineno))
     else:
-        p[0] = qprog_std.QProgInit(qprog_std.Preconditions([], None), QvarLs(p[1], PosInfo(p.slice[1].lineno)), PosInfo(p.slice[2].lineno))
+        p[0] = qprog_std.QProgInit(qprog_std.Preconditions([]), QvarLs(p[1], PosInfo(p.slice[1].lineno)), PosInfo(p.slice[2].lineno))
 
 #define the invariants
 def p_inv_end(p):
@@ -130,16 +130,16 @@ def p_inv_end(p):
 
 def p_inv_append(p):
     'predicate_inv_pre : predicate_inv_pre ID id_ls'
-    opt = OptEnv.get_opt(p[2], PosInfo(p.slice[2].lineno))
-    optPair = OptQvarPair(opt, p[3], PosInfo(p.slice[2].lineno), "hermitian predicate")
-    p[0] = QPredicate.append(p[1], optPair, PosInfo(p.slice[2].lineno))
+    opt = OptEnv.use_opt(p[2], PosInfo(p.slice[2].lineno))
+    optPair = OptQvarPair(opt, p[3], "hermitian predicate")
+    p[0] = QPredicate.append(p[1], optPair)
 
 
 def p_inv_start(p):
     'predicate_inv_pre : LBRACE INV COLON ID id_ls'
-    opt = OptEnv.get_opt(p[4], PosInfo(p.slice[4].lineno))
-    optPair = OptQvarPair(opt, p[5], PosInfo(p.slice[4].lineno), "hermitian predicate")
-    p[0] = QPredicate(optPair, PosInfo(p.slice[4].lineno))
+    opt = OptEnv.use_opt(p[4], PosInfo(p.slice[4].lineno))
+    optPair = OptQvarPair(opt, p[5], "hermitian predicate")
+    p[0] = QPredicate(optPair)
 
 
 #define the quantum predicates
@@ -149,15 +149,15 @@ def p_predicate_end(p):
 
 def p_predicate_append(p):
     'predicate_pre : predicate_pre ID id_ls'
-    opt = OptEnv.get_opt(p[2], PosInfo(p.slice[2].lineno))
-    optPair = OptQvarPair(opt, p[3], PosInfo(p.slice[2].lineno), "hermitian predicate")
-    p[0] = QPredicate.append(p[1], optPair, PosInfo(p.slice[2].lineno))
+    opt = OptEnv.use_opt(p[2], PosInfo(p.slice[2].lineno))
+    optPair = OptQvarPair(opt, p[3], "hermitian predicate")
+    p[0] = QPredicate.append(p[1], optPair)
 
 def p_predicate_start(p):
     'predicate_pre : LBRACE ID id_ls'
-    opt = OptEnv.get_opt(p[2], PosInfo(p.slice[2].lineno))
-    optPair = OptQvarPair(opt, p[3], PosInfo(p.slice[2].lineno), "hermitian predicate")
-    p[0] = QPredicate(optPair, PosInfo(p.slice[2].lineno))
+    opt = OptEnv.use_opt(p[2], PosInfo(p.slice[2].lineno))
+    optPair = OptQvarPair(opt, p[3], "hermitian predicate")
+    p[0] = QPredicate(optPair)
 
 # define the list of quantum variables
 def p_id_ls_end(p):

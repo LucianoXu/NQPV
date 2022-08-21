@@ -23,6 +23,9 @@ class IdEnv:
     id_opt : set[str] = set()
     id_qvar : set[str] = set()
 
+    # this set preserves all operators used in the verification
+    id_opt_used : set[str] = set()
+
 
     # the number postfix for automatic namings
     _auto_naming_num = 0

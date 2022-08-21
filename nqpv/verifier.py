@@ -25,6 +25,9 @@ from io import TextIOWrapper
 import os
 import numpy as np
 
+from .semantics.qVar import QvarLs
+from .semantics.opt_env import OptEnv
+
 from .optlib_inject import optlib_inject, optload_inject
 
 from .logsystem import LogSystem
@@ -34,6 +37,8 @@ from .settings import Settings
 
 from .syntaxes import *
 from .syntaxes import qlexer, qparser 
+
+from .id_env import IdEnv
 
 
 def verifiy_reset(folder_path : str) -> bool:
@@ -81,7 +86,7 @@ def channel_check(pfile : TextIOWrapper | None, title : str = "") -> bool:
 
 
 
-def verify(folder_path, total_correctness = False, preserve_pre = False, opt_in_output = False, save_opt = False):
+def verify(folder_path, total_correctness = False, opt_in_output = False, save_opt = False):
 
     if total_correctness:
         print("total correctness not supported yet")
@@ -131,7 +136,6 @@ def verify(folder_path, total_correctness = False, preserve_pre = False, opt_in_
     
     ch_info.single("precision: " + str(Settings.EPS()) + "\n", p_output, True)
 
-    ch_info.single("intermediate preconditions preserved: "+("Yes" if preserve_pre else "No") + "\n", p_output, True)
     ch_info.single("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n", p_output, True)
     ch_info.single("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n", p_output, True)
 
@@ -149,119 +153,48 @@ def verify(folder_path, total_correctness = False, preserve_pre = False, opt_in_
     # syntactic analysis, produce the abstract syntax tree
     ch_info.single("syntactic and semantic analysis ...\n", None, True)
     ast = qparser.parser.parse(prog_str)
-    if not channel_check(p_output):
+    if not channel_check(p_output, "Syntactic and Semantic Analysis:"):
         p_output.close()
         return
-    ch_info.single("syntactic and semantic analysis passed.\n", p_output, True)
+
+    # exhibit the sequence of quantum variables
+    ch_info.single("\nQuantum Variable Sequence:\n" + str(QvarLs.qvar), p_output, True)
 
     # start verification
-    ch_info.single("verification starts, calculating weakest (liberal) preconditions...\n", p_output, True)
+    ch_info.single("\n--------------------------------------------\n", p_output, True)
+    ch_info.single("Verification Calculating ...\n", None, True)
 
-
-    print(ast.proof_check())
-
-    print(ast)
+    ast.proof_check()
     
-    channel_check(p_output)
-
-    return
+    channel_check(p_output, "Verification Result:")
 
 
-    v_result = wlp_verify(ast, pinfo, preserve_pre)
-
-    if not LogSystem.channels[channel].empty:
-        LogSystem.channels[channel].summary(p_output, True)
-
-    # declare the result
-    if v_result:
-        ch_cmd.single("Verification Result: Property holds.\n", p_output, True)
-    else:
-        # check whether there is while structures
-        if pinfo['while_exists']:
-            ch_cmd.single("Verification Result: Property cannot be determined. A suitable loop invariant may be sufficient.\n", p_output, True)
-        else:
-            ch_cmd.single("Verification Result: Property does not hold.\n", p_output, True)
-
-    if not LogSystem.channels[channel_witness].empty:
-        LogSystem.channels[channel_witness].summary(p_output, True)
-
-    # show the proof outline
-    
-    ch_cmd.single("(proof outline shown in 'output.txt)\n", None, True)
-    ch_cmd.single("--------------------------------------------", p_output, True)
-    ch_cmd.single("<prog proof outline> \n", p_output, True)
-    ch_cmd.single(lineno_added(qparser.prog_to_code(ast, "")), p_output, True)
-
+    # output the proof outline
+    ch_info.single("\n(proof outline shown in 'output.txt)\n", None, True)
+    ch_info.single("--------------------------------------------", p_output, False)
+    ch_info.single("<prog proof outline> \n", p_output, False)
+    ch_info.single(lineno_added(str(ast)), p_output, False)
+    if opt_in_output:
+        ch_info.single("(operators shown in 'output.txt')\n", None, True)
+    ch_info.single("--------------------------------------------", p_output, False)
 
 
     # show the operators in the output
     if opt_in_output:
 
-        # prompt that the operator output is hidden in cmd
-        print("(operators shown in 'output.txt')\n\n", end='')
+        ch_info.single("<operators mentioned> \n", p_output, False)
+
+        for id in IdEnv.id_opt_used:
+            ch_info.single(OptEnv.lib[id].full_str,p_output, False)
+            ch_info.single("\n", p_output, False)
         
-        ch_cmd.single("\n--------------------------------------------", p_output, True)
-        ch_cmd.single("<unitary operators> \n", p_output, True)
-
-        for id in pinfo['unitary']:
-            ch_cmd.single(id ,p_output, True)
-            ch_cmd.single(str(qLA.tensor_to_matrix(pinfo['unitary'][id])), p_output, True)
-            ch_cmd.single("\n", p_output, True)
-        
-        ch_cmd.single("--------------------------------------------", p_output, True)
-
-        ch_cmd.single("<Hermitian operators> \n", p_output, True)
-
-        for id in pinfo['herm']:
-            ch_cmd.single(id, p_output, True)
-            ch_cmd.single(str(qLA.tensor_to_matrix(pinfo['herm'][id])), p_output, True)
-            ch_cmd.single("\n", p_output, True)
-        
-        ch_cmd.single("--------------------------------------------", p_output, True)
-
-        ch_cmd.single("<measurement operators> \n", p_output, True)
-
-        for id in pinfo['measure']:
-            ch_cmd.single(id + " RESULT0 ", p_output, True)
-            ch_cmd.single(str(qLA.tensor_to_matrix(pinfo['measure'][id][0])), p_output, True)
-            ch_cmd.single("\n", p_output, True)
-            ch_cmd.single(id + " RESULT1 ", p_output, True)
-            ch_cmd.single(str(qLA.tensor_to_matrix(pinfo['measure'][id][1])), p_output, True)
-            ch_cmd.single("\n", p_output, True)
-        
-        ch_cmd.single("--------------------------------------------", p_output, True)
-
-        if preserve_pre:
-            ch_cmd.single("<Hermitians for intermediate preconditions> \n", p_output, True)
-
-            for id in pinfo['im_pre-cond']:
-                ch_cmd.single(id, p_output, True)
-                ch_cmd.single(str(qLA.tensor_to_matrix(pinfo['im_pre-cond'][id])), p_output, True)
-                ch_cmd.single("\n", p_output, True)
-            
-            ch_cmd.single("--------------------------------------------", p_output, True)
-
     # save the related operaters
     if save_opt:
-        ch_cmd.single("Saving operators...\n", None, True)
+        ch_info.single("Saving operators...\n", None, True)
 
-        for id in pinfo['unitary']:
-            ch_cmd.single("unitary: " + id + ".npy ... ", None, True)
-            np.save(folder_path + "/" + id + ".npy", pinfo['unitary'][id])
-            ch_cmd.single("done\n", None, True)
-        for id in pinfo['measure']:
-            ch_cmd.single("measurement: " + id + ".npy ... ", None, True)
-            np.save(folder_path + "/" + id + ".npy", pinfo['measure'][id])
-            ch_cmd.single("done\n", None, True)
-        for id in pinfo['herm']:
-            ch_cmd.single("Hermitian Operator: " + id + ".npy ... ", None, True)
-            np.save(folder_path + "/" + id + ".npy", pinfo['herm'][id])
-            ch_cmd.single("done\n", None, True)
-        if preserve_pre:
-            for id in pinfo['im_pre-cond']:
-                ch_cmd.single("Hermitian Operator: " + id + ".npy ... ", None, True)
-                np.save(folder_path + "/" + id + ".npy", pinfo['im_pre-cond'][id])
-                ch_cmd.single("done\n", None, True)
+        for id in IdEnv.id_opt_used:
+            # ch_info.single(os.path.join(folder_path, id + ".npy")+" ... ", None, True)
+            np.save(os.path.join(folder_path , id + ".npy"), OptEnv.lib[id].data)
 
 
     # close the output file

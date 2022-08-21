@@ -26,7 +26,7 @@ import numpy as np
 
 from . import qLA
 from .qLA import np_eps_equal, Precision
-from .id_env import IdEnv
+from ..id_env import IdEnv
 
 from ..syntaxes.pos_info import PosInfo
 from ..logsystem import LogSystem
@@ -67,6 +67,19 @@ class OperatorData:
     
     def __str__(self) -> str:
         return self.id
+    
+    @property
+    def full_str(self) -> str:
+        '''
+        The information of operator name, checked property and data.
+        '''
+        r = self.id
+        for tag in self.tags:
+            if self.tags[tag]:
+                r += " <" + tag + ">"
+        r += "\n"
+        r += str(self.data)
+        return r
 
 class Operator:
     '''
@@ -116,9 +129,11 @@ class OptEnv:
         return name
     
     @staticmethod
-    def get_opt(id : str, pos : PosInfo | None) -> Operator | None:
+    def use_opt(id : str, pos : PosInfo | None) -> Operator | None:
         if id not in OptEnv.lib:
             LogSystem.channels["error"].append("The operator '" + id + "' does not exist in the operator environment." + PosInfo.str(pos))
             return None
-            
+        # register this use
+        IdEnv.id_opt_used.add(id)
+
         return Operator(OptEnv.lib[id], pos)

@@ -69,7 +69,8 @@ class QProofOutline:
         '''
         doing the check of this proof
         '''
-        self.progs.set_post(self.post.full_extension())
+        self.post = self.post.full_extension()
+        self.progs.set_post(self.post)
 
         if not self.progs.proof_check():
             LogSystem.channels["info"].append("The proof does not hold." + PosInfo.str(self.pos))

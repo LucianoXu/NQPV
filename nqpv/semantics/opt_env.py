@@ -125,7 +125,7 @@ class OptEnv:
 
         # append in the library
         OptEnv.lib[name] = OperatorData(m, name)
-        IdEnv.id_opt.add(name)
+        IdEnv.id_opt_add(name)
         return name
     
     @staticmethod
@@ -134,6 +134,6 @@ class OptEnv:
             LogSystem.channels["error"].append("The operator '" + id + "' does not exist in the operator environment." + PosInfo.str(pos))
             return None
         # register this use
-        IdEnv.id_opt_used.add(id)
+        IdEnv.id_opt_used_add(id)
 
         return Operator(OptEnv.lib[id], pos)

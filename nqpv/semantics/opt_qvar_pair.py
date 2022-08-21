@@ -73,7 +73,7 @@ pair_check = {
 
 class OptQvarPair:
     
-    def __new__(cls, opt : Operator | None, qvls : QvarLs | None, type : str = ""):
+    def __new__(cls, opt : Operator | None, qvls : QvarLs | None, type : str = "", origin : OptQvarPair | None = None):
         if type not in pair_check and type != "":
             raise Exception("Unknown type")
 
@@ -104,7 +104,7 @@ class OptQvarPair:
 
         return instance
 
-    def __init__(self, opt : Operator | None, qvls : QvarLs | None, type : str = ""):
+    def __init__(self, opt : Operator | None, qvls : QvarLs | None, type : str = "", origin : OptQvarPair | None = None):
         '''
         <may return None if construction failes>
         '''
@@ -112,6 +112,9 @@ class OptQvarPair:
         self.qvls : QvarLs
         self.pos : PosInfo | None
         self.tags : Dict[str, bool]
+
+        # this is the extension origin of this pair.
+        self.origin : OptQvarPair | None = origin
     
     def check_property(self, property : str) -> bool:
         '''
@@ -135,7 +138,10 @@ class OptQvarPair:
         return True
     
     def __str__(self) -> str:
-        return str(self.opt) + str(self.qvls)
+        if self.origin is not None:
+            return str(self.origin)
+        else:
+            return str(self.opt) + str(self.qvls)
 
     def __eq__(self, other) -> bool:
         return self.opt.data == other.opt.data and self.qvls == other.qvls

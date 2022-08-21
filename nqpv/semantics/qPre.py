@@ -120,12 +120,14 @@ class QPredicate:
         return a quantum predicate with all hermitian operators fully extended
         '''
         r = QPredicate([])
-        for i in range(len(self.opts)):
-            m = hermitian_extend(tuple(QvarLs.qvar), self.opts[i].opt.data.data, self.opts[i].qvls.data)
+        for herm_pair in self.opts:
+            m = hermitian_extend(tuple(QvarLs.qvar), herm_pair.opt.data.data, herm_pair.qvls.data)
             name = OptEnv.append(m)
             opt = OptQvarPair(
-                OptEnv.use_opt(name, None),
-                QvarLs("qvar", None)
+                Operator(OptEnv.lib[name], None),
+                QvarLs("qvar", None),
+                "",
+                herm_pair
             )
             r = QPredicate.append(
                 r, 

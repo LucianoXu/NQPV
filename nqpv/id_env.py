@@ -19,12 +19,16 @@
 # provide the environment of all identifiers
 # ------------------------------------------------------------    
 
+from __future__ import annotations
+from typing import Any, List, Dict
+
+
 class IdEnv:
-    id_opt : set[str] = set()
-    id_qvar : set[str] = set()
+    id_opt : List[str] = []
+    id_qvar : List[str] = []
 
     # this set preserves all operators used in the verification
-    id_opt_used : set[str] = set()
+    id_opt_used : List[str] = []
 
 
     # the number postfix for automatic namings
@@ -32,6 +36,21 @@ class IdEnv:
 
     # the prefix for automaitc namings
     _auto_naming_prefix = "OP"
+
+    @staticmethod
+    def id_opt_add(id : str) -> None:
+        if id not in IdEnv.id_opt:
+            IdEnv.id_opt.append(id)
+
+    @staticmethod
+    def id_qvar_add(id : str) -> None:
+        if id not in IdEnv.id_qvar:
+            IdEnv.id_qvar.append(id)
+
+    @staticmethod
+    def id_opt_used_add(id : str) -> None:
+        if id not in IdEnv.id_opt_used:
+            IdEnv.id_opt_used.append(id)
 
 
     @staticmethod

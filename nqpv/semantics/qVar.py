@@ -102,7 +102,7 @@ class QvarLs:
                 return None
             # append in the env
             QvarLs.qvar.append(append_id)
-            IdEnv.id_qvar.add(append_id)
+            IdEnv.id_qvar_add(append_id)
 
         if isinstance(obj._data, tuple):
             result = QvarLs(obj, None)

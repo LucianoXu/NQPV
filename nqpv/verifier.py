@@ -135,7 +135,7 @@ def verify(folder_path : str, total_correctness : bool = False,
     else:
         ch_info.single("property to verify: Partial Correctness\n", p_output)
     
-    ch_info.single("precision: " + str(Settings.EPS) + "\n", p_output)
+    ch_info.single("precision: " + str(Settings.EPS()) + "\n", p_output)
     ch_info.single("operator equivalence check: " + ("Yes" if opt_eq_check else "No") + "\n", p_output)
     Settings.opt_eq_check = opt_eq_check
     ch_info.single("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n", p_output)

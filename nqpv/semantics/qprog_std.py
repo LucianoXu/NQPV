@@ -84,6 +84,8 @@ class QProg:
         if self.post is None:
             raise Exception("The post condition has not been set yet.")
 
+        LogSystem.channels["info"].single(str(self.post) + self.label)
+
         # calculate the weakest precondition
         wp = self._wp()
         if wp is None:

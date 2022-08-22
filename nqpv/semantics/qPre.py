@@ -155,6 +155,8 @@ class QPredicate:
             if not pre.qvls.isfull():
                 raise Exception("not full quantum variable list.")
 
+        print("begin SDP ...")
+
         # transform all the hermitian operators into matrices
         qubitn = len(QvarLs.qvar)
         dim = 2**qubitn
@@ -168,7 +170,7 @@ class QPredicate:
                 cp.real(cp.trace((mB - mA) @ X)) <= -Precision.EPS() for mA in msetA  # type: ignore
             ]
             prob = cp.Problem(cp.Minimize(0), constraints)  # type: ignore
-            prob.solve(eps = Precision.EPS()/10)
+            prob.solve(eps = Precision.EPS()/1000)
 
             # Print result. debug purpose.
             '''

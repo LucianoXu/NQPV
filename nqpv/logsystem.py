@@ -120,7 +120,7 @@ class LogSystem:
 
         return result
 
-    def single(self, data : Any, pfile : None | TextIOWrapper = None, cmd_print : bool = False) -> str:
+    def single(self, data : Any, pfile : None | TextIOWrapper = None, cmd_print : bool = True) -> str:
         '''
         push in the information, polish it, pop out and write to file/print out immediately.
         '''

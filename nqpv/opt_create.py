@@ -23,7 +23,9 @@ from __future__ import annotations
 import os
 
 import numpy as np
+
 from .semantics import qLA
+from .logsystem import LogSystem
 
 # transform m to the (2,2,2,...) form
 def to_shape_2(m : np.ndarray) -> np.ndarray | None:
@@ -71,12 +73,14 @@ def to_shape_3(m : np.ndarray) -> np.ndarray | None:
 
 
 def save_unitary(path : str, id : str, unitary : np.ndarray) -> bool:
+    LogSystem("error", "Error: ")
     m = to_shape_2(unitary)
     if m is None:
         print("The shape of the given tensor is invalid.")
         return False
     
     if not qLA.check_unity(m):
+        LogSystem.channels["error"].summary(None, True)
         print("The given tensor is not unitary.")
         return False
         
@@ -84,12 +88,14 @@ def save_unitary(path : str, id : str, unitary : np.ndarray) -> bool:
     return True
 
 def save_hermitian(path : str, id : str, herm : np.ndarray) -> bool:
+    LogSystem("error", "Error: ")
     m = to_shape_2(herm)
     if m is None:
         print("The shape of the given tensor is invalid.")
         return False
     
     if not qLA.check_hermitian_predicate(m):
+        LogSystem.channels["error"].summary(None, True)
         print("The given tensor is not a valid Hermitian predicate.")
         return False
         
@@ -97,12 +103,14 @@ def save_hermitian(path : str, id : str, herm : np.ndarray) -> bool:
     return True
 
 def save_measurement(path : str, id : str, measure : np.ndarray) -> bool:
+    LogSystem("error", "Error: ")
     m = to_shape_3(measure)
     if m is None:
         print("The shape of the given tensor is invalid.")
         return False
     
     if not qLA.check_measure(m):
+        LogSystem.channels["error"].summary(None, True)
         print("The given tensor is not a valid measurement.")
         return False
         

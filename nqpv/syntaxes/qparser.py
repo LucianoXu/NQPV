@@ -41,7 +41,7 @@ from ..logsystem import LogSystem
 # program declaration section
 def p_prog(p):
     'prog : predicate sequence predicate'
-    p[0] = qprog_proof_outline.QProofOutline(p[1], p[2], p[3], PosInfo(p[1].pos))
+    p[0] = qprog_proof_outline.QProofOutline(p[1], p[2], p[3])
 
 def p_sequence_append(p):
     'sequence : sequence SEMICOLON sentence'

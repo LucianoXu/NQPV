@@ -30,6 +30,7 @@ from ..id_env import IdEnv
 
 from ..syntaxes.pos_info import PosInfo
 from ..logsystem import LogSystem
+from ..settings import Settings
 
 # description of all operator properties in consideration
 opt_property = {
@@ -98,15 +99,15 @@ class OptEnv:
     lib : Dict[str, OperatorData] = {}
 
     @staticmethod
-    def append(m : np.ndarray, proposed_name : str = "", repeat_detect = True) -> str:
+    def append(m : np.ndarray, proposed_name : str = "", repeat_detect : bool = True) -> str:
         '''
         append the operator m to the operator environment, and return the actual name of the appended operator
         Actual name may be different from the proposed name due to coincidence of operators.
 
         proposed_name : if "", then a default name will be used.
-        repeat detect : whether to detect repeat operators when appending new operators
+        repeat detect [also controlled by Settings.opt_eq_check]: whether to detect repeat operators when appending new operators
         '''
-        if repeat_detect:
+        if Settings.opt_eq_check and repeat_detect:
             for id in OptEnv.lib:
                 if np_eps_equal(OptEnv.lib[id].data, m, Precision.EPS()):
                     return id

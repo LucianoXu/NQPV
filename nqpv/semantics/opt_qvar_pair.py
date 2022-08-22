@@ -93,6 +93,7 @@ class OptQvarPair:
         instance.qvls = qvls
         instance.pos = opt.pos
         instance.tags = {}
+        instance.origin = origin
 
         # check the required property
         if type != "":
@@ -114,7 +115,7 @@ class OptQvarPair:
         self.tags : Dict[str, bool]
 
         # this is the extension origin of this pair.
-        self.origin : OptQvarPair | None = origin
+        self.origin : OptQvarPair | None
     
     def check_property(self, property : str) -> bool:
         '''

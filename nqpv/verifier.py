@@ -62,7 +62,7 @@ def channel_check(pfile : TextIOWrapper | None, title : str = "") -> bool:
     '''
 
     # begin the title
-    LogSystem.channels["info"].single(title, pfile, True)
+    LogSystem.channels["info"].single(title, pfile)
 
     num_error = len(LogSystem.channels["error"])
     LogSystem.channels["error"].summary(pfile, True, True)
@@ -78,7 +78,7 @@ def channel_check(pfile : TextIOWrapper | None, title : str = "") -> bool:
     summary = "Error (" + str(num_error) + "), Warning (" + str(num_warning) + ")"
     if num_witness > 0:
         summary += ", witness reported"
-    LogSystem.channels["info"].single(summary, pfile, True)
+    LogSystem.channels["info"].single(summary, pfile)
 
     return num_error == 0
 
@@ -86,7 +86,8 @@ def channel_check(pfile : TextIOWrapper | None, title : str = "") -> bool:
 
 
 
-def verify(folder_path, total_correctness = False, opt_in_output = False, save_opt = False):
+def verify(folder_path : str, total_correctness : bool = False, 
+        opt_eq_check : bool = True, opt_in_output : bool = False, save_opt : bool = False):
 
     if total_correctness:
         print("total correctness not supported yet")
@@ -127,42 +128,52 @@ def verify(folder_path, total_correctness = False, opt_in_output = False, save_o
 
     ch_info.summary(p_output)
 
-    ch_info.single("folder path: "+ folder_path + "\n", p_output, True)
+    ch_info.single("folder path: "+ folder_path + "\n", p_output)
 
     if total_correctness:
-        ch_info.single("property to verify: Total Correctness\n", p_output, True)
+        ch_info.single("property to verify: Total Correctness\n", p_output)
     else:
-        ch_info.single("property to verify: Partial Correctness\n", p_output, True)
+        ch_info.single("property to verify: Partial Correctness\n", p_output)
     
-    ch_info.single("precision: " + str(Settings.EPS()) + "\n", p_output, True)
+    ch_info.single("precision: " + str(Settings.EPS) + "\n", p_output)
+    ch_info.single("operator equivalence check: " + ("Yes" if opt_eq_check else "No") + "\n", p_output)
+    Settings.opt_eq_check = opt_eq_check
+    ch_info.single("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n", p_output)
+    ch_info.single("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n", p_output)
 
-    ch_info.single("show operators in this output: " + ("Yes" if opt_in_output else "No") + "\n", p_output, True)
-    ch_info.single("operators saved in running paht: "+ ("Yes" if save_opt else "No") + "\n", p_output, True)
-
-    ch_info.single("--------------------------------------------", p_output, True)
+    ch_info.single("--------------------------------------------", p_output)
     ch_info.single("<prog>\n", p_output, True)
     ch_info.single(lineno_added(prog_str), p_output, True)
-    ch_info.single("\n--------------------------------------------\n", p_output, True)
+    ch_info.single("\n--------------------------------------------\n", p_output)
 
     # check whether the file is empty
     if prog_str == "":
-        ch_info.single("Program file '" + os.path.join(folder_path, 'prog.nqpv') + "' is empty.", p_output, True)
+        ch_info.single("Program file '" + os.path.join(folder_path, 'prog.nqpv') + "' is empty.", p_output)
         p_output.close()
         return
 
     # syntactic analysis, produce the abstract syntax tree
-    ch_info.single("syntactic and semantic analysis ...\n", None, True)
+    ch_info.single("syntactic and semantic analysis ...\n")
     ast = qparser.parser.parse(prog_str)
     if not channel_check(p_output, "Syntactic and Semantic Analysis:"):
         p_output.close()
         return
+    
+    if ast is None:
+        # if there is no error but ast is None, it means there is the unexpected EOF.
+        LogSystem.channels["error"].single("Unexpected EOF symbol (file ends unexpectedly).", p_output)
+        p_output.close()
+        return
 
     # exhibit the sequence of quantum variables
-    ch_info.single("\nQuantum Variable Sequence:\n" + str(QvarLs.qvar), p_output, True)
+    ch_info.single("\nQuantum Variable Sequence:\n" + str(QvarLs.qvar), p_output)
 
     # start verification
-    ch_info.single("\n--------------------------------------------\n", p_output, True)
-    ch_info.single("Verification Calculating ...\n", None, True)
+    ch_info.single("\n--------------------------------------------\n", p_output)
+    ch_info.single("Verification Calculating ...\n")
+
+    # the operator property check can be skipped here after
+    Settings.m_check = False
 
     ast.proof_check()
     
@@ -170,12 +181,12 @@ def verify(folder_path, total_correctness = False, opt_in_output = False, save_o
 
 
     # output the proof outline
-    ch_info.single("\n(proof outline shown in 'output.txt)\n", None, True)
+    ch_info.single("\n(proof outline shown in 'output.txt)\n")
     ch_info.single("--------------------------------------------", p_output, False)
     ch_info.single("<prog proof outline> \n", p_output, False)
     ch_info.single(lineno_added(str(ast)), p_output, False)
     if opt_in_output:
-        ch_info.single("(operators shown in 'output.txt')\n", None, True)
+        ch_info.single("(operators shown in 'output.txt')\n")
     ch_info.single("--------------------------------------------", p_output, False)
 
 
@@ -190,7 +201,7 @@ def verify(folder_path, total_correctness = False, opt_in_output = False, save_o
         
     # save the related operaters
     if save_opt:
-        ch_info.single("Saving operators...\n", None, True)
+        ch_info.single("Saving operators...\n")
         try:
             if not os.path.exists(os.path.join(folder_path, "opt_saved")):
                 os.mkdir(os.path.join(folder_path, "opt_saved"))
@@ -198,7 +209,7 @@ def verify(folder_path, total_correctness = False, opt_in_output = False, save_o
                 # ch_info.single(os.path.join(folder_path, id + ".npy")+" ... ", None, True)
                 np.save(os.path.join(folder_path ,"opt_saved", id + ".npy"), OptEnv.lib[id].data)
         except:
-            LogSystem.channels["error"].single("Operator Saving Fails.", p_output, True)
+            LogSystem.channels["error"].single("Operator Saving Fails.", p_output)
 
 
     # close the output file

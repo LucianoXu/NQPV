@@ -25,7 +25,7 @@ import numpy as np
 
 
 from ..logsystem import LogSystem
-
+from ..settings import Settings
 
 # the class to set the precision
 class Precision:
@@ -64,6 +64,9 @@ def check_unity(m : np.ndarray) -> bool:
     check whether tensor m is unitary
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
     '''
+    # whether to skip this check
+    if not Settings.m_check:
+        return True
 
     if len(m.shape) % 2 == 1:
         LogSystem.channels["error"].append("The dimension is invalid for an unitary operator.")
@@ -91,6 +94,10 @@ def check_hermitian_predicate(m : np.ndarray) -> bool:
     check whether tensor m is hermitian and 0 <= m <= I
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices
     '''
+    # whether to skip this check
+    if not Settings.m_check:
+        return True
+
     if len(m.shape) % 2 == 1:
         LogSystem.channels["error"].append("The dimension is invalid for an Hermitian predicate.")
         return False
@@ -124,6 +131,10 @@ def check_measure(m : np.ndarray) -> bool:
     m: tensor of shape (2,2,...,2), with the row indices in front of the column indices. 
         The first index of m corresponds to measurement result 0 or 1.
     '''
+    # whether to skip this check
+    if not Settings.m_check:
+        return True
+        
     if len(m.shape) % 2 == 0:
         LogSystem.channels["error"].append("The dimension is invalid for a measurement set.")
         return False

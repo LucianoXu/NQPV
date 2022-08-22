@@ -34,25 +34,25 @@ from ..syntaxes.pos_info import PosInfo
 from ..logsystem import LogSystem
 
 class QProofOutline:
-    def __new__(cls, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None, pos : PosInfo | None):
+    def __new__(cls, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None):
         if pre is None:
-            LogSystem.channels["error"].append("The precondition is invalid." + PosInfo.str(pos))
+            LogSystem.channels["error"].append("The precondition is invalid.")
             return None
         if progs is None:
-            LogSystem.channels["error"].append("The programs is invalid." + PosInfo.str(pos))
+            LogSystem.channels["error"].append("The programs is invalid." + PosInfo.str(pre.pos))
             return None
         if post is None:
-            LogSystem.channels["error"].append("The postcondition is invalid." + PosInfo.str(pos))
+            LogSystem.channels["error"].append("The postcondition is invalid." + PosInfo.str(pre.pos))
             return None
 
         instance = super().__new__(cls)
         instance.pre = pre
         instance.progs = progs
         instance.post = post
-        instance.pos = pos
+        instance.pos = pre.pos
         return instance
 
-    def __init__(self, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None, pos : PosInfo | None):
+    def __init__(self, pre : QPredicate | None, progs : QProgSequence | None, post : QPredicate | None):
         super().__init__()
         self.pre : QPredicate
         self.progs : QProgSequence

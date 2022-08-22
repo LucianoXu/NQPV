@@ -23,6 +23,12 @@ from . import semantics
 
 class Settings:
     version : str = "0.2b"
+
+    # whether to check the equivalence of operators while appending to the library
+    opt_eq_check : bool = True
+
+    # whether to do the check of operator properties, or skip the check
+    m_check : bool = True
     
     @staticmethod
     def EPS() -> float:

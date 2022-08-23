@@ -74,10 +74,12 @@ t_RBRACE = r'}'
 
 
 # close #8
-# use // to comment a line
+# use // or /* */ to comment
 def t_COMMENT(t):
     r'(/\*(.|\n)*?\*/)|(//.*)'
-    pass
+    for c in t.value:
+        if c == '\n':
+            t.lexer.lineno += 1
 
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z_0-9]*'

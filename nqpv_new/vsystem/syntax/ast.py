@@ -178,6 +178,9 @@ class AstSubproof(Ast):
         r = seq_set
         r = self.qvar_ls.qvar_seq(r)
         return r
+    
+    def __str__(self) -> str:
+        return str(self.subproof) + str(self.qvar_ls)
 
 
 class AstWhileProof(Ast):

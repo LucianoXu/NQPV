@@ -234,6 +234,7 @@ def eval_nondet(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast_s
 def eval_subproof(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast_stt : ast.AstSubproof):
     try:
         ext = post.full_extension(venv, qvar_seq)
+        
         subproof =  venv.get_var(ast_stt.subproof.id)
         if subproof.vtype.type != "proof":
             raise RuntimeErrorWithLog("The variable '" + ast_stt.subproof.id + "' is not a proof.", ast_stt.pos)
@@ -245,7 +246,7 @@ def eval_subproof(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast
         id_ls = [id.id for id in ast_stt.qvar_ls.data]
 
         # substitute the variables
-        new_subproof_data = subproof.data.substitute(id_ls)
+        new_subproof_data = subproof.data.substitute(ast_stt.pos, id_ls)
         new_name = venv.var_env.auto_name()
         venv.var_env.assign_var(
             new_name, VType("proof", (len(id_ls),)),
@@ -256,10 +257,9 @@ def eval_subproof(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast
         # check whether this subproof can be put in here
         try:
             sub_ext = new_subproof.data.post.full_extension(venv, qvar_seq)
-            sub_pre = new_subproof.data.pre.full_extension(venv, qvar_seq)
-            eval_predicate(venv, qvar_seq, sub_pre, sub_ext)
+            sqsubseteq(sub_ext, ext, venv)
         except RuntimeErrorWithLog:
-            raise RuntimeErrorWithLog("The proof '" + str(new_subproof) + "' can not be connected.", new_subproof.data.pos)
+            raise RuntimeErrorWithLog("The proof '" + str(ast_stt) + "' can not be connected.", new_subproof.data.pos)
 
 
         return QSubproof(ast_stt.pos, new_subproof.data.pre, ext, ast_stt.subproof.id, id_ls)

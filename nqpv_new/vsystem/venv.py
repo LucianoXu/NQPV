@@ -53,6 +53,18 @@ class VEnv:
         else:
             raise RuntimeErrorWithLog("The variable '" + key + "' is not defined.")
 
+    def move_var_up(self, key : str) -> None:
+        '''
+        if the variable exists in this environment, move the variable to the parent environment
+        '''
+        if key not in self.var_env.vars:
+            return
+        
+        if self.parent is None:
+            raise RuntimeErrorWithLog("There is no parent environment.")
+        self.parent.var_env.vars[key] = self.var_env[key]
+        self.var_env.vars.pop(key)
+
     def refresh(self) -> None:
         self.settings.apply()
 

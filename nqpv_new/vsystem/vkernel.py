@@ -150,8 +150,15 @@ class VKernel:
             if not isinstance(expr.data, ast.AstProof):
                 raise Exception("unexpected situation")
             
-            para_list = [id for id in ast_type.data]
+            para_list = [id.id for id in ast_type.data[1].data]
             proof = eval_proof(self.cur_venv, expr.data.qvar_seq(tuple(para_list)), None, expr.data)
+            
+            # move the generated variables to the parent environment
+            for pair in proof.pre.pairs:
+                self.cur_venv.move_var_up(pair[0])
+            for pair in proof.post.pairs:
+                self.cur_venv.move_var_up(pair[0])
+
             return Value(VType("proof", ()), proof)
         elif expr.elabel == 'wp':
             raise NotImplementedError()

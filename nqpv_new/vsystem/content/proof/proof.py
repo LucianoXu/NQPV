@@ -80,25 +80,25 @@ class QSubproof(QProofStatement):
         super().__init__(pos, pre, post)
         self.proof_id : str = proof_id
         self.qvar_ls : List[str] = qvar_ls
-    
-    def substitute(self, pos : PosInfo, new_qvar : Tuple[str,...]) -> QSubproof:
-        '''
-        return the proof with parameter quantum variables substituted
-        '''
-        new_pre_pairs = [(pair[0], list(new_qvar)) for pair in self.pre.pairs]
-        new_post_pairs = [(pair[0], list(new_qvar)) for pair in self.post.pairs]
-        return QSubproof(
-            pos, 
-            QPredicate(PosInfo(), new_pre_pairs), 
-            QPredicate(PosInfo(), new_post_pairs),
-            self.proof_id, list(new_qvar)
-        )
-
-    
+        
 class QProof:
     def __init__(self, pos : PosInfo, pre : QPredicate, post : QPredicate, statements : List[QProofStatement]):
         self.pos : PosInfo = pos
         self.pre : QPredicate = pre
         self.post : QPredicate = post
         self.statements : List[QProofStatement] = statements
+    
+    def substitute(self, pos : PosInfo, new_qvar : Tuple[str,...]) -> QProof:
+        '''
+        return the proof with parameter quantum variables substituted
+        '''
+        new_pre_pairs = [(pair[0], list(new_qvar)) for pair in self.pre.pairs]
+        new_post_pairs = [(pair[0], list(new_qvar)) for pair in self.post.pairs]
+        return QProof(
+            pos,
+            QPredicate(PosInfo(), new_pre_pairs), 
+            QPredicate(PosInfo(), new_post_pairs),
+            self.statements
+        )
+
 

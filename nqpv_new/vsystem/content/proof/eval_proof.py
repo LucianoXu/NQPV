@@ -98,7 +98,7 @@ def eval_init(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast_stt
             new_name, VType("operator", (len(qvar_seq),)),
             Value(VType("operator", (len(qvar_seq),)), new_opt)
         )
-        pre_pairs.append((new_opt, list(qvar_seq)))
+        pre_pairs.append((new_name, list(qvar_seq)))
 
     pre = QPredicate(PosInfo(), pre_pairs)
     return QInitProof(ast_stt.pos, pre, ext, id_ls)
@@ -121,7 +121,7 @@ def eval_unitary(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast_
                 new_name, VType("operator", (len(qvar_seq),)),
                 Value(VType("operator", (len(qvar_seq),)), new_opt)
             )
-            pre_pairs.append((new_opt, list(qvar_seq)))
+            pre_pairs.append((new_name, list(qvar_seq)))
 
         pre = QPredicate(PosInfo(), pre_pairs)
         return QUnitaryProof(ast_stt.qvar_ls.pos, pre, ext, id_ls, ast_stt.opt.id)
@@ -160,7 +160,7 @@ def eval_if(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast_stt :
                     new_name, VType("operator", (len(qvar_seq),)),
                     Value(VType("operator", (len(qvar_seq),)), new_opt)
                 )
-                pre_pairs.append((new_opt, list(qvar_seq)))
+                pre_pairs.append((new_name, list(qvar_seq)))
         
         pre = QPredicate(PosInfo(), pre_pairs)
         return QIfProof(ast_stt.pos, pre, ext, ast_stt.opt.id, id_ls, P1, P0)
@@ -198,7 +198,7 @@ def eval_while(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast_st
                     new_name, VType("operator", (len(qvar_seq),)),
                     Value(VType("operator", (len(qvar_seq),)), new_opt)
                 )
-                pre_pairs.append((new_opt, list(qvar_seq)))
+                pre_pairs.append((new_name, list(qvar_seq)))
         
         pre = QPredicate(PosInfo(), pre_pairs)
 
@@ -256,6 +256,7 @@ def eval_subproof(venv : VEnv, qvar_seq : Tuple[str,...], post : QPredicate, ast
 
         # check whether this subproof can be put in here
         try:
+            #########restart here, consider the logic of subproof
             sub_ext = new_subproof.data.post.full_extension(venv, qvar_seq)
             sqsubseteq(sub_ext, ext, venv)
         except RuntimeErrorWithLog:

@@ -1,0 +1,1 @@
+from dts.type_hierarchy import TermFact

@@ -370,9 +370,9 @@ def p_if_proof(p):
 
 def p_while_proof(p):
     '''
-    while_proof : inv WHILE id qvar_ls DO prog END
+    while_proof : inv WHILE id qvar_ls DO proof_mid END
     '''
-    p[0] = ast.AstWhileProof(p[1].pos, p[1], p[2], p[3], p[5])
+    p[0] = ast.AstWhileProof(p[1].pos, p[1], p[3], p[4], p[6])
 
     if p[0] is None:
         raise Exception("unexpected situation")

@@ -494,7 +494,7 @@ class TermFact:
             try:
                 para_env.get_term(term.id)
                 return
-            except:
+            except DTS_RuntimeError:
                 raise DTS_RuntimeError("free parameter detected")
         elif isinstance(term, ToType):
             self._no_para_check_iter(term.para.type, para_env)

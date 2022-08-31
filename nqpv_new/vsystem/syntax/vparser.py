@@ -31,15 +31,15 @@ from . import ast
 from ..log_system import LogSystem, RuntimeErrorWithLog
 
 # program declaration section
-def p_env(p):
+def p_scope(p):
     '''
-    env     : cmd
-            | env ';' cmd
+    scope   : cmd
+            | scope cmd
     '''
-    if isinstance(p[1], ast.AstEnv):
-        p[0] = ast.AstEnv(p[1].pos, p[1].cmd_ls + [p[3]])
+    if isinstance(p[1], ast.AstScope):
+        p[0] = ast.AstScope(p[1].pos, p[1].cmd_ls + [p[2]])
     else:
-        p[0] = ast.AstEnv(p[1].pos, [p[1]])
+        p[0] = ast.AstScope(p[1].pos, [p[1]])
 
     if p[0] is None:
         raise Exception("unexpected situation")
@@ -47,7 +47,6 @@ def p_env(p):
 def p_cmd(p):
     '''
     cmd     : definition
-            | example
             | axiom
     '''
     p[0] = p[1]
@@ -57,23 +56,13 @@ def p_cmd(p):
 
 def p_definition(p):
     '''
-    definition  : DEF id AS type BY expression END
-                | DEF opt_get AS type BY expression END
+    definition  : DEF id AS type BY scope_expr END
     '''
     p[0] = ast.AstDefinition(PosInfo(p.slice[1].lineno), p[2], p[4], p[6])
 
     if p[0] is None:
         raise Exception("unexpected situation")
 
-
-def p_example(p):
-    '''
-    example : EXAMPLE BY expression END
-    '''
-    p[0] = ast.AstExample(PosInfo(p.slice[1].lineno), p[3])
-
-    if p[0] is None:
-        raise Exception("unexpected situation")
 
 def p_axiom(p):
     '''
@@ -86,70 +75,36 @@ def p_axiom(p):
 
 def p_type(p):
     '''
-    type    : OPT_GET
-            | OPERATOR qvar_ls
-            | PROGRAM qvar_ls
+    type    : PROGRAM qvar_ls
             | PROOF qvar_ls
-            | predicate PROGRAM qvar_ls predicate
     '''
-    if p[1] == "opt_get":
-        label = "opt_get"
-    elif p[1] == "operator":
-        label = "operator"
-    elif p[1] == "program":
-        label = "program"
-    elif p[1] == "proof":
-        label = "proof"
-    else:
-        label = "proof_limited" # proof limited to the specified Hoare triple
 
-
-    if len(p) == 5:
-        p[0] = ast.AstType(p[1].pos, label, (p[1], p[2], p[3], p[4]))
-    elif len(p) == 3:
-        p[0] = ast.AstType(PosInfo(p.slice[1].lineno), label, (p[1], p[2]))
-    elif len(p) == 2:
-        p[0] = ast.AstType(PosInfo(p.slice[1].lineno), label, (p[1],))
+    if p[1] == "program":
+        p[0] = ast.AstTypeProg(PosInfo(p.slice[1].lineno), p[2])
     else:
         raise Exception("unexpected situation")
 
     if p[0] is None:
         raise Exception("unexpected situation")
+
+def p_scope_expr(p):
+    '''
+    scope_expr  : scope expression
+                | expression
+    '''
+    if len(p) == 2:
+        p[0] = ast.AstScopeExpr(p[1].pos, None, p[1])
+    else:
+        p[0] = ast.AstScopeExpr(p[1].pos, p[1], p[2])
+
 
 def p_expression(p):
     '''
-    expression  : env expression
-                | PROGRAM ':' prog
+    expression  : PROGRAM ':' prog
                 | PROOF ':' proof
                 | WP ':' proof
     '''
-    if len(p) == 3:
-        p[0] = p[2]
-        p[0].env = p[1]
-    else:
-        p[0] = ast.AstExpression(PosInfo(p.slice[1].lineno), p[1], p[3])
-
-    if p[0] is None:
-        raise Exception("unexpected situation")
-
-def p_opt_get(p):
-    '''
-    opt_get  : opt_get_pre ELLIPSIS ']'
-    '''
-    p[0] = p[1]
-
-    if p[0] is None:
-        raise Exception("unexpected situation")
-
-def p_opt_get_pre(p):
-    '''
-    opt_get_pre  : '[' id
-                    |   opt_get_pre id
-    '''
-    if p[1] == '[':
-        p[0] = ast.AstOptGetLs(PosInfo(p.slice[1].lineno), [p[2]])
-    else:
-        p[0] = ast.AstOptGetLs(p[1].pos, p[1].data + [p[2]])
+    p[0] = ast.AstExpression(PosInfo(p.slice[1].lineno), p[1], p[3])
 
     if p[0] is None:
         raise Exception("unexpected situation")

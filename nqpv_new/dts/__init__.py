@@ -13,4 +13,4 @@
  limitations under the License.
 '''
 
-from dts.type_hierarchy import TermFact, DTS_RuntimeError
+from .type_hierarchy import *

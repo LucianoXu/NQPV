@@ -37,7 +37,6 @@ reserved = {
     'as'    : 'AS',
     #'with'  : 'WITH',
     'by'    : 'BY',
-    'example'   : 'EXAMPLE',
 
     # inner calculation methods
     'wp'    : 'WP',

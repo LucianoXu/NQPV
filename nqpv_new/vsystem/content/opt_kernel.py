@@ -24,7 +24,7 @@ from typing import Any, List, Tuple
 import numpy as np
 
 
-from ...log_system import LogSystem
+from ..log_system import LogSystem
 
 # the class to set the precision
 class Precision:
@@ -52,7 +52,7 @@ class Precision:
         Precision._SDP_prercision = precision
     
 
-def np_eps_equal(a : np.ndarray, b : np.ndarray, eps : float) -> bool:
+def np_eps_equal(a : np.ndarray, b : np.ndarray) -> bool:
     '''
     check whether two tensors a and b are equal, according to maximum norm.
     '''
@@ -60,7 +60,7 @@ def np_eps_equal(a : np.ndarray, b : np.ndarray, eps : float) -> bool:
         return False
 
     diff = np.max(np_complex_norm(a - b))  # type: ignore
-    return diff < eps
+    return diff < Precision.EPS()
 
 def np_complex_norm(m : np.ndarray) -> np.ndarray:
     '''
@@ -90,7 +90,7 @@ def check_unity(m : np.ndarray) -> bool:
 
     # check the equality of U^dagger @ U and I
 
-    if not np_eps_equal(matrix @ np.transpose(np.conj(matrix)), np.eye(dim_m), Precision.EPS()):
+    if not np_eps_equal(matrix @ np.transpose(np.conj(matrix)), np.eye(dim_m)):
         LogSystem.channels["error"].append("The operator is not unitary.")
         return False
     return True
@@ -116,7 +116,7 @@ def check_hermitian_predicate(m : np.ndarray) -> bool:
     matrix = m.reshape((dim_m, dim_m))
 
     # check the equivalence of U^dagger @ U and I
-    if not np_eps_equal(matrix, np.transpose(np.conj(matrix)), Precision.EPS()):
+    if not np_eps_equal(matrix, np.transpose(np.conj(matrix))):
         LogSystem.channels["error"].append("The operator is not a Hermitian operator.")
         return False
 
@@ -153,7 +153,7 @@ def check_measure(m : np.ndarray) -> bool:
     m1 = m[1].reshape((dim_m, dim_m))
 
     # check the equivalence of U^dagger @ U and I
-    if not np_eps_equal(m0.conj().transpose() @ m0 + m1.conj().transpose() @ m1, np.eye(dim_m), Precision.EPS()):
+    if not np_eps_equal(m0.conj().transpose() @ m0 + m1.conj().transpose() @ m1, np.eye(dim_m)):
         LogSystem.channels["error"].append("This tensor does not satisfy the normalization requirement of a measurement set.")
         return False
     return True

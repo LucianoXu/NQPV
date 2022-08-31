@@ -22,11 +22,11 @@
 
 import os
 
-from nqpv_new.vsystem.content.opt.opt_kernel import get_opt_qnum
+from nqpv_new.vsystem.content.opt_kernel import get_opt_qnum
 
 from .log_system import LogSystem
-from .var_env import VType, Value, VarEnv
-from .venv import VEnv
+from ..vsystem.content.scope_term import ScopeTerm
+from ..vsystem.content.opt_term import OperatorTerm
 
 import numpy as np
 
@@ -201,16 +201,14 @@ optlib = {
     ).reshape((2,2,2,2,2,2)),
 }
 
-def get_opt_env() -> VarEnv:
+def get_opt_env() -> ScopeTerm:
     '''
     return the var environment containing the operators
     '''
-    r = VarEnv()
-    type_right = VType("operator", ())
+    scope = ScopeTerm("opt_library", None)
     for id in optlib:
-        type_left = VType("operator", (get_opt_qnum(optlib[id]),))
-        r.assign_var(id, type_left, Value(type_right, optlib[id]))
-    return r
+        scope[id] = OperatorTerm(optlib[id])
+    return scope
 
 
 '''

@@ -25,34 +25,28 @@ from typing import Any, List, Tuple
 from .pos_info import PosInfo
 
 class Ast:
-    def __init__(self, pos : PosInfo):
+    def __init__(self, pos : PosInfo, ast_label : str):
         pass
         self.pos : PosInfo = pos
-        #self.label : str
+        self.label : str = ast_label
         #self.legal : bool = True
 
-class AstEnv(Ast):
+class AstScope(Ast):
     def __init__(self, pos : PosInfo, cmd_ls : List[Ast]):
-        super().__init__(pos)
+        super().__init__(pos, "scope")
         self.cmd_ls : List[Ast] = cmd_ls
 
 class AstDefinition(Ast):
-    def __init__(self, pos : PosInfo, var : AstID | AstOptGetLs, vtype : AstType, expr : AstExpression):
-        super().__init__(pos)
-        self.var : AstID | AstOptGetLs = var
+    def __init__(self, pos : PosInfo, var : AstID, vtype : AstType, scope_expr : AstScopeExpr):
+        super().__init__(pos, "definition")
+        self.var : AstID = var
         self.vtype : AstType = vtype
-        self.expr : AstExpression = expr
-
-
-class AstExample(Ast):
-    def __init__(self, pos : PosInfo, expr : AstExpression):
-        super().__init__(pos)
-        self.expr : AstExpression = expr
+        self.scope_expr : AstScopeExpr = scope_expr
 
 class AstAxiom(Ast):
     def __init__(self, pos : PosInfo, subproof : AstID, pre : AstPredicate,
         subprog : AstID, qvar_ls : AstQvarLs, post : AstPredicate):
-        super().__init__(pos)
+        super().__init__(pos, "axiom")
         self.subproof : AstID = subproof
         self.pre : AstPredicate = pre
         self.subprog : AstID = subprog
@@ -60,27 +54,33 @@ class AstAxiom(Ast):
         self.post : AstPredicate = post
 
 
+class AstScopeExpr(Ast):
+    def __init__(self, pos : PosInfo, scope : AstScope | None, expr : AstExpression):
+        super().__init__(pos, "scope expression")
+        self.scope : AstScope | None = scope
+        self.expr : AstExpression = expr
+
 class AstType(Ast):
-    def __init__(self, pos : PosInfo, type : str, data : Tuple):
+    def __init__(self, pos : PosInfo):
+        super().__init__(pos, "type")
+
+class AstTypeProg(AstType):
+    def __init__(self, pos : PosInfo, qvarls : AstQvarLs):
         super().__init__(pos)
-        self.type : str = type
-        self.data : Tuple = data
+        self.qvarls : AstQvarLs = qvarls
+
+class AstTypeProof(AstType):
+    pass
 
 class AstExpression(Ast):
     def __init__(self, pos : PosInfo, elabel : str, data : AstProg | AstProof):
-        super().__init__(pos)
+        super().__init__(pos, "expresssion")
         self.elabel : str = elabel
         self.data : AstProg | AstProof = data
-        self.env : AstEnv | None = None
-
-class AstOptGetLs(Ast):
-    def __init__(self, pos: PosInfo, data : List[AstID]):
-        super().__init__(pos)
-        self.data : List[AstID] = data
 
 class AstQvarLs(Ast):
     def __init__(self, pos : PosInfo, data : List[AstID]):
-        super().__init__(pos)
+        super().__init__(pos, "qvar list")
         self.data : List[AstID] = data
     
     def __len__(self) -> int:
@@ -96,34 +96,9 @@ class AstQvarLs(Ast):
         r += "]"
         return r
 
-    def no_repeat(self) -> bool:
-        '''
-        check whether there is no repeat in this qvar list
-        '''
-        appeared : set[str] = set()
-        for id in self.data:
-            if id.id not in appeared:
-                appeared.add(id.id)
-            else:
-                return False
-        return True
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        for id in self.data:
-            if id.id not in r:
-                r = r + (id.id,)
-        return r
-
-
-
 class AstID(Ast):
     def __init__(self, pos : PosInfo, id : str):
-        super().__init__(pos)
+        super().__init__(pos, "ID")
         self.id : str = id
     
     def __str__(self) -> str:
@@ -131,53 +106,22 @@ class AstID(Ast):
 
 class AstIfProof(Ast):
     def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, proof1 : AstProof, proof0 : AstProof):
-        super().__init__(pos)
+        super().__init__(pos, "if proof")
         self.opt : AstID = opt
         self.qvar_ls : AstQvarLs = qvar_ls
         self.proof1 : AstProof = proof1
         self.proof0 : AstProof = proof0
 
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        r = self.qvar_ls.qvar_seq(r)
-        r = self.proof1.qvar_seq(r)
-        r = self.proof0.qvar_seq(r)
-        return r
-
 class AstInv(Ast):
     def __init__(self, pos : PosInfo, data : List[Tuple[AstID, AstQvarLs]]):
-        super().__init__(pos)
+        super().__init__(pos, "loop invariant")
         self.data : List[Tuple[AstID, AstQvarLs]] =  data
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        for pair in self.data:
-            r = pair[1].qvar_seq(r)
-        return r 
-
 
 class AstSubproof(Ast):
     def __init__(self, pos : PosInfo, subproof : AstID, qvar_ls : AstQvarLs):
-        super().__init__(pos)
+        super().__init__(pos, "subproof")
         self.subproof : AstID = subproof
         self.qvar_ls : AstQvarLs = qvar_ls
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        r = self.qvar_ls.qvar_seq(r)
-        return r
     
     def __str__(self) -> str:
         return str(self.subproof) + str(self.qvar_ls)
@@ -185,200 +129,78 @@ class AstSubproof(Ast):
 
 class AstWhileProof(Ast):
     def __init__(self, pos : PosInfo, inv : AstInv, opt : AstID, qvar_ls : AstQvarLs, proof : AstProof):
-        super().__init__(pos)
+        super().__init__(pos, "while proof")
         self.inv : AstInv = inv
         self.opt : AstID = opt
         self.qvar_ls : AstQvarLs = qvar_ls
         self.proof : AstProof = proof
 
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        r = self.inv.qvar_seq(r)
-        r = self.qvar_ls.qvar_seq(r)
-        r = self.proof.qvar_seq(r)
-        return r
-
 class AstNondetProof(Ast):
     def __init__(self, pos : PosInfo, data : List[AstProof]):
-        super().__init__(pos)
+        super().__init__(pos, "nondeterministic choice proof")
         self.data : List[AstProof] = data
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        for proof in self.data:
-            r = prog.qvar_seq(r)  # type: ignore
-        return r
 
 class AstPredicate(Ast):
     def __init__(self, pos : PosInfo, data : List[Tuple[AstID, AstQvarLs]]):
-        super().__init__(pos)
+        super().__init__(pos, "predicate")
         self.data : List[Tuple[AstID, AstQvarLs]] = data
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        for pair in self.data:
-            r = pair[1].qvar_seq(r)
-        return r
 
 
 class AstProof(Ast):
     def __init__(self, pos : PosInfo, data : List[Ast]):
-        super().__init__(pos)
+        super().__init__(pos, "proof")
         self.data : List[Ast] = data
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        for p in self.data:
-            r = p.qvar_seq(r)  # type: ignore
-        return r
 
 
 class AstProg(Ast):
     def __init__(self, pos : PosInfo, data : List[Ast]):
-        super().__init__(pos)
+        super().__init__(pos, "program sequence")
         self.data : List[Ast] = data
     
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        for prog in self.data:
-            r = prog.qvar_seq(r)  # type: ignore
-        return r
-
 
 class AstNondet(Ast):
     def __init__(self, pos : PosInfo, data : List[AstProg]):
-        super().__init__(pos)
+        super().__init__(pos, "nondeterministic choice")
         self.data : List[AstProg] = data
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        for prog in self.data:
-            r = prog.qvar_seq(r)  # type: ignore
-        return r
 
 class AstWhile(Ast):
     def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, prog : AstProg):
-        super().__init__(pos)
+        super().__init__(pos, "while")
         self.opt : AstID = opt
         self.qvar_ls : AstQvarLs = qvar_ls
         self.prog : AstProg = prog
 
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        r = self.qvar_ls.qvar_seq(r)
-        r = self.prog.qvar_seq(r)
-        return r
-
 class AstIf(Ast):
     def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, prog1 : AstProg, prog0 : AstProg):
-        super().__init__(pos)
+        super().__init__(pos, "if")
         self.opt : AstID = opt
         self.qvar_ls : AstQvarLs = qvar_ls
         self.prog1 : AstProg = prog1
         self.prog0 : AstProg = prog0
 
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        r = self.qvar_ls.qvar_seq(r)
-        r = self.prog1.qvar_seq(r)
-        r = self.prog0.qvar_seq(r)
-        return r
-
 class AstUnitary(Ast):
     def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs):
-        super().__init__(pos)
+        super().__init__(pos, "unitary transformation")
         self.opt : AstID = opt
         self.qvar_ls : AstQvarLs = qvar_ls
 
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        r = self.qvar_ls.qvar_seq(r)
-        return r
 
 class AstInit(Ast):
     def __init__(self, pos : PosInfo, qvar_ls : AstQvarLs):
-        super().__init__(pos)
+        super().__init__(pos, "initialization")
         self.qvar_ls : AstQvarLs = qvar_ls
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        r = self.qvar_ls.qvar_seq(r)
-        return r
-
 class AstAbort(Ast):
     def __init__(self, pos : PosInfo):
-        super().__init__(pos)
+        super().__init__(pos, "abort")
 
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        return seq_set
 
 class AstSkip(Ast):
     def __init__(self, pos : PosInfo):
-        super().__init__(pos)
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        return seq_set
+        super().__init__(pos, "skip")
 
 
 class AstSubprog(Ast):
     def __init__(self, pos : PosInfo, subprog : AstID, qvar_ls : AstQvarLs):
-        super().__init__(pos)
+        super().__init__(pos, "subprogram")
         self.subprog : AstID = subprog
         self.qvar_ls : AstQvarLs = qvar_ls
-
-    def qvar_seq(self, seq_set : Tuple[str,...] = ()) -> Tuple[str,...]:
-        '''
-        return the qvar (ordered) list appear in this program
-        seq_set : the list that is already considered
-        '''
-        r = seq_set
-        r = self.qvar_ls.qvar_seq(r)
-        return r
-

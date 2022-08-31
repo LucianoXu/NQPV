@@ -14,7 +14,8 @@
 '''
 
 # Dependent Type System Support
-
+# To extend 'terms', inherbit from Term, and overload the following methods:
+#  __eq__, substitute, eval
 
 from __future__ import annotations
 from typing import List, Tuple, Dict
@@ -154,46 +155,15 @@ class Term:
         '''
         return the new term with the parameter substituted
         WARNING: no type check for val is applied
-        '''
-        if isinstance(self, Sort) or isinstance(self, Axiom) or isinstance(self, Var):
-            return self
-        
+        '''        
 
-        if self._type is None:
-            raise Exception("unexpected situation")
-        else:
-            new_type = self._type.substitute(para, val)
+        return self
 
-        if isinstance(self, ToType):
-            new_para = self.para.substitute(para, val)
-            if isinstance(new_para, Term):
-                # this should not happen, because parameter id are unique
-                raise Exception("unexpected situation")
+    def eval(self) -> Term:
+        return self
 
-            new_term = ToType(new_type, new_para, self._type_right.substitute(para, val))
-            new_term.set_parent_env(self._para_env)
-            return new_term
-
-        if isinstance(self, Lambda):
-            new_para = self.para.substitute(para, val)
-            if isinstance(new_para, Term):
-                # this should not happen, because parameter id are unique
-                raise Exception("unexpected situation")
-
-            new_term = Lambda(new_type, new_para, self._output.substitute(para, val))
-            return new_term
-
-        if isinstance(self, Apply):
-            new_term_fun = self._term_fun.substitute(para, val)
-            if not isinstance(new_term_fun, ToType):
-                raise Exception("unexpected situation")
-
-            new_term = Apply(new_type, new_term_fun, self._term_val.substitute(para, val))
-            new_term.set_parent_env(self._para_env)
-            return new_term
-        
-        raise Exception("unexpected situation")
-
+    def __eq__(self, other) -> bool:
+        return NotImplemented
 
 class Sort(Term):
     '''
@@ -273,6 +243,9 @@ class Var(Term):
                 return False
         else:
             return self.val == other
+    
+    def eval(self) -> Term:
+        return self._value
 
 
 class ToType(Term):
@@ -328,6 +301,22 @@ class ToType(Term):
         else:
             raise NotImplemented
 
+    def substitute(self, para: Para, val: Term | Para) -> Term:
+        if self._type is None:
+            raise Exception("unexpected situation")
+        else:
+            new_type = self._type.substitute(para, val)
+
+        new_para = self.para.substitute(para, val)
+        if isinstance(new_para, Term):
+            # this should not happen, because parameter id are unique
+            raise Exception("unexpected situation")
+
+        new_term = ToType(new_type, new_para, self._type_right.substitute(para, val))
+        new_term.set_parent_env(self._para_env)
+        return new_term        
+
+
 class Lambda(Term):
     '''
     Construct a term as an anonymous function
@@ -351,7 +340,7 @@ class Lambda(Term):
             raise Exception("unexpected situation")
         return self._para_env.para
 
-    def eval(self, val : Term | Para) -> Term:
+    def eval_on_val(self, val : Term | Para) -> Term:
         '''
         evaluate the output using 'val' as input
         WARNING : no type check
@@ -371,6 +360,19 @@ class Lambda(Term):
         else:
             raise NotImplemented
 
+    def substitute(self, para: Para, val: Term | Para) -> Term:
+        if self._type is None:
+            raise Exception("unexpected situation")
+        else:
+            new_type = self._type.substitute(para, val)
+
+        new_para = self.para.substitute(para, val)
+        if isinstance(new_para, Term):
+            # this should not happen, because parameter id are unique
+            raise Exception("unexpected situation")
+
+        new_term = Lambda(new_type, new_para, self._output.substitute(para, val))
+        return new_term
 
 
 class Apply(Term):
@@ -419,7 +421,7 @@ class Apply(Term):
             return result
         
         elif isinstance(self._term_fun, Lambda):
-            result = self._term_fun.eval(self._term_val)
+            result = self._term_fun.eval_on_val(self._term_val)
             # set the parent environment to None
             result.set_parent_env(ParaMicroEnv())
             return result
@@ -430,27 +432,52 @@ class Apply(Term):
     def __eq__(self, other) -> bool:
         return self.eval() == other
 
+    def substitute(self, para: Para, val: Term | Para) -> Term:
+        if self._type is None:
+            raise Exception("unexpected situation")
+        else:
+            new_type = self._type.substitute(para, val)
+
+        new_term_fun = self._term_fun.substitute(para, val)
+        if not isinstance(new_term_fun, ToType):
+            raise Exception("unexpected situation")
+
+        new_term = Apply(new_type, new_term_fun, self._term_val.substitute(para, val))
+        new_term.set_parent_env(self._para_env)
+        return new_term
+        
+
 
 class TermFact:
     '''
     Apply the factory model. New instance checks are done here.
     '''
 
-    def __init__(self, max_sort_level : int = 16):
+    __instance : TermFact | None = None
+    __max_sort_level : int = 16
+
+    def __new__(cls):
+        if TermFact.__instance is not None:
+            return TermFact.__instance
+
+        instance = super().__new__(cls)
         #initialize a term factory
 
-        if max_sort_level < 0:
+        if TermFact.__max_sort_level < 0:
             raise DTS_RuntimeError("Invalid maximum sort level.")
 
-        # max sort level
-        self._max_sort_level : int = max_sort_level
-
         # the list of all sorts, the index corresponds to the universe number
-        self._sort_list : List[Sort] = [Sort(None, max_sort_level)]
+        instance._sort_list = [Sort(None, TermFact.__max_sort_level)]
 
-        for u_num in range(max_sort_level-1, -1, -1):
-            upper_sort = self._sort_list[0]
-            self._sort_list.insert(0, Sort(upper_sort, u_num))
+        for u_num in range(TermFact.__max_sort_level-1, -1, -1):
+            upper_sort = instance._sort_list[0]
+            instance._sort_list.insert(0, Sort(upper_sort, u_num))
+        
+        TermFact.__instance = instance
+        return instance
+
+    def __init__(self):
+        self._sort_list : List[Sort]
 
     # term construction methods
     def sort_term(self, u_num : int) -> Sort:
@@ -480,7 +507,7 @@ class TermFact:
             raise DTS_RuntimeError("invalid value")
         # check whether the type and value corresponds
         if not value.type == type:
-            raise DTS_RuntimeError("The value '" + str(value) + "' is not of type '" + str(type) + ".")
+            raise DTS_RuntimeError("The value '" + str(value) + "' is not of type '" + str(type) + "'.")
         
         self.no_para_check(type)
         self.no_para_check(value)

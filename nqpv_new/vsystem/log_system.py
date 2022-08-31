@@ -36,7 +36,7 @@ class LogSystem:
         single case design
         '''
         if not isinstance(name, str) or not isinstance(prefix, str) or not isinstance(end, str):
-            raise Exception("invalid input")
+            raise ValueError()
 
         if name not in LogSystem.channels:
             channel = super().__new__(cls)

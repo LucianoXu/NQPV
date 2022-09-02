@@ -81,8 +81,8 @@ def p_type(p):
 
     if p[1] == "program":
         p[0] = ast.AstTypeProg(PosInfo(p.slice[1].lineno), p[2])
-    else:
-        raise Exception("unexpected situation")
+    elif p[1] == "proof":
+        p[0] = ast.AstTypeProof(PosInfo(p.slice[1].lineno), p[2])
 
     if p[0] is None:
         raise Exception("unexpected situation")
@@ -102,7 +102,6 @@ def p_expression(p):
     '''
     expression  : PROGRAM ':' prog
                 | PROOF ':' proof
-                | WP ':' proof
     '''
     p[0] = ast.AstExpression(PosInfo(p.slice[1].lineno), p[1], p[3])
 
@@ -160,9 +159,9 @@ def p_prog(p):
             | prog ';' statement
     '''
     if len(p) == 2:
-        p[0] = ast.AstProg(p[1].pos, [p[1]])
+        p[0] = ast.AstProgSeq(p[1].pos, [p[1]])
     else:
-        p[0] = ast.AstProg(p[1].pos, p[1].data + [p[3]])
+        p[0] = ast.AstProgSeq(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
         raise Exception("unexpected situation")
@@ -274,9 +273,9 @@ def p_nondet_pre(p):
 
 def p_proof(p):
     '''
-    proof   : proof_mid ';' predicate
+    proof   : predicate ';' proof_mid ';' predicate
     '''
-    p[0] = ast.AstProof(p[1].pos, p[1].data + [p[3]])
+    p[0] = ast.AstProof(p[1].pos, p[1], p[3], p[5])
 
     if p[0] is None:
         raise Exception("unexpected situation")
@@ -287,9 +286,9 @@ def p_proof_mid(p):
                 | proof_mid ';' proof_statement
     '''
     if len(p) == 2:
-        p[0] = ast.AstProof(p[1].pos, [p[1]])
+        p[0] = ast.AstProofSeq(p[1].pos, [p[1]])
     else:
-        p[0] = ast.AstProof(p[1].pos, p[1].data + [p[3]])
+        p[0] = ast.AstProofSeq(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
         raise Exception("unexpected situation")
@@ -325,9 +324,9 @@ def p_if_proof(p):
 
 def p_while_proof(p):
     '''
-    while_proof : inv WHILE id qvar_ls DO proof_mid END
+    while_proof : inv ';' WHILE id qvar_ls DO proof_mid END
     '''
-    p[0] = ast.AstWhileProof(p[1].pos, p[1], p[3], p[4], p[6])
+    p[0] = ast.AstWhileProof(p[1].pos, p[1], p[4], p[5], p[7])
 
     if p[0] is None:
         raise Exception("unexpected situation")

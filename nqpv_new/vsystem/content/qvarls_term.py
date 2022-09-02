@@ -106,6 +106,16 @@ class QvarlsTerm(dts.Term):
             new_qvarls.append(new_qvar)
         
         return QvarlsTerm(tuple(new_qvarls))
+
+    def cover(self, other : QvarlsTerm) -> bool:
+        '''
+        return whether this qvar list 'covers' the other qvar list
+        '''
+        for qvar in other._qvarls:
+            if qvar not in self._qvarls:
+                return False
+        return True
+
     
     def join(self, other : QvarlsTerm) -> QvarlsTerm:
         '''
@@ -117,4 +127,15 @@ class QvarlsTerm(dts.Term):
             if qvar not in new_qvarls:
                 new_qvarls.append(qvar)
         return QvarlsTerm(tuple(new_qvarls))
+
+def val_qvarls(term : dts.Term) -> QvarlsTerm:
+    if not isinstance(term, dts.Term):
+        raise ValueError()
+    if term.type != type_qvarls:
+        raise ValueError()
+        
+    val = term.eval()
+    if not isinstance(val, QvarlsTerm):
+        raise Exception()
+    return val
 

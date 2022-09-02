@@ -90,3 +90,56 @@ class OperatorTerm(dts.Term):
     
     def __str__(self) -> str:
         return str(self._m)
+
+    def dagger(self) -> OperatorTerm:
+        '''
+        return the dagger operator
+        '''
+        r = OperatorTerm(opt_kernel.dagger(self._m))
+        if self.unitary:
+            r.ensure_unitary()
+        if self.hermitian_predicate:
+            r.ensure_hermitian_predicate()
+        return r
+
+    def opt_mea0(self) -> OperatorTerm:
+        '''
+        return the operator for measurement result 0
+        '''
+        if not self.measurement:
+            raise ValueError()
+        return OperatorTerm(self._m[0])
+    
+    def opt_mea1(self) -> OperatorTerm:
+        '''
+        return the operator for measurement result 1
+        '''
+        if not self.measurement:
+            raise ValueError()
+        return OperatorTerm(self._m[1])
+
+    def __add__(self, other : OperatorTerm) -> OperatorTerm:
+        '''
+        return the addition result
+        (cannot automatically ensure any property)
+        '''
+        if not isinstance(other, OperatorTerm):
+            raise ValueError()
+        r = OperatorTerm(self._m + other._m)
+        '''
+        # check whether it is hermitian predicate
+        if self.hermitian_predicate and other.hermitian_predicate:
+            r.ensure_hermitian_predicate()
+        '''
+        return r
+
+def val_opt(term : dts.Term) -> OperatorTerm:
+    if not isinstance(term, dts.Term):
+        raise ValueError()
+    if term.type != type_operator:
+        raise ValueError()
+
+    val = term.eval()
+    if not isinstance(val, OperatorTerm):
+        raise Exception()
+    return val

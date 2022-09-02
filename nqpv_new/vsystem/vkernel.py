@@ -25,6 +25,8 @@ from nqpv_new.vsystem.content.opt_pair_term import OptPairTerm
 
 
 from nqpv_new.vsystem.content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
+from nqpv_new.vsystem.content.proof_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, SkipHintTerm, SubproofHintTerm, UnitaryHintTerm, WhileHintTerm
+from nqpv_new.vsystem.content.qpre_term import QPreTerm
 from nqpv_new.vsystem.content.qvarls_term import QvarlsTerm
 
 from nqpv_new.vsystem.content.scope_term import ScopeTerm
@@ -88,6 +90,8 @@ class VKernel:
                 # create the var being defined
                 if isinstance(cmd.vtype, ast.AstTypeProg):
                     defining_var = ProgDefiningTerm(self.eval_qvarls(cmd.vtype.qvarls))
+                elif isinstance(cmd.vtype, ast.AstTypeProof):
+                    defining_var = ProofDefiningTerm()
                 else:
                     raise Exception("unexpected situation")
                 self.cur_scope[cmd.var.id] = defining_var
@@ -125,81 +129,134 @@ class VKernel:
         except RuntimeErrorWithLog:
             raise RuntimeErrorWithLog("Invalid quantum variable list.", qvarls.pos)
 
-    def eval_prog(self, data : ast.Ast) -> ProgSttTerm:
+    def eval_qpre(self, qpre : ast.AstPredicate | ast.AstInv) -> QPreTerm:
         try:
-            if isinstance(data, ast.AstSkip):
-                return SkipTerm()
-            elif isinstance(data, ast.AstAbort):
-                return AbortTerm()
-            elif isinstance(data, ast.AstInit):
-                qvarls = self.eval_qvarls(data.qvar_ls)
-                return InitTerm(qvarls)
-            elif isinstance(data, ast.AstUnitary):
-                opt = self.cur_scope[data.opt.id]
-                qvarls = self.eval_qvarls(data.qvar_ls)
-                pair = OptPairTerm(opt, qvarls)
-                return UnitaryTerm(pair)
-            elif isinstance(data, ast.AstIf):
-                S1 = self.eval_prog(data.prog1)
-                S0 = self.eval_prog(data.prog0)
-                opt = self.cur_scope[data.opt.id]
-                qvarls = self.eval_qvarls(data.qvar_ls)
-                pair = OptPairTerm(opt, qvarls)
-                return IfTerm(pair, S1, S0)
-            elif isinstance(data, ast.AstWhile):
-                S = self.eval_prog(data.prog)
-                opt = self.cur_scope[data.opt.id]
-                qvarls = self.eval_qvarls(data.qvar_ls)
-                pair = OptPairTerm(opt, qvarls)
-                return WhileTerm(pair, S)
-            elif isinstance(data, ast.AstNondet):
-                prog_ls = []
-                for subprog in data.data:
-                    prog_ls.append(self.eval_prog(subprog))
-                return NondetTerm(tuple(prog_ls))
-            elif isinstance(data, ast.AstSubprog):
-                subprog = self.cur_scope[data.subprog.id]
-                qvarls = self.eval_qvarls(data.qvar_ls)
-                return SubProgTerm(subprog, qvarls)
-            elif isinstance(data, ast.AstProg):
-                prog_ls = []
-                for subprog in data.data:
-                    prog_ls.append(self.eval_prog(subprog))
-                return ProgSttSeqTerm(tuple(prog_ls))
-            else:
-                raise Exception("unexpected situation")
+            pair_ls : List[OptPairTerm] = []
+            for pair in qpre.data:
+                opt = self.cur_scope[pair[0].id]
+                qvarls = self.eval_qvarls(pair[1])
+                pair_ls.append(OptPairTerm(opt, qvarls))
+            return QPreTerm(tuple(pair_ls))
         except RuntimeErrorWithLog:
-            # report the failure
-            raise RuntimeErrorWithLog("Invalid '" + data.label + "' statement.", data.pos)
+            raise RuntimeErrorWithLog("Invalid quantum predicate.", qpre.pos)
+
+
+
+    def eval_prog(self, data : ast.Ast) -> ProgSttTerm:
+        if isinstance(data, ast.AstSkip):
+            return SkipTerm()
+        elif isinstance(data, ast.AstAbort):
+            return AbortTerm()
+        elif isinstance(data, ast.AstInit):
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            return InitTerm(qvarls)
+        elif isinstance(data, ast.AstUnitary):
+            opt = self.cur_scope[data.opt.id]
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            pair = OptPairTerm(opt, qvarls)
+            return UnitaryTerm(pair)
+        elif isinstance(data, ast.AstIf):
+            S1 = self.eval_prog(data.prog1)
+            S0 = self.eval_prog(data.prog0)
+            opt = self.cur_scope[data.opt.id]
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            pair = OptPairTerm(opt, qvarls)
+            return IfTerm(pair, S1, S0)
+        elif isinstance(data, ast.AstWhile):
+            S = self.eval_prog(data.prog)
+            opt = self.cur_scope[data.opt.id]
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            pair = OptPairTerm(opt, qvarls)
+            return WhileTerm(pair, S)
+        elif isinstance(data, ast.AstNondet):
+            prog_ls = []
+            for subprog in data.data:
+                prog_ls.append(self.eval_prog(subprog))
+            return NondetTerm(tuple(prog_ls))
+        elif isinstance(data, ast.AstSubprog):
+            subprog = self.cur_scope[data.subprog.id]
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            return SubProgTerm(subprog, qvarls)
+        elif isinstance(data, ast.AstProgSeq):
+            prog_ls = []
+            for subprog in data.data:
+                prog_ls.append(self.eval_prog(subprog))
+            return ProgSttSeqTerm(tuple(prog_ls))
+        else:
+            raise Exception("unexpected situation")
+
+    def eval_proof(self, data : ast.Ast) -> ProofHintTerm:
+        if isinstance(data, ast.AstSkip):
+            return SkipHintTerm()
+        elif isinstance(data, ast.AstAbort):
+            return AbortHintTerm()
+        elif isinstance(data, ast.AstInit):
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            return InitHintTerm(qvarls)
+        elif isinstance(data, ast.AstUnitary):
+            opt = self.cur_scope[data.opt.id]
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            pair = OptPairTerm(opt, qvarls)
+            return UnitaryHintTerm(pair)
+        elif isinstance(data, ast.AstIfProof):
+            P1 = self.eval_proof(data.proof1)
+            P0 = self.eval_proof(data.proof0)
+            opt = self.cur_scope[data.opt.id]
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            pair = OptPairTerm(opt, qvarls)
+            return IfHintTerm(pair, P1, P0)
+        elif isinstance(data, ast.AstWhileProof):
+            inv = self.eval_qpre(data.inv)
+            P = self.eval_proof(data.proof)
+            opt = self.cur_scope[data.opt.id]
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            pair = OptPairTerm(opt, qvarls)
+            return WhileHintTerm(inv, pair, P)
+        elif isinstance(data, ast.AstNondetProof):
+            proof_ls = []
+            for subproof in data.data:
+                proof_ls.append(self.eval_proof(subproof))
+            return NondetHintTerm(tuple(proof_ls))
+        elif isinstance(data, ast.AstSubproof):
+            subproof = self.cur_scope[data.subproof.id]
+            qvarls = self.eval_qvarls(data.qvar_ls)
+            return SubproofHintTerm(subproof, qvarls)
+        elif isinstance(data, ast.AstProofSeq):
+            proof_ls = []
+            for subproof in data.data:
+                proof_ls.append(self.eval_proof(subproof))
+            return ProofSeqHintTerm(tuple(proof_ls))
+        else:
+            raise Exception("unexpected situation")
 
     def eval_expr(self, expr_type : ast.AstType, expr_data : ast.Ast) -> dts.Term:
         '''
         evaluate the expression and return the value (containing type and data)
         '''
-        if isinstance(expr_type, ast.AstTypeProg):
-            if not isinstance(expr_data, ast.AstProg):
+        try:
+            if isinstance(expr_type, ast.AstTypeProg):
+                if not isinstance(expr_data, ast.AstProgSeq):
+                    raise Exception("unexpected situation")
+
+                prog_content = self.eval_prog(expr_data)
+                arg_ls = self.eval_qvarls(expr_type.qvarls)
+                return ProgDefinedTerm(prog_content, arg_ls)
+                
+            elif isinstance(expr_type, ast.AstTypeProof):
+                if not isinstance(expr_data, ast.AstProof):
+                    raise Exception("unexpected situation")
+                
+                proof_hint = self.eval_proof(expr_data.mid)
+                arg_ls = self.eval_qvarls(expr_type.qvarls)
+                return ProofDefinedTerm(
+                    self.eval_qpre(expr_data.pre), 
+                    proof_hint, 
+                    self.eval_qpre(expr_data.post), 
+                    arg_ls, self.cur_scope
+                )
+            else:
                 raise Exception("unexpected situation")
-
-            prog_content = self.eval_prog(expr_data)
-            arg_ls = self.eval_qvarls(expr_type.qvarls)
-            return ProgDefinedTerm(prog_content, arg_ls)
-            
-        elif isinstance(expr_type, ast.AstTypeProof):
-            if not isinstance(expr_data, ast.AstProof):
-                raise Exception("unexpected situation")
-            
-            raise NotImplementedError()
-
-            para_list = [id.id for id in ast_type.data[1].data]
-            proof = eval_proof(self.cur_venv, expr.data.qvar_seq(tuple(para_list)), None, expr.data)
-            
-            # move the generated variables to the parent scope
-            for pair in proof.pre.pairs:
-                self.cur_venv.move_var_up(pair[0])
-            for pair in proof.post.pairs:
-                self.cur_venv.move_var_up(pair[0])
-
-            return Value(VType("proof", ()), proof)
-        else:
-            raise Exception("unexpected situation")
+        except RuntimeErrorWithLog:
+            # report the failure
+            raise RuntimeErrorWithLog("Invalid '" + expr_data.label + "' statement.", expr_data.pos)
 

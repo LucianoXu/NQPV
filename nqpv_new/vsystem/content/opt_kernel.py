@@ -76,12 +76,12 @@ def check_unity(m : np.ndarray) -> bool:
     '''
 
     if len(m.shape) % 2 == 1:
-        LogSystem.channels["error"].append("The dimension is invalid for an unitary operator.")
+        #LogSystem.channels["error"].append("The dimension is invalid for an unitary operator.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            LogSystem.channels["error"].append("The dimension is invalid for an unitary operator.")
+            #LogSystem.channels["error"].append("The dimension is invalid for an unitary operator.")
             return False
     
     # calculate the dim for matrix
@@ -91,7 +91,7 @@ def check_unity(m : np.ndarray) -> bool:
     # check the equality of U^dagger @ U and I
 
     if not np_eps_equal(matrix @ np.transpose(np.conj(matrix)), np.eye(dim_m)):
-        LogSystem.channels["error"].append("The operator is not unitary.")
+        #LogSystem.channels["error"].append("The operator is not unitary.")
         return False
     return True
 
@@ -103,12 +103,12 @@ def check_hermitian_predicate(m : np.ndarray) -> bool:
     '''
 
     if len(m.shape) % 2 == 1:
-        LogSystem.channels["error"].append("The dimension is invalid for an Hermitian predicate.")
+        #LogSystem.channels["error"].append("The dimension is invalid for an Hermitian predicate.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            LogSystem.channels["error"].append("The dimension is invalid for an Hermitian predicate.")
+            #LogSystem.channels["error"].append("The dimension is invalid for an Hermitian predicate.")
             return False
     
     # calculate the dim for matrix
@@ -117,13 +117,13 @@ def check_hermitian_predicate(m : np.ndarray) -> bool:
 
     # check the equivalence of U^dagger @ U and I
     if not np_eps_equal(matrix, np.transpose(np.conj(matrix))):
-        LogSystem.channels["error"].append("The operator is not a Hermitian operator.")
+        #LogSystem.channels["error"].append("The operator is not a Hermitian operator.")
         return False
 
     # check 0 <= matrix <= I
     e_vals = np.linalg.eigvals(matrix)
     if np.any(e_vals < 0 - Precision.EPS()) or np.any(e_vals > 1 + Precision.EPS()):
-        LogSystem.channels["error"].append("The requirement 0 <= Predicate <= I is not satisfied.")
+        #LogSystem.channels["error"].append("The requirement 0 <= Predicate <= I is not satisfied.")
         return False
         
     return True
@@ -137,12 +137,12 @@ def check_measure(m : np.ndarray) -> bool:
     '''
         
     if len(m.shape) % 2 == 0:
-        LogSystem.channels["error"].append("The dimension is invalid for a measurement set.")
+        #LogSystem.channels["error"].append("The dimension is invalid for a measurement set.")
         return False
 
     for dim in m.shape:
         if dim != 2:
-            LogSystem.channels["error"].append("The dimension is invalid for a measurement set.")
+            #LogSystem.channels["error"].append("The dimension is invalid for a measurement set.")
             return False
     
     # calculate the dim for matrix
@@ -154,7 +154,7 @@ def check_measure(m : np.ndarray) -> bool:
 
     # check the equivalence of U^dagger @ U and I
     if not np_eps_equal(m0.conj().transpose() @ m0 + m1.conj().transpose() @ m1, np.eye(dim_m)):
-        LogSystem.channels["error"].append("This tensor does not satisfy the normalization requirement of a measurement set.")
+        #LogSystem.channels["error"].append("This tensor does not satisfy the normalization requirement of a measurement set.")
         return False
     return True
 

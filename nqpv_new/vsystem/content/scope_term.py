@@ -88,7 +88,17 @@ class ScopeTerm(dts.Term):
         if key in self._vars:
             raise RuntimeErrorWithLog("The variable '" + key + "' already exists in the scope '" + str(self.scope_prefix) + "'.")
 
-        self._vars[key] = dts.Var(self.scope_prefix + key, value.type, value)
+        self._vars[key] = dts.Var(self.scope_prefix + key, value.type, value, key)
+
+    def append(self, value : dts.Term) -> str:
+        '''
+        append the value into the scope, with an auto name
+        return the auto name used
+        '''
+        name = self.auto_name()
+        self[name] = value
+        return name
+
 
     def remove_var(self, key : str) -> None:
         '''

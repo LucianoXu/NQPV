@@ -68,15 +68,21 @@ class AstTypeProg(AstType):
     def __init__(self, pos : PosInfo, qvarls : AstQvarLs):
         super().__init__(pos)
         self.qvarls : AstQvarLs = qvarls
+    def __str__(self) -> str:
+        return "program " + str(self.qvarls)
 
 class AstTypeProof(AstType):
-    pass
+    def __init__(self, pos : PosInfo, qvarls : AstQvarLs):
+        super().__init__(pos)
+        self.qvarls : AstQvarLs = qvarls
+    def __str__(self) -> str:
+        return "proof " + str(self.qvarls)
 
 class AstExpression(Ast):
-    def __init__(self, pos : PosInfo, elabel : str, data : AstProg | AstProof):
+    def __init__(self, pos : PosInfo, elabel : str, data : AstProgSeq | AstProof):
         super().__init__(pos, "expresssion")
         self.elabel : str = elabel
-        self.data : AstProg | AstProof = data
+        self.data : AstProgSeq | AstProof = data
 
 class AstQvarLs(Ast):
     def __init__(self, pos : PosInfo, data : List[AstID]):
@@ -147,36 +153,42 @@ class AstPredicate(Ast):
 
 
 class AstProof(Ast):
-    def __init__(self, pos : PosInfo, data : List[Ast]):
+    def __init__(self, pos : PosInfo, pre : AstPredicate, mid : AstProofSeq, post : AstPredicate):
         super().__init__(pos, "proof")
+        self.mid : AstProofSeq = mid
+        self.pre : AstPredicate = pre
+        self.post : AstPredicate = post
+
+class AstProofSeq(Ast):
+    def __init__(self, pos : PosInfo, data : List[Ast]):
+        super().__init__(pos, "proof sequence")
         self.data : List[Ast] = data
 
-
-class AstProg(Ast):
+class AstProgSeq(Ast):
     def __init__(self, pos : PosInfo, data : List[Ast]):
         super().__init__(pos, "program sequence")
         self.data : List[Ast] = data
     
 
 class AstNondet(Ast):
-    def __init__(self, pos : PosInfo, data : List[AstProg]):
+    def __init__(self, pos : PosInfo, data : List[AstProgSeq]):
         super().__init__(pos, "nondeterministic choice")
-        self.data : List[AstProg] = data
+        self.data : List[AstProgSeq] = data
 
 class AstWhile(Ast):
-    def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, prog : AstProg):
+    def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, prog : AstProgSeq):
         super().__init__(pos, "while")
         self.opt : AstID = opt
         self.qvar_ls : AstQvarLs = qvar_ls
-        self.prog : AstProg = prog
+        self.prog : AstProgSeq = prog
 
 class AstIf(Ast):
-    def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, prog1 : AstProg, prog0 : AstProg):
+    def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, prog1 : AstProgSeq, prog0 : AstProgSeq):
         super().__init__(pos, "if")
         self.opt : AstID = opt
         self.qvar_ls : AstQvarLs = qvar_ls
-        self.prog1 : AstProg = prog1
-        self.prog0 : AstProg = prog0
+        self.prog1 : AstProgSeq = prog1
+        self.prog0 : AstProgSeq = prog0
 
 class AstUnitary(Ast):
     def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs):

@@ -23,8 +23,8 @@ from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
 from nqpv_new import dts
-from .qvarls_term import QvarlsTerm, type_qvarls
-from .opt_pair_term import OptPairTerm, type_opt_pair
+from .qvarls_term import QvarlsTerm, type_qvarls, val_qvarls
+from .opt_pair_term import OptPairTerm, type_opt_pair, val_opt_pair
 from ..log_system import RuntimeErrorWithLog
 
 fac = dts.TermFact()
@@ -47,6 +47,17 @@ class ProgSttTerm(dts.Term):
 
     def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
         raise NotImplementedError()
+
+def val_prog_stt(term : dts.Term) -> ProgSttTerm:
+    if not isinstance(term, dts.Term):
+        raise ValueError()
+    if term.type != type_prog_stt:
+        raise ValueError()
+
+    val = term.eval()
+    if not isinstance(val, ProgSttTerm):
+        raise Exception()
+    return val
 
 # note: by program equivalence, we allow the freedom of subprogram substitution
 # for eval() the subprogram substitution is also considered.
@@ -95,18 +106,13 @@ class InitTerm(ProgSttTerm):
         if qvarls.type != type_qvarls:
             raise RuntimeErrorWithLog("The input '" + str(qvarls) + "' is not of type '" + str(type_qvarls) + "'.")
         
-        qvarls_val = qvarls.eval()
-        if not isinstance(qvarls_val, QvarlsTerm):
-            raise Exception("unexpected situation")
+        qvarls_val = val_qvarls(qvarls)
         super().__init__(qvarls_val)
         self._qvarls : dts.Term = qvarls
     
     @property
     def qvarls_val(self) -> QvarlsTerm:
-        val = self._qvarls.eval()
-        if not isinstance(val, QvarlsTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_qvarls(self._qvarls)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, InitTerm):
@@ -129,9 +135,7 @@ class UnitaryTerm(ProgSttTerm):
             raise ValueError()
         if opt_pair.type != type_opt_pair:
             raise RuntimeErrorWithLog("The input '" + str(opt_pair) + "' is not of type '" + str(type_opt_pair) + "'.")
-        opt_pair_val = opt_pair.eval()
-        if not isinstance(opt_pair_val, OptPairTerm):
-            raise Exception("unexpected situation")
+        opt_pair_val = val_opt_pair(opt_pair)
         # check for unitary opt pair
         if not opt_pair_val.unitary_pair:
             raise RuntimeErrorWithLog("The operator variable pair '" + str(opt_pair) + "' is not an unitary pair.")
@@ -141,10 +145,7 @@ class UnitaryTerm(ProgSttTerm):
 
     @property
     def opt_pair_val(self) -> OptPairTerm:
-        val = self._opt_pair.eval()
-        if not isinstance(val, OptPairTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_opt_pair(self._opt_pair)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, UnitaryTerm):
@@ -172,24 +173,18 @@ class IfTerm(ProgSttTerm):
             raise ValueError()
         if opt_pair.type != type_opt_pair:
             raise RuntimeErrorWithLog("The input '" + str(opt_pair) + "' is not of type '" + str(type_opt_pair) + "'.")
-        opt_par_val = opt_pair.eval()
-        if not isinstance(opt_par_val, OptPairTerm):
-            raise Exception("unexpected situation")
+        opt_par_val = val_opt_pair(opt_pair)
         # check for measurement opt pair
         if not opt_par_val.measurement_pair:
             raise RuntimeErrorWithLog("The operator variable pair '" + str(opt_pair) + "' is not a measurement set pair.")
         
         if S1.type != type_prog_stt:
             raise RuntimeErrorWithLog("The S1 input term '" + str(S1) + "' is not a program statement sequence.")
-        S1_val = S1.eval()
-        if not isinstance(S1_val, ProgSttTerm):
-            raise Exception("unexpected situation")
+        S1_val = val_prog_stt(S1)
 
         if S0.type != type_prog_stt:
             raise RuntimeErrorWithLog("The S0 input term '" + str(S0) + "' is not a program statement sequence.")
-        S0_val = S0.eval()
-        if not isinstance(S0_val, ProgSttTerm):
-            raise Exception("unexpected situation")
+        S0_val = val_prog_stt(S0)
 
         all_qvarls = opt_par_val.qvarls_val
         all_qvarls = all_qvarls.join(S1_val.all_qvarls)
@@ -201,24 +196,16 @@ class IfTerm(ProgSttTerm):
 
     @property
     def opt_pair_val(self) -> OptPairTerm:
-        val = self._opt_pair.eval()
-        if not isinstance(val, OptPairTerm):
-            raise Exception("unexpected situation")
-        return val
-    
+        return val_opt_pair(self._opt_pair)
+
     @property
     def S1_val(self) -> ProgSttTerm:
-        val = self._S1.eval()
-        if not isinstance(val, ProgSttTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_prog_stt(self._S1)
+
     @property
     def S0_val(self) -> ProgSttTerm:
-        val = self._S0.eval()
-        if not isinstance(val, ProgSttTerm):
-            raise Exception("unexpected situation")
-        return val
-    
+        return val_prog_stt(self._S0)
+
     def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
         opt_pair_val = self.opt_pair_val
         return IfTerm(
@@ -250,18 +237,15 @@ class WhileTerm(ProgSttTerm):
             raise ValueError()
         if opt_pair.type != type_opt_pair:
             raise RuntimeErrorWithLog("The input '" + str(opt_pair) + "' is not of type '" + str(type_opt_pair) + "'.")
-        opt_pair_val = opt_pair.eval()
-        if not isinstance(opt_pair_val, OptPairTerm):
-            raise Exception("unexpected situation")
+        opt_pair_val = val_opt_pair(opt_pair)
+
         # check for measurement opt pair
         if not opt_pair_val.measurement_pair:
             raise RuntimeErrorWithLog("The operator variable pair '" + str(opt_pair) + "' is not a measurement set pair.")
         
         if S.type != type_prog_stt:
-            raise RuntimeErrorWithLog("The S1 input term '" + str(S) + "' is not a program statement sequence.")
-        S_val = S.eval()
-        if not isinstance(S_val, ProgSttTerm):
-            raise Exception("unexpected situation")
+            raise RuntimeErrorWithLog("The S input term '" + str(S) + "' is not a program statement sequence.")
+        S_val = val_prog_stt(S)
         
         all_qvarls = opt_pair_val.qvarls_val
         all_qvarls = all_qvarls.join(S_val.all_qvarls)
@@ -271,17 +255,11 @@ class WhileTerm(ProgSttTerm):
 
     @property
     def opt_pair_val(self) -> OptPairTerm:
-        val = self._opt_pair.eval()
-        if not isinstance(val, OptPairTerm):
-            raise Exception("unexpected situation")
-        return val
-    
+        return val_opt_pair(self._opt_pair)
+
     @property
     def S_val(self) -> ProgSttTerm:
-        val = self._S.eval()
-        if not isinstance(val, ProgSttTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_prog_stt(self._S)
 
     def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
         opt_pair_val = self.opt_pair_val
@@ -315,22 +293,17 @@ class NondetTerm(ProgSttTerm):
         # example each item in the tuple
         for item in subprog_ls:
             if not isinstance(item, dts.Term):
-                raise Exception("unexpected situation")
+                raise ValueError()
             if item.type != type_prog_stt:
                 raise RuntimeErrorWithLog("The input term '" + str(item) + "' is not a program statement sequence.")
-            item_val = item.eval()
-            if not isinstance(item_val, ProgSttTerm):
-                raise Exception("unexpected situation")
+            item_val = val_prog_stt(item)
             all_qvarls = all_qvarls.join(item_val.all_qvarls)
         
         super().__init__(all_qvarls)
         self._subprog_ls : Tuple[dts.Term,...] = subprog_ls
 
     def get_stt(self, i : int) -> ProgSttTerm:
-        val = self._subprog_ls[i].eval()
-        if not isinstance(val, ProgSttTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_prog_stt(self._subprog_ls[i])
 
     def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
         new_ls = []
@@ -371,33 +344,22 @@ class SubProgTerm(ProgSttTerm):
             raise RuntimeErrorWithLog("The term '" + str(arg_ls) + "' is not a quantum variable list.")
         
         # check whether the arguments match the program signature
-        subprog_val = subprog.eval()
-        if not isinstance(subprog_val, ProgTerm):
-            raise Exception("unexpected situation")
-        arg_ls_val = arg_ls.eval()
-        if not isinstance(arg_ls_val, QvarlsTerm):
-            raise Exception("unexpected situation")
+        subprog_val = val_prog(subprog)
+        arg_ls_val = val_qvarls(arg_ls)
         if len(subprog_val.arg_ls_val) != len(arg_ls_val):
             raise RuntimeErrorWithLog("The argument list '" + str(arg_ls) + "' does not match the program '" + str(subprog) + "'.")
         
-
         super().__init__(arg_ls_val)
         self._subprog : dts.Term = subprog
         self._arg_ls : dts.Term = arg_ls
 
     @property
     def subprog_val(self) -> ProgDefinedTerm:
-        val = self._subprog.eval()
-        if not isinstance(val, ProgDefinedTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_prog_defined(self._subprog)
     
     @property
     def arg_ls_val(self) -> QvarlsTerm:
-        val = self._arg_ls.eval()
-        if not isinstance(val, QvarlsTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_qvarls(self._arg_ls)
 
     def __eq__(self, other) -> bool:
         raise NotImplemented
@@ -427,9 +389,7 @@ class ProgSttSeqTerm(ProgSttTerm):
                 raise ValueError()
             if item.type != type_prog_stt:
                 raise RuntimeErrorWithLog("The term '" + str(item) + "' is not a program statement.")
-            item_val = item.eval()
-            if not isinstance(item_val, ProgSttTerm):
-                raise Exception("unexpected situation")
+            item_val = val_prog_stt(item)
             all_qvarls = all_qvarls.join(item_val.all_qvarls)
 
         super().__init__(all_qvarls)
@@ -446,10 +406,7 @@ class ProgSttSeqTerm(ProgSttTerm):
         return len(self._stt_ls)
 
     def get_stt(self, i : int) -> ProgSttTerm:
-        val = self._stt_ls[i].eval()
-        if not isinstance(val, ProgSttTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_prog_stt(self._stt_ls[i])
 
     def __eq__(self, other) -> bool:
         if isinstance(other, ProgSttSeqTerm):
@@ -478,13 +435,22 @@ class ProgSttSeqTerm(ProgSttTerm):
             new_ls.append(self.get_stt(i).eval())
         return ProgSttSeqTerm(tuple(new_ls))
 
+def val_prog_stt_seq(term : dts.Term) -> ProgSttSeqTerm:
+    if not isinstance(term, dts.Term):
+        raise ValueError()
+    if term.type != type_prog_stt:
+        raise ValueError()
+
+    val = term.eval()
+    if not isinstance(val, ProgSttSeqTerm):
+        raise Exception()
+    return val
+
 class ProgTerm(dts.Term):
     def __init__(self, arg_ls : dts.Term):
         if arg_ls.type != type_qvarls:
             raise RuntimeErrorWithLog("The term '" + str(arg_ls) + "' is not a quantum variable list.")
-        arg_ls_val = arg_ls.eval()
-        if not isinstance(arg_ls_val, QvarlsTerm):
-            raise Exception("unexpected situation")
+        arg_ls_val = val_qvarls(arg_ls)
         
         super().__init__(type_prog, None)
         self._arg_ls : dts.Term = arg_ls
@@ -496,10 +462,18 @@ class ProgTerm(dts.Term):
 
     @property
     def arg_ls_val(self) -> QvarlsTerm:
-        val = self._arg_ls.eval()
-        if not isinstance(val, QvarlsTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_qvarls(self._arg_ls)
+
+def val_prog(term : dts.Term) -> ProgTerm:
+    if not isinstance(term, dts.Term):
+        raise ValueError()
+    if term.type != type_prog:
+        raise ValueError()
+
+    val = term.eval()
+    if not isinstance(val, ProgTerm):
+        raise Exception()
+    return val
 
 class ProgDefiningTerm(ProgTerm):
     '''
@@ -517,9 +491,7 @@ class ProgDefinedTerm(ProgTerm):
             raise ValueError()
         if prog_seq.type != type_prog_stt:
             raise RuntimeErrorWithLog("The term '" + str(prog_seq) + "' is not a program statement sequence.")
-        arg_ls_val = arg_ls.eval()
-        if not isinstance(arg_ls_val, QvarlsTerm):
-            raise Exception("unexpected situation")
+        arg_ls_val = val_qvarls(arg_ls)
         
         super().__init__(arg_ls)
         self._prog_seq : dts.Term = prog_seq
@@ -528,10 +500,7 @@ class ProgDefinedTerm(ProgTerm):
     
     @property
     def prog_seq_val(self) -> ProgSttSeqTerm:
-        val = self._prog_seq.eval()
-        if not isinstance(val, ProgSttSeqTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_prog_stt_seq(self._prog_seq)
 
     @property
     def all_qvarls(self) -> QvarlsTerm:
@@ -539,10 +508,7 @@ class ProgDefinedTerm(ProgTerm):
 
     @property
     def arg_ls_val(self) -> QvarlsTerm:
-        val = self._arg_ls.eval()
-        if not isinstance(val, QvarlsTerm):
-            raise Exception("unexpected situation")
-        return val
+        return val_qvarls(self._arg_ls)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, ProgDefinedTerm):
@@ -558,3 +524,14 @@ class ProgDefinedTerm(ProgTerm):
             return NotImplemented
         else:
             return False
+
+def val_prog_defined(term : dts.Term) -> ProgDefinedTerm:
+    if not isinstance(term, dts.Term):
+        raise ValueError()
+    if term.type != type_prog:
+        raise ValueError()
+
+    val = term.eval()
+    if not isinstance(val, ProgDefinedTerm):
+        raise Exception()
+    return val

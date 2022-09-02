@@ -214,24 +214,35 @@ class Var(Term):
     variable with identifier and value.
     Readonly. No copy needed in assignment.
     '''
-    def __init__(self, var_id : str, type : Term, value : Term):
+    def __init__(self, var_id : str, type : Term, value : Term, var_name : str = ""):
         '''
         the variable value 'value' must be of the type 'type'
         '''
         super().__init__(type, None)
         self._var_id : str = var_id
         self._value : Term = value
+
+        # name decides how this variable is displayed
+        # note that different variable have different ids, but can have the same name
+        self._var_name : str = var_name
     
     @property
     def id(self) -> str:
         return self._var_id
     
     @property
+    def name(self) -> str:
+        return self._var_name
+    
+    @property
     def val(self) -> Term:
         return self._value
 
     def __str__(self) -> str:
-        return self.id
+        if self._var_name != "":
+            return self._var_name
+        else:
+            return self.id
     
     def __eq__(self, other : Term) -> bool:
         if isinstance(other, Var):

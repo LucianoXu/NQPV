@@ -21,10 +21,12 @@
 # ------------------------------------------------------------
 
 import os
+from nqpv import dts
 
 from nqpv.vsystem.content.opt_kernel import get_opt_qnum
 
-from .log_system import LogSystem
+from .log_system import LogSystem, RuntimeErrorWithLog
+from .content.opt_term import type_operator
 from .content.scope_term import ScopeTerm
 from .content.opt_term import OperatorTerm
 
@@ -211,32 +213,24 @@ def get_opt_env() -> ScopeTerm:
     return scope
 
 
-'''
-def optload_inject(folder_path : str) -> bool:
-    return whether the optload has been successfully done.
+
+def optload(path : str) -> OperatorTerm:
     try:
-        
-        for item in os.listdir(folder_path):
-            new_path = os.path.join(folder_path, item)
-            if os.path.isfile(new_path):
-                if item.endswith(".npy"):
-                    id = item[:-4]
-                    if id in opt_env.OptEnv.lib:
-                        LogSystem.channels["warning"].append("The operator '" + id + "' appeared more than once.")
-                    else:
-                        opt_env.OptEnv.append(np.load(new_path), id, False)
-            elif os.path.isdir(new_path):
-                if not optload_inject(new_path):
-                    return False
-                    
-        return True
+        return OperatorTerm(np.load(path))
 
     except:
-        LogSystem.channels["error"].append("Error occured while loading operatiors in the folder " + folder_path + ".")
-        return False
-'''
+        raise RuntimeErrorWithLog("Cannot load the operatior at '" + path + "'. (filename extension is needed)")
 
 
-
-
+def optsave(opt : dts.Var, path : str) -> None:
+    try:
+        if opt.type != type_operator:
+            raise RuntimeErrorWithLog("The variable '" + str(opt) + "' is not an operator.")
+        opt_val = opt.eval()
+        if not isinstance(opt_val, OperatorTerm):
+            raise Exception()
+        np.save(path, opt_val.m)
+    
+    except:
+        raise RuntimeErrorWithLog("Cannot save the operator '" + str(opt) + "' at the position '" + path + "'.") 
 

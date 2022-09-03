@@ -27,7 +27,7 @@ from nqpv import dts
 from .settings import Settings
 from .syntax import ast
 from .log_system import LogSystem, RuntimeErrorWithLog
-from .optenv_inject import get_opt_env
+from .optenv import get_opt_env, optload, optsave
 
 from .content.qvarls_term import QvarlsTerm
 from .content.opt_pair_term import OptPairTerm
@@ -89,17 +89,33 @@ class VKernel:
         for cmd in scope_ast.cmd_ls:
 
             if isinstance(cmd, ast.AstDefinition):
-
-                self.eval_def(cmd)
+                try:
+                    self.eval_def(cmd)
+                except RuntimeErrorWithLog:
+                    raise RuntimeErrorWithLog("Invalid 'def' command.", cmd.pos)
 
             elif isinstance(cmd, ast.AstAxiom):
-                raise NotImplementedError()
+                try:
+                    raise NotImplementedError()
+                except RuntimeErrorWithLog:
+                    raise RuntimeErrorWithLog("Invalid 'axiom' command.", cmd.pos)
+
             elif isinstance(cmd, ast.AstShow):
-                var_path = self.eval_varpath(cmd.var)
-                if var_path not in self.cur_scope:
-                    raise RuntimeErrorWithLog("The variable '" + str(var_path) + "' does not exist.")
-                # append the information
-                LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(self.cur_scope[var_path].eval()))
+                try:
+                    var_path = self.eval_varpath(cmd.var)
+                    if var_path not in self.cur_scope:
+                        raise RuntimeErrorWithLog("The variable '" + str(var_path) + "' does not exist.")
+                    # append the information
+                    LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(self.cur_scope[var_path].eval()))
+                except RuntimeErrorWithLog:
+                    raise RuntimeErrorWithLog("Invalid 'show' command.", cmd.pos)
+
+            elif isinstance(cmd, ast.AstSaveOpt):
+                try:
+                    var_path = self.eval_varpath(cmd.var)
+                    optsave(self.cur_scope[var_path], cmd.path)
+                except RuntimeErrorWithLog:
+                    raise RuntimeErrorWithLog("Invalid 'save' command.", cmd.pos)
             else:
                 raise Exception("unexpected situation")
     
@@ -274,6 +290,11 @@ class VKernel:
                 self.eval_scope(cmd.expr.data)
                 self.pop()
 
+            elif isinstance(cmd.vtype, ast.AstTypeOperator):
+                if isinstance(cmd.expr.data, ast.AstLoadOpt):
+                    self.cur_scope[cmd.var.id] = optload(cmd.expr.data.path)
+                else:
+                    raise Exception("unexpected situation")
             else:
                 raise Exception("unexpected situation")
         except RuntimeErrorWithLog:

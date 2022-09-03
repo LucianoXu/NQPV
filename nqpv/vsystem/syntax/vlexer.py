@@ -31,13 +31,15 @@ from .pos_info import PosInfo
 
 reserved = {
     # for vsystem
-    'import': 'IMPORT',
     'def'   : 'DEF',
     'axiom' : 'AXIOM',
     'show'  : 'SHOW',
+    'save'  : 'SAVE',
+    'at'    : 'AT',
 
     # inner calculation methods
-    'wp'    : 'WP',
+    'import': 'IMPORT',
+    'load'  : 'LOAD',
 
     # keywords for type
     'operator'  : 'OPERATOR',
@@ -60,20 +62,23 @@ reserved = {
 # List of token names.
 tokens = [
     'ID',
+    'STRING',
     'INIT',
     'ASSIGN',
     'MUL_EQ',
-    'ELLIPSIS'
  ] + list(reserved.values())
 
 # Regular expression rules for simple tokens
 t_INIT = r':=0'
 t_ASSIGN = r':='
 t_MUL_EQ = r'\*='
-t_ELLIPSIS = r'\.\.\.'
 
 literals = ['.', ',', ';', '#', ':', '[', ']', '(', ')', '{', '}']
 
+
+def t_STRING(t):
+    r'".*"'
+    return t
 
 # use // or /* */ to comment
 def t_COMMENT(t):

@@ -50,11 +50,22 @@ def p_cmd(p):
     cmd     : definition
             | axiom
             | show
+            | save
     '''
     p[0] = p[1]
 
     if p[0] is None:
         raise Exception("unexpected situation")
+
+def p_save(p):
+    '''
+    save    : SAVE var AT STRING
+    '''
+    p[0] = ast.AstSaveOpt(PosInfo(p.slice[1].lineno), p[2], p[4][1:-1])
+
+    if p[0] is None:
+        raise Exception("unexpected situation")
+
 
 def p_show(p):
     '''
@@ -89,6 +100,7 @@ def p_type(p):
     type    : PROGRAM qvar_ls
             | PROOF qvar_ls
             | SCOPE
+            | OPERATOR
     '''
 
     if p[1] == "program":
@@ -97,6 +109,8 @@ def p_type(p):
         p[0] = ast.AstTypeProof(PosInfo(p.slice[1].lineno), p[2])
     elif p[1] == "scope":
         p[0] = ast.AstTypeScope(PosInfo(p.slice[1].lineno))
+    elif p[1] == "operator":
+        p[0] = ast.AstTypeOperator(PosInfo(p.slice[1].lineno))
 
     if p[0] is None:
         raise Exception("unexpected situation")
@@ -106,8 +120,18 @@ def p_expression(p):
     expression  : prog
                 | proof
                 | scope
+                | load
     '''
     p[0] = ast.AstExpression(p[1].pos, p[1])
+
+    if p[0] is None:
+        raise Exception("unexpected situation")
+
+def p_load(p):
+    '''
+    load    : LOAD STRING
+    '''
+    p[0] = ast.AstLoadOpt(PosInfo(p.slice[1].lineno), p[2][1:-1])
 
     if p[0] is None:
         raise Exception("unexpected situation")

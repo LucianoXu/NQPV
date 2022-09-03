@@ -54,6 +54,13 @@ class AstShow(Ast):
         super().__init__(pos, "show")
         self.var : AstVar = var
 
+class AstSaveOpt(Ast):
+    def __init__(self, pos : PosInfo, var : AstVar, path : str):
+        super().__init__(pos, "save operator")
+        self.var : AstVar = var
+        self.path : str = path
+
+
 class AstType(Ast):
     def __init__(self, pos : PosInfo):
         super().__init__(pos, "type")
@@ -75,6 +82,16 @@ class AstTypeProof(AstType):
         self.qvarls : AstQvarLs = qvarls
     def __str__(self) -> str:
         return "proof " + str(self.qvarls)
+
+class AstTypeOperator(AstType):
+    def __init__(self, pos : PosInfo):
+        super().__init__(pos)
+
+
+class AstLoadOpt(Ast):
+    def __init__(self, pos : PosInfo, path : str):
+        super().__init__(pos, "load operator")
+        self.path : str = path
 
 class AstExpression(Ast):
     def __init__(self, pos : PosInfo, data : Ast):

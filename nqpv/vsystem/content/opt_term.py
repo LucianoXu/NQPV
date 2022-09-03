@@ -89,7 +89,13 @@ class OperatorTerm(dts.Term):
             return False
     
     def __str__(self) -> str:
-        return str(self._m)
+        # output according to its property
+        if self.hermitian_predicate or self.unitary:
+            return str(self._m.reshape((2**self.qnum, 2**self.qnum)))
+        elif self.measurement:
+            return str(self._m.reshape((2, 2**self.qnum, 2**self.qnum)))
+        else:
+            return str(self._m)
 
     def dagger(self) -> OperatorTerm:
         '''
@@ -139,7 +145,12 @@ def val_opt(term : dts.Term) -> OperatorTerm:
     if term.type != type_operator:
         raise ValueError()
 
-    val = term.eval()
-    if not isinstance(val, OperatorTerm):
+    if isinstance(term, OperatorTerm):
+        return term
+    elif isinstance(term, dts.Var):
+        val = term.val
+        if not isinstance(val, OperatorTerm):
+            raise Exception()
+        return val
+    else:
         raise Exception()
-    return val

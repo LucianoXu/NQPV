@@ -92,14 +92,23 @@ class QPreTerm(dts.Term):
         for i in range(len(self)):
             result = result.join(self.get_pair(i).qvarls_val)
         return result
+    
+    def str_content(self) -> str:
+        '''
+        get the string for the content only (for str(inv), for example)
+        '''
+        if len(self) == 0:
+            return ""
+        else:
+            r = str(self._opt_pairs[0])
+            for i in range(1, len(self)):
+                r += " " + str(self._opt_pairs[i])
+            return r
 
     def __str__(self) -> str:
         if len(self) == 0:
             return "{}"
-        r = "{ " + str(self._opt_pairs[0])
-        for i in range(1, len(self)):
-            r += " " + str(self._opt_pairs[i])
-        r += " }"
+        r = "{ " + self.str_content() +  " }"
         return r
     
     def union(self, other : dts.Term) -> QPreTerm:
@@ -186,10 +195,15 @@ def val_qpre(term : dts.Term) -> QPreTerm:
     if term.type != type_qpre:
         raise ValueError()
         
-    val = term.eval()
-    if not isinstance(val, QPreTerm):
+    if isinstance(term, QPreTerm):
+        return term
+    elif isinstance(term, dts.Var):
+        val = term.val
+        if not isinstance(val, QPreTerm):
+            raise Exception()
+        return val
+    else:
         raise Exception()
-    return val
 
 
 

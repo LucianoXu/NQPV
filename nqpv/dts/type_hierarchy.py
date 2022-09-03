@@ -220,7 +220,11 @@ class Var(Term):
         '''
         super().__init__(type, None)
         self._var_id : str = var_id
-        self._value : Term = value
+        # ensure that the value is not a variable
+        if isinstance(value, Var):
+            self._value : Term = value._value
+        else:
+            self._value : Term = value
 
         # name decides how this variable is displayed
         # note that different variable have different ids, but can have the same name

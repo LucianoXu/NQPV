@@ -143,12 +143,16 @@ def val_opt_pair(term : dts.Term) -> OptPairTerm:
         raise ValueError()
     if term.type != type_opt_pair:
         raise ValueError()
-        
-    val = term.eval()
-    if not isinstance(val, OptPairTerm):
-        raise Exception()
-    return val
 
+    if isinstance(term, OptPairTerm):
+        return term
+    elif isinstance(term, dts.Var):
+        val = term.val
+        if not isinstance(val, OptPairTerm):
+            raise Exception()
+        return val
+    else:
+        raise Exception()
 
 def hermitian_I(all_qvarls : QvarlsTerm) -> OptPairTerm:
     if not isinstance(all_qvarls, QvarlsTerm):

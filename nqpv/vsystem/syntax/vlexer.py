@@ -35,6 +35,7 @@ reserved = {
     'def'   : 'DEF',
     'axiom' : 'AXIOM',
     'as'    : 'AS',
+    'show'  : 'SHOW',
     #'with'  : 'WITH',
     'by'    : 'BY',
 
@@ -45,7 +46,6 @@ reserved = {
     'operator'  : 'OPERATOR',
     'program'   : 'PROGRAM',
     'proof' : 'PROOF',
-    'opt_get'   : 'OPT_GET',
 
     # for programs and verifications
     'skip'  : 'SKIP',

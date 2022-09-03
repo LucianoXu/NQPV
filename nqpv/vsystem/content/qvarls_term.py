@@ -134,8 +134,13 @@ def val_qvarls(term : dts.Term) -> QvarlsTerm:
     if term.type != type_qvarls:
         raise ValueError()
         
-    val = term.eval()
-    if not isinstance(val, QvarlsTerm):
+    if isinstance(term, QvarlsTerm):
+        return term
+    elif isinstance(term, dts.Var):
+        val = term.val
+        if not isinstance(val, QvarlsTerm):
+            raise Exception()
+        return val
+    else:
         raise Exception()
-    return val
 

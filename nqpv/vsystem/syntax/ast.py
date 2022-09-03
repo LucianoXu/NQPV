@@ -53,6 +53,11 @@ class AstAxiom(Ast):
         self.qvar_ls : AstQvarLs = qvar_ls
         self.post : AstPredicate = post
 
+class AstShow(Ast):
+    def __init__(self, pos : PosInfo, var : AstID):
+        super().__init__(pos, "show")
+        self.var : AstID = var
+
 
 class AstScopeExpr(Ast):
     def __init__(self, pos : PosInfo, scope : AstScope | None, expr : AstExpression):

@@ -26,7 +26,7 @@ from nqpv import dts
 
 from .settings import Settings
 from .syntax import ast
-from .log_system import RuntimeErrorWithLog
+from .log_system import LogSystem, RuntimeErrorWithLog
 from .optenv_inject import get_opt_env
 
 from .content.qvarls_term import QvarlsTerm
@@ -90,7 +90,7 @@ class VKernel:
                 if isinstance(cmd.vtype, ast.AstTypeProg):
                     defining_var = ProgDefiningTerm(self.eval_qvarls(cmd.vtype.qvarls))
                 elif isinstance(cmd.vtype, ast.AstTypeProof):
-                    defining_var = ProofDefiningTerm()
+                    defining_var = ProofDefiningTerm(self.eval_qvarls(cmd.vtype.qvarls))
                 else:
                     raise Exception("unexpected situation")
                 self.cur_scope[cmd.var.id] = defining_var
@@ -113,6 +113,12 @@ class VKernel:
 
             elif isinstance(cmd, ast.AstAxiom):
                 raise NotImplementedError()
+            elif isinstance(cmd, ast.AstShow):
+                id = cmd.var.id
+                if id not in self.cur_scope:
+                    raise RuntimeErrorWithLog("The variable of name '" + id + "' does not exist.")
+                # append the information
+                LogSystem.channels["info"].append(str(self.cur_scope[id].eval()))
             else:
                 raise Exception("unexpected situation")
     

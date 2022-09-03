@@ -49,8 +49,18 @@ def p_cmd(p):
     '''
     cmd     : definition
             | axiom
+            | show
     '''
     p[0] = p[1]
+
+    if p[0] is None:
+        raise Exception("unexpected situation")
+
+def p_show(p):
+    '''
+    show    : SHOW id
+    '''
+    p[0] = ast.AstShow(PosInfo(p.slice[1].lineno), p[2])
 
     if p[0] is None:
         raise Exception("unexpected situation")

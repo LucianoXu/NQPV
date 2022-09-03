@@ -21,22 +21,21 @@
 
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
-from nqpv_new.vsystem.content.opt_pair_term import OptPairTerm
 
-
-from nqpv_new.vsystem.content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
-from nqpv_new.vsystem.content.proof_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
-from nqpv_new.vsystem.content.qpre_term import QPreTerm
-from nqpv_new.vsystem.content.qvarls_term import QvarlsTerm
-
-from nqpv_new.vsystem.content.scope_term import ScopeTerm
-
-from nqpv_new import dts
+from nqpv import dts
 
 from .settings import Settings
 from .syntax import ast
 from .log_system import RuntimeErrorWithLog
 from .optenv_inject import get_opt_env
+
+from .content.qvarls_term import QvarlsTerm
+from .content.opt_pair_term import OptPairTerm
+from .content.qpre_term import QPreTerm
+from .content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
+from .content.proof_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
+from .content.scope_term import ScopeTerm
+
 
 class VKernel:
     def __init__(self):

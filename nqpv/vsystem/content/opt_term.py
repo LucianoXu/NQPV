@@ -23,7 +23,7 @@ from typing import Any, List, Tuple
 
 from . import opt_kernel
 
-from nqpv_new import dts
+from nqpv import dts
 
 import numpy as np
 

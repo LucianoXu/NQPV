@@ -24,7 +24,7 @@ from typing import Any, List, Tuple
 import numpy as np
 
 
-from ..log_system import LogSystem
+from nqpv.vsystem.log_system import LogSystem
 
 # the class to set the precision
 class Precision:

@@ -14,16 +14,19 @@
 '''
 
 # ------------------------------------------------------------
-# optlib_inject.py
+# optenv_inject.py
 #
-# create the commonly used unitary gates and measurements
+# inject the commonly used unitary gates and measurements
 # load the tensors in the run path folder
 # ------------------------------------------------------------
 
 import os
 
-from .logsystem import LogSystem
-from .semantics import opt_env
+from nqpv.vsystem.content.opt_kernel import get_opt_qnum
+
+from .log_system import LogSystem
+from .content.scope_term import ScopeTerm
+from .content.opt_term import OperatorTerm
 
 import numpy as np
 
@@ -198,17 +201,19 @@ optlib = {
     ).reshape((2,2,2,2,2,2)),
 }
 
-def optlib_inject() -> None:
+def get_opt_env() -> ScopeTerm:
     '''
-    inject the commonly used operators into the optEnv
+    return the var environment containing the operators
     '''
+    scope = ScopeTerm("opt_library", None)
     for id in optlib:
-        opt_env.OptEnv.append(optlib[id], id, False)
+        scope[id] = OperatorTerm(optlib[id])
+    return scope
 
+
+'''
 def optload_inject(folder_path : str) -> bool:
-    '''
     return whether the optload has been successfully done.
-    '''
     try:
         
         for item in os.listdir(folder_path):
@@ -229,6 +234,7 @@ def optload_inject(folder_path : str) -> bool:
     except:
         LogSystem.channels["error"].append("Error occured while loading operatiors in the folder " + folder_path + ".")
         return False
+'''
 
 
 

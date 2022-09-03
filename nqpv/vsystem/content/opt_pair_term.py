@@ -21,14 +21,13 @@
 from __future__ import annotations
 from typing import Any, List, Tuple, Dict
 
-from nqpv_new import dts
-from nqpv_new.vsystem.content import opt_kernel
-from nqpv_new.vsystem.content.scope_term import ScopeTerm
+from nqpv import dts
+from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
-from nqpv_new.vsystem.log_system import RuntimeErrorWithLog
-
-from .opt_term import OperatorTerm, type_operator, val_opt
+from . import opt_kernel
 from .qvarls_term import QvarlsTerm, type_qvarls, val_qvarls
+from .opt_term import OperatorTerm, type_operator, val_opt
+from .scope_term import ScopeTerm
 
 fac = dts.TermFact()
 

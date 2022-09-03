@@ -24,9 +24,9 @@ from typing import Any, List
 
 import ply.lex as lex
 
-from .pos_info import PosInfo
+from nqpv.vsystem.log_system import LogSystem
 
-from ..log_system import LogSystem
+from .pos_info import PosInfo
 
 
 reserved = {

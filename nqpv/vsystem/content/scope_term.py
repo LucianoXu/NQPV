@@ -22,8 +22,8 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
-from nqpv_new import dts
-from ..log_system import RuntimeErrorWithLog
+from nqpv import dts
+from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
 fac = dts.TermFact()
 

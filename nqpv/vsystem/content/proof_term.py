@@ -22,16 +22,16 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
-from nqpv_new import dts
-from nqpv_new.vsystem.content.opt_term import OperatorTerm
-from nqpv_new.vsystem.content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgSttSeqTerm, ProgSttTerm, SkipTerm, UnitaryTerm, WhileTerm
-from . import opt_kernel
+from nqpv import dts
+from nqpv.vsystem.log_system import RuntimeErrorWithLog
+
 from .qvarls_term import QvarlsTerm, type_qvarls, val_qvarls
+from .opt_term import OperatorTerm
 from .opt_pair_term import OptPairTerm, type_opt_pair, val_opt_pair
 from . import qpre_term
 from .qpre_term import QPreTerm, type_qpre, val_qpre
+from .prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgSttSeqTerm, ProgSttTerm, SkipTerm, UnitaryTerm, WhileTerm
 from .scope_term import ScopeTerm
-from ..log_system import RuntimeErrorWithLog
 
 fac = dts.TermFact()
 type_proof_hint = fac.axiom("proof_hint", fac.sort_term(0))
@@ -484,7 +484,10 @@ class ProofSeqHintTerm(ProofHintTerm):
             # filter out the predicate proofs
             if not isinstance(item_val, QPreHintTerm):
                 prog_ls.append(item_val.prog)
-        return ProgSttSeqTerm(tuple(prog_ls))
+        if len(prog_ls) == 0:
+            return None
+        else:
+            return ProgSttSeqTerm(tuple(prog_ls))
     def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
         new_hints = []
         for item in self._proof_hints:

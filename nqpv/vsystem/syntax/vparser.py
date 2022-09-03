@@ -24,11 +24,12 @@ from typing import Any, List
 
 import ply.yacc as yacc
 
+from nqpv.vsystem.log_system import LogSystem, RuntimeErrorWithLog
+
 from .pos_info import PosInfo
 from .vlexer import tokens, lexer
 from . import ast
 
-from ..log_system import LogSystem, RuntimeErrorWithLog
 
 # program declaration section
 def p_scope(p):

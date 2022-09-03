@@ -34,7 +34,7 @@ from .content.opt_pair_term import OptPairTerm
 from .content.qpre_term import QPreTerm
 from .content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
 from .content.proof_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
-from .content.scope_term import ScopeTerm
+from .content.scope_term import ScopeTerm, VarPath
 
 
 class VKernel:
@@ -78,11 +78,15 @@ class VKernel:
         self.cur_scope.inject(scope)
 
 
-    def eval_scope(self, env_ast : ast.AstScope) -> None:
+    def eval_varpath(self, varpath_ast : ast.AstVar) -> VarPath:
+        list = [item.id for item in varpath_ast.data]
+        return VarPath(tuple(list))
+
+    def eval_scope(self, scope_ast : ast.AstScope) -> None:
         '''
         in the current scope, process the scope abstract syntax tree
         '''
-        for cmd in env_ast.cmd_ls:
+        for cmd in scope_ast.cmd_ls:
 
             if isinstance(cmd, ast.AstDefinition):
 
@@ -91,11 +95,11 @@ class VKernel:
             elif isinstance(cmd, ast.AstAxiom):
                 raise NotImplementedError()
             elif isinstance(cmd, ast.AstShow):
-                id = cmd.var.id
-                if id not in self.cur_scope:
-                    raise RuntimeErrorWithLog("The variable of name '" + id + "' does not exist.")
+                var_path = self.eval_varpath(cmd.var)
+                if var_path not in self.cur_scope:
+                    raise RuntimeErrorWithLog("The variable '" + str(var_path) + "' does not exist.")
                 # append the information
-                LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(self.cur_scope[id].eval()))
+                LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(self.cur_scope[var_path].eval()))
             else:
                 raise Exception("unexpected situation")
     
@@ -103,7 +107,7 @@ class VKernel:
         try:
             id_ls = []
             for item in qvarls.data:
-                if item.id in self.cur_scope:
+                if VarPath((item.id,)) in self.cur_scope:
                     raise RuntimeErrorWithLog("The variable '" + str(item) + "' already exists, and cannot be used as a quantum variable identifier.")
                 id_ls.append(item.id)
 
@@ -115,7 +119,8 @@ class VKernel:
         try:
             pair_ls : List[OptPairTerm] = []
             for pair in qpre.data:
-                opt = self.cur_scope[pair[0].id]
+                var_path = self.eval_varpath(pair[0])
+                opt = self.cur_scope[var_path]
                 qvarls = self.eval_qvarls(pair[1])
                 pair_ls.append(OptPairTerm(opt, qvarls))
             return QPreTerm(tuple(pair_ls))
@@ -133,20 +138,20 @@ class VKernel:
             qvarls = self.eval_qvarls(data.qvar_ls)
             return InitTerm(qvarls)
         elif isinstance(data, ast.AstUnitary):
-            opt = self.cur_scope[data.opt.id]
+            opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = OptPairTerm(opt, qvarls)
             return UnitaryTerm(pair)
         elif isinstance(data, ast.AstIf):
             S1 = self.eval_prog(data.prog1)
             S0 = self.eval_prog(data.prog0)
-            opt = self.cur_scope[data.opt.id]
+            opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = OptPairTerm(opt, qvarls)
             return IfTerm(pair, S1, S0)
         elif isinstance(data, ast.AstWhile):
             S = self.eval_prog(data.prog)
-            opt = self.cur_scope[data.opt.id]
+            opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = OptPairTerm(opt, qvarls)
             return WhileTerm(pair, S)
@@ -156,7 +161,7 @@ class VKernel:
                 prog_ls.append(self.eval_prog(subprog))
             return NondetTerm(tuple(prog_ls))
         elif isinstance(data, ast.AstSubprog):
-            subprog = self.cur_scope[data.subprog.id]
+            subprog = self.cur_scope[self.eval_varpath(data.subprog)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             return SubProgTerm(subprog, qvarls)
         elif isinstance(data, ast.AstProgSeq):
@@ -176,21 +181,21 @@ class VKernel:
             qvarls = self.eval_qvarls(data.qvar_ls)
             return InitHintTerm(qvarls)
         elif isinstance(data, ast.AstUnitary):
-            opt = self.cur_scope[data.opt.id]
+            opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = OptPairTerm(opt, qvarls)
             return UnitaryHintTerm(pair)
         elif isinstance(data, ast.AstIfProof):
             P1 = self.eval_proof(data.proof1)
             P0 = self.eval_proof(data.proof0)
-            opt = self.cur_scope[data.opt.id]
+            opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = OptPairTerm(opt, qvarls)
             return IfHintTerm(pair, P1, P0)
         elif isinstance(data, ast.AstWhileProof):
             inv = self.eval_qpre(data.inv)
             P = self.eval_proof(data.proof)
-            opt = self.cur_scope[data.opt.id]
+            opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = OptPairTerm(opt, qvarls)
             return WhileHintTerm(inv, pair, P)
@@ -200,7 +205,7 @@ class VKernel:
                 proof_ls.append(self.eval_proof(subproof))
             return NondetHintTerm(tuple(proof_ls))
         elif isinstance(data, ast.AstSubproof):
-            subproof = self.cur_scope[data.subproof.id]
+            subproof = self.cur_scope[self.eval_varpath(data.subproof)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             return SubproofHintTerm(subproof, qvarls)
         elif isinstance(data, ast.AstUnionProof):

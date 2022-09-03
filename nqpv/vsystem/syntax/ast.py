@@ -47,16 +47,12 @@ class AstAxiom(Ast):
     def __init__(self, pos : PosInfo, subproof : AstID, pre : AstPredicate,
         subprog : AstID, qvar_ls : AstQvarLs, post : AstPredicate):
         super().__init__(pos, "axiom")
-        self.subproof : AstID = subproof
-        self.pre : AstPredicate = pre
-        self.subprog : AstID = subprog
-        self.qvar_ls : AstQvarLs = qvar_ls
-        self.post : AstPredicate = post
+        raise NotImplementedError()
 
 class AstShow(Ast):
-    def __init__(self, pos : PosInfo, var : AstID):
+    def __init__(self, pos : PosInfo, var : AstVar):
         super().__init__(pos, "show")
-        self.var : AstID = var
+        self.var : AstVar = var
 
 class AstType(Ast):
     def __init__(self, pos : PosInfo):
@@ -103,6 +99,17 @@ class AstQvarLs(Ast):
         r += "]"
         return r
 
+class AstVar(Ast):
+    def __init__(self, pos : PosInfo, data : List[AstID]):
+        super().__init__(pos, "variable")
+        self.data : List[AstID] = data
+    
+    def __str__(self) -> str:
+        r = str(self.data[0])
+        for i in range(1, len(self.data)):
+            r += "." + str(self.data[i])
+        return r
+
 class AstID(Ast):
     def __init__(self, pos : PosInfo, id : str):
         super().__init__(pos, "ID")
@@ -112,17 +119,17 @@ class AstID(Ast):
         return self.id
 
 class AstIfProof(Ast):
-    def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, proof1 : AstProof, proof0 : AstProof):
+    def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs, proof1 : AstProof, proof0 : AstProof):
         super().__init__(pos, "if proof")
-        self.opt : AstID = opt
+        self.opt : AstVar = opt
         self.qvar_ls : AstQvarLs = qvar_ls
         self.proof1 : AstProof = proof1
         self.proof0 : AstProof = proof0
 
 class AstInv(Ast):
-    def __init__(self, pos : PosInfo, data : List[Tuple[AstID, AstQvarLs]]):
+    def __init__(self, pos : PosInfo, data : List[Tuple[AstVar, AstQvarLs]]):
         super().__init__(pos, "loop invariant")
-        self.data : List[Tuple[AstID, AstQvarLs]] =  data
+        self.data : List[Tuple[AstVar, AstQvarLs]] =  data
 
 class AstUnionProof(Ast):
     def __init__(self, pos : PosInfo, data : List[Ast]):
@@ -130,9 +137,9 @@ class AstUnionProof(Ast):
         self.data : List[Ast] = data
 
 class AstSubproof(Ast):
-    def __init__(self, pos : PosInfo, subproof : AstID, qvar_ls : AstQvarLs):
+    def __init__(self, pos : PosInfo, subproof : AstVar, qvar_ls : AstQvarLs):
         super().__init__(pos, "subproof")
-        self.subproof : AstID = subproof
+        self.subproof : AstVar = subproof
         self.qvar_ls : AstQvarLs = qvar_ls
     
     def __str__(self) -> str:
@@ -140,10 +147,10 @@ class AstSubproof(Ast):
 
 
 class AstWhileProof(Ast):
-    def __init__(self, pos : PosInfo, inv : AstInv, opt : AstID, qvar_ls : AstQvarLs, proof : AstProof):
+    def __init__(self, pos : PosInfo, inv : AstInv, opt : AstVar, qvar_ls : AstQvarLs, proof : AstProof):
         super().__init__(pos, "while proof")
         self.inv : AstInv = inv
-        self.opt : AstID = opt
+        self.opt : AstVar = opt
         self.qvar_ls : AstQvarLs = qvar_ls
         self.proof : AstProof = proof
 
@@ -153,9 +160,9 @@ class AstNondetProof(Ast):
         self.data : List[AstProof] = data
 
 class AstPredicate(Ast):
-    def __init__(self, pos : PosInfo, data : List[Tuple[AstID, AstQvarLs]]):
+    def __init__(self, pos : PosInfo, data : List[Tuple[AstVar, AstQvarLs]]):
         super().__init__(pos, "predicate")
-        self.data : List[Tuple[AstID, AstQvarLs]] = data
+        self.data : List[Tuple[AstVar, AstQvarLs]] = data
 
 
 class AstProof(Ast):
@@ -182,24 +189,24 @@ class AstNondet(Ast):
         self.data : List[AstProgSeq] = data
 
 class AstWhile(Ast):
-    def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, prog : AstProgSeq):
+    def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs, prog : AstProgSeq):
         super().__init__(pos, "while")
-        self.opt : AstID = opt
+        self.opt : AstVar = opt
         self.qvar_ls : AstQvarLs = qvar_ls
         self.prog : AstProgSeq = prog
 
 class AstIf(Ast):
-    def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs, prog1 : AstProgSeq, prog0 : AstProgSeq):
+    def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs, prog1 : AstProgSeq, prog0 : AstProgSeq):
         super().__init__(pos, "if")
-        self.opt : AstID = opt
+        self.opt : AstVar = opt
         self.qvar_ls : AstQvarLs = qvar_ls
         self.prog1 : AstProgSeq = prog1
         self.prog0 : AstProgSeq = prog0
 
 class AstUnitary(Ast):
-    def __init__(self, pos : PosInfo, opt : AstID, qvar_ls : AstQvarLs):
+    def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs):
         super().__init__(pos, "unitary transformation")
-        self.opt : AstID = opt
+        self.opt : AstVar = opt
         self.qvar_ls : AstQvarLs = qvar_ls
 
 
@@ -218,7 +225,7 @@ class AstSkip(Ast):
 
 
 class AstSubprog(Ast):
-    def __init__(self, pos : PosInfo, subprog : AstID, qvar_ls : AstQvarLs):
+    def __init__(self, pos : PosInfo, subprog : AstVar, qvar_ls : AstQvarLs):
         super().__init__(pos, "subprogram")
-        self.subprog : AstID = subprog
+        self.subprog : AstVar = subprog
         self.qvar_ls : AstQvarLs = qvar_ls

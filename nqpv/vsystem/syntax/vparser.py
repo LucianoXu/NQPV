@@ -58,7 +58,7 @@ def p_cmd(p):
 
 def p_show(p):
     '''
-    show    : SHOW id
+    show    : SHOW var
     '''
     p[0] = ast.AstShow(PosInfo(p.slice[1].lineno), p[2])
 
@@ -145,8 +145,8 @@ def p_predicate(p):
 
 def p_predicate_pre(p):
     '''
-    predicate_pre   : '{' id qvar_ls
-                    | predicate_pre id qvar_ls
+    predicate_pre   : '{' var qvar_ls
+                    | predicate_pre var qvar_ls
     '''
     if p[1] == '{':
         p[0] = ast.AstPredicate(PosInfo(p.slice[1].lineno), [(p[2], p[3])])
@@ -179,7 +179,7 @@ def p_statement(p):
                 | if
                 | while
                 | nondet
-                | id qvar_ls
+                | var qvar_ls
     '''
     if len(p) == 2:
         p[0] = p[1]
@@ -223,8 +223,8 @@ def p_init(p):
 
 def p_unitary(p):
     '''
-    unitary : id MUL_EQ id
-            | qvar_ls MUL_EQ id
+    unitary : id MUL_EQ var
+            | qvar_ls MUL_EQ var
     '''
     if isinstance(p[1], ast.AstQvarLs):
         p[0] = ast.AstUnitary(p[1].pos, p[3], p[1])
@@ -237,7 +237,7 @@ def p_unitary(p):
 
 def p_if(p):
     '''
-    if      : IF id qvar_ls THEN prog ELSE prog END
+    if      : IF var qvar_ls THEN prog ELSE prog END
     '''
     p[0] = ast.AstIf(PosInfo(p.slice[1].lineno), p[2], p[3], p[5], p[7])
 
@@ -246,7 +246,7 @@ def p_if(p):
 
 def p_while(p):
     '''
-    while   : WHILE id qvar_ls DO prog END
+    while   : WHILE var qvar_ls DO prog END
     '''
     p[0] = ast.AstWhile(PosInfo(p.slice[1].lineno), p[2], p[3], p[5])
 
@@ -299,7 +299,7 @@ def p_proof_mid(p):
 
 def p_proof_statement(p):
     '''
-    proof_statement : id qvar_ls
+    proof_statement : var qvar_ls
                     | skip
                     | abort
                     | init
@@ -310,7 +310,7 @@ def p_proof_statement(p):
                     | union_proof
                     | predicate
     '''
-    if isinstance(p[1], ast.AstID):
+    if isinstance(p[1], ast.AstVar):
         p[0] = ast.AstSubproof(p[1].pos, p[1], p[2])
     else:
         p[0] = p[1]
@@ -320,7 +320,7 @@ def p_proof_statement(p):
 
 def p_if_proof(p):
     '''
-    if_proof    : IF id qvar_ls THEN proof_mid ELSE proof_mid END
+    if_proof    : IF var qvar_ls THEN proof_mid ELSE proof_mid END
     '''
     p[0] = ast.AstIfProof(PosInfo(p.slice[1].lineno), p[2], p[3], p[5], p[7])
 
@@ -329,7 +329,7 @@ def p_if_proof(p):
 
 def p_while_proof(p):
     '''
-    while_proof : inv ';' WHILE id qvar_ls DO proof_mid END
+    while_proof : inv ';' WHILE var qvar_ls DO proof_mid END
     '''
     p[0] = ast.AstWhileProof(p[1].pos, p[1], p[4], p[5], p[7])
 
@@ -392,13 +392,39 @@ def p_inv(p):
 
 def p_inv_pre(p):
     '''
-    inv_pre : '{' INV ':' id qvar_ls
-            | inv_pre id qvar_ls
+    inv_pre : '{' INV ':' var qvar_ls
+            | inv_pre var qvar_ls
     '''
     if p[1] == '{':
         p[0] = ast.AstInv(PosInfo(p.slice[1].lineno), [(p[4], p[5])])
     else:
         p[0] = ast.AstInv(p[1].pos, p[1].data + [(p[2], p[3])])
+
+    if p[0] is None:
+        raise Exception("unexpected situation")
+
+def p_var(p):
+    '''
+    var     : id
+            | var_pre id
+    '''
+    if len(p) == 2:
+        p[0] = ast.AstVar(p[1].pos, [p[1]])
+    else:
+        p[0] = ast.AstVar(p[1].pos, p[1].data + [p[2]])
+
+    if p[0] is None:
+        raise Exception("unexpected situation")
+
+def p_var_pre(p):
+    '''
+    var_pre : id '.'
+            | var_pre id '.'
+    '''
+    if len(p) == 3:
+        p[0] = ast.AstVar(p[1].pos, [p[1]])
+    else:
+        p[0] = ast.AstVar(p[1].pos, p[1].data + [p[2]])
 
     if p[0] is None:
         raise Exception("unexpected situation")

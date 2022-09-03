@@ -27,7 +27,40 @@ from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
 fac = dts.TermFact()
 
-scope_type = fac.axiom("scope", fac.sort_term(0))
+type_scope = fac.axiom("scope", fac.sort_term(0))
+
+class VarPath:
+    def __init__(self, path : Tuple[str,...], pointer : int = 0):
+        if not isinstance(path, tuple):
+            raise ValueError()
+        for item in path:
+            if not isinstance(item, str):
+                raise ValueError()
+        if len(path) == 0:
+            raise ValueError()
+
+        self.path : Tuple[str,...] = path
+        self._pointer = pointer
+    
+    @property
+    def current(self) -> str:
+        return self.path[self._pointer]
+
+    def postfix(self) -> VarPath | None:
+        '''
+        return the postfix VarPath (pointer starting from the next string)
+        '''
+        if self._pointer < len(self.path) - 1:
+            return VarPath(self.path, self._pointer + 1)
+        else:
+            return None
+    
+    def __str__(self) -> str:
+        r = str(self.path[0])
+        for i in range(1, len(self.path)):
+            r += "." + str(self.path[i])
+        return r
+
 
 class ScopeTerm(dts.Term):
 
@@ -39,10 +72,10 @@ class ScopeTerm(dts.Term):
             raise ValueError()
         
 
-        super().__init__(scope_type, None)
+        super().__init__(type_scope, None)
 
         if parent_scope is not None:
-            if parent_scope.type != scope_type:
+            if parent_scope.type != type_scope:
                 raise ValueError()
             parent_scope = parent_scope.eval()
             if not isinstance(parent_scope, ScopeTerm):
@@ -72,13 +105,35 @@ class ScopeTerm(dts.Term):
             r += "\t" + key + "\t\t" + str(self._vars[key].type) + "\n"
         return r
 
-    def __getitem__(self, key : str) -> dts.Var:
-        if key in self._vars:
-            return self._vars[key]
+    def _search(self, label : str) -> dts.Var | None:
+        if label in self._vars:
+            return self._vars[label]
         elif self._parent_scope is not None:
-            return self._parent_scope[key]
+            return self._parent_scope._search(label)
         else:
-            raise RuntimeErrorWithLog("The variable '" + key + "' is not defined.")
+            return None
+
+
+    def __getitem__(self, key : VarPath | str) -> dts.Var:
+        if isinstance(key, str):
+            return self[VarPath((key,))]
+
+        find_res = self._search(key.current)
+        if find_res is not None:
+            next_key = key.postfix()
+            if next_key is None:
+                # if the search is over
+                return find_res
+            else:
+                if find_res.type == type_scope:
+                    # search in the next scope
+                    next_scope_val = find_res.val
+                    if not isinstance(next_scope_val, ScopeTerm):
+                        raise Exception()
+                    return next_scope_val[next_key]
+                
+        raise RuntimeErrorWithLog("The variable '" + str(key) + "' is not defined.")
+
 
     def __setitem__(self, key : str, value : dts.Term) -> None:
         '''
@@ -111,13 +166,24 @@ class ScopeTerm(dts.Term):
             raise RuntimeErrorWithLog("The variable '" + key + "' dost not exist in this scope, and can not be deleted.")
         self._vars.pop(key)
 
-    def __contains__(self, key : str) -> bool:
-        if key in self._vars:
-            return True
-        elif self._parent_scope is not None:
-            return key in self._parent_scope
-        else:
-            return False
+    def __contains__(self, key : VarPath | str) -> bool:
+        if isinstance(key, str):
+            return VarPath((key,)) in self
+
+        find_res = self._search(key.current)
+        if find_res is not None:
+            next_key = key.postfix()
+            if next_key is None:
+                # if the search is over
+                return True
+            else:
+                if find_res.type == type_scope:
+                    # search in the next scope
+                    next_scope_val = find_res.val
+                    if not isinstance(next_scope_val, ScopeTerm):
+                        raise Exception()
+                    return next_key in next_scope_val 
+        return False
 
     def inject(self, var_env : ScopeTerm) -> None:
         '''

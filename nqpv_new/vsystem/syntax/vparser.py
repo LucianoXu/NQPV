@@ -253,7 +253,7 @@ def p_nondet(p):
     '''
     nondet  : nondet_pre '#' prog ')'
     '''
-    p[0] = ast.AstNondet(p[1].pos, p[1].data + p[3])
+    p[0] = ast.AstNondet(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
         raise Exception("unexpected situation")
@@ -266,7 +266,7 @@ def p_nondet_pre(p):
     if len(p) == 3:
         p[0] = ast.AstNondet(PosInfo(p.slice[1].lineno), [p[2]])
     else:
-        p[0] = ast.AstNondet(p[1].pos, p[1].data + p[3])
+        p[0] = ast.AstNondet(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
         raise Exception("unexpected situation")
@@ -303,6 +303,7 @@ def p_proof_statement(p):
                     | if_proof
                     | while_proof
                     | nondet_proof
+                    | union_proof
                     | predicate
     '''
     if isinstance(p[1], ast.AstID):
@@ -335,23 +336,46 @@ def p_nondet_proof(p):
     '''
     nondet_proof  : nondet_proof_pre '#' proof_mid ')'
     '''
-    p[0] = ast.AstNondetProof(p[1].pos, p[1].data + p[3])
+    p[0] = ast.AstNondetProof(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
         raise Exception("unexpected situation")
 
 def p_nondet_proof_pre(p):
     '''
-    nondet_proof_pre  : '(' proof_mid
-                | nondet_proof_pre '#' proof_mid
+    nondet_proof_pre    : '(' proof_mid
+                        | nondet_proof_pre '#' proof_mid
     '''
     if len(p) == 3:
         p[0] = ast.AstNondetProof(PosInfo(p.slice[1].lineno), [p[2]])
     else:
-        p[0] = ast.AstNondetProof(p[1].pos, p[1].data + p[3])
+        p[0] = ast.AstNondetProof(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
         raise Exception("unexpected situation")
+
+def p_union_proof(p):
+    '''
+    union_proof : union_proof_pre ',' proof_mid ')'
+    '''
+    p[0] = ast.AstUnionProof(p[1].pos, p[1].data + [p[3]])
+
+    if p[0] is None:
+        raise Exception("unexpected situation")
+
+def p_union_proof_pre(p):
+    '''
+    union_proof_pre : '(' proof_mid
+                    | union_proof_pre ',' proof_mid
+    '''
+    if len(p) == 3:
+        p[0] = ast.AstUnionProof(PosInfo(p.slice[1].lineno), [p[2]])
+    else:
+        p[0] = ast.AstUnionProof(p[1].pos, p[1].data + [p[3]])
+
+    if p[0] is None:
+        raise Exception("unexpected situation")
+
 
 def p_inv(p):
     '''

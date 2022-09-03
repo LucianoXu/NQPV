@@ -123,6 +123,11 @@ class AstInv(Ast):
         super().__init__(pos, "loop invariant")
         self.data : List[Tuple[AstID, AstQvarLs]] =  data
 
+class AstUnionProof(Ast):
+    def __init__(self, pos : PosInfo, data : List[Ast]):
+        super().__init__(pos, "union proof")
+        self.data : List[Ast] = data
+
 class AstSubproof(Ast):
     def __init__(self, pos : PosInfo, subproof : AstID, qvar_ls : AstQvarLs):
         super().__init__(pos, "subproof")
@@ -153,9 +158,9 @@ class AstPredicate(Ast):
 
 
 class AstProof(Ast):
-    def __init__(self, pos : PosInfo, pre : AstPredicate, mid : AstProofSeq, post : AstPredicate):
+    def __init__(self, pos : PosInfo, pre : AstPredicate, seq : AstProofSeq, post : AstPredicate):
         super().__init__(pos, "proof")
-        self.mid : AstProofSeq = mid
+        self.seq : AstProofSeq = seq
         self.pre : AstPredicate = pre
         self.post : AstPredicate = post
 

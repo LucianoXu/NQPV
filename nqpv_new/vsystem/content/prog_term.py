@@ -371,8 +371,7 @@ class SubProgTerm(ProgSttTerm):
 
     def eval(self) -> dts.Term:
         # construct the substitution correspondence
-        cor = self.subprog_val.arg_ls_val.get_sub_correspond(self.arg_ls_val)
-        return self.subprog_val.prog_seq_val.arg_apply(cor).eval()
+        return self.subprog_val.apply(self.arg_ls_val)
 
 
 class ProgSttSeqTerm(ProgSttTerm):
@@ -524,6 +523,10 @@ class ProgDefinedTerm(ProgTerm):
             return NotImplemented
         else:
             return False
+    
+    def apply(self, arg_ls : QvarlsTerm) -> ProgSttTerm:
+        cor = self.arg_ls_val.get_sub_correspond(arg_ls)
+        return self.prog_seq_val.arg_apply(cor)
 
 def val_prog_defined(term : dts.Term) -> ProgDefinedTerm:
     if not isinstance(term, dts.Term):

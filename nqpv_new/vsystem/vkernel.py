@@ -25,7 +25,7 @@ from nqpv_new.vsystem.content.opt_pair_term import OptPairTerm
 
 
 from nqpv_new.vsystem.content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
-from nqpv_new.vsystem.content.proof_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, SkipHintTerm, SubproofHintTerm, UnitaryHintTerm, WhileHintTerm
+from nqpv_new.vsystem.content.proof_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
 from nqpv_new.vsystem.content.qpre_term import QPreTerm
 from nqpv_new.vsystem.content.qvarls_term import QvarlsTerm
 
@@ -221,11 +221,19 @@ class VKernel:
             subproof = self.cur_scope[data.subproof.id]
             qvarls = self.eval_qvarls(data.qvar_ls)
             return SubproofHintTerm(subproof, qvarls)
+        elif isinstance(data, ast.AstUnionProof):
+            proof_ls = []
+            for subproof in data.data:
+                proof_ls.append(self.eval_proof(subproof))
+            return UnionHintTerm(tuple(proof_ls))
         elif isinstance(data, ast.AstProofSeq):
             proof_ls = []
             for subproof in data.data:
                 proof_ls.append(self.eval_proof(subproof))
             return ProofSeqHintTerm(tuple(proof_ls))
+        elif isinstance(data, ast.AstPredicate):
+            qpre = self.eval_qpre(data)
+            return QPreHintTerm(qpre)
         else:
             raise Exception("unexpected situation")
 
@@ -246,7 +254,7 @@ class VKernel:
                 if not isinstance(expr_data, ast.AstProof):
                     raise Exception("unexpected situation")
                 
-                proof_hint = self.eval_proof(expr_data.mid)
+                proof_hint = self.eval_proof(expr_data.seq)
                 arg_ls = self.eval_qvarls(expr_type.qvarls)
                 return ProofDefinedTerm(
                     self.eval_qpre(expr_data.pre), 

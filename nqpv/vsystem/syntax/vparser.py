@@ -67,7 +67,7 @@ def p_show(p):
 
 def p_definition(p):
     '''
-    definition  : DEF id AS type BY scope_expr END
+    definition  : DEF id ':' type ASSIGN expression END
     '''
     p[0] = ast.AstDefinition(PosInfo(p.slice[1].lineno), p[2], p[4], p[6])
 
@@ -77,7 +77,7 @@ def p_definition(p):
 
 def p_axiom(p):
     '''
-    axiom   : AXIOM id AS predicate PROGRAM qvar_ls predicate END
+    axiom   : AXIOM id ':' predicate PROGRAM qvar_ls predicate END
     '''
     p[0] = ast.AstAxiom(PosInfo(p.slice[1].lineno), p[2], p[4], p[5], p[6], p[7])
 
@@ -88,33 +88,26 @@ def p_type(p):
     '''
     type    : PROGRAM qvar_ls
             | PROOF qvar_ls
+            | SCOPE
     '''
 
     if p[1] == "program":
         p[0] = ast.AstTypeProg(PosInfo(p.slice[1].lineno), p[2])
     elif p[1] == "proof":
         p[0] = ast.AstTypeProof(PosInfo(p.slice[1].lineno), p[2])
+    elif p[1] == "scope":
+        p[0] = ast.AstTypeScope(PosInfo(p.slice[1].lineno))
 
     if p[0] is None:
         raise Exception("unexpected situation")
 
-def p_scope_expr(p):
-    '''
-    scope_expr  : scope expression
-                | expression
-    '''
-    if len(p) == 2:
-        p[0] = ast.AstScopeExpr(p[1].pos, None, p[1])
-    else:
-        p[0] = ast.AstScopeExpr(p[1].pos, p[1], p[2])
-
-
 def p_expression(p):
     '''
-    expression  : PROGRAM ':' prog
-                | PROOF ':' proof
+    expression  : prog
+                | proof
+                | scope
     '''
-    p[0] = ast.AstExpression(PosInfo(p.slice[1].lineno), p[1], p[3])
+    p[0] = ast.AstExpression(p[1].pos, p[1])
 
     if p[0] is None:
         raise Exception("unexpected situation")

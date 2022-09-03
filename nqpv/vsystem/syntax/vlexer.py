@@ -34,16 +34,14 @@ reserved = {
     'import': 'IMPORT',
     'def'   : 'DEF',
     'axiom' : 'AXIOM',
-    'as'    : 'AS',
     'show'  : 'SHOW',
-    #'with'  : 'WITH',
-    'by'    : 'BY',
 
     # inner calculation methods
     'wp'    : 'WP',
 
     # keywords for type
     'operator'  : 'OPERATOR',
+    'scope' : 'SCOPE',
     'program'   : 'PROGRAM',
     'proof' : 'PROOF',
 
@@ -63,12 +61,14 @@ reserved = {
 tokens = [
     'ID',
     'INIT',
+    'ASSIGN',
     'MUL_EQ',
     'ELLIPSIS'
  ] + list(reserved.values())
 
 # Regular expression rules for simple tokens
 t_INIT = r':=0'
+t_ASSIGN = r':='
 t_MUL_EQ = r'\*='
 t_ELLIPSIS = r'\.\.\.'
 

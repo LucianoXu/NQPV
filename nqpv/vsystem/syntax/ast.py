@@ -37,11 +37,11 @@ class AstScope(Ast):
         self.cmd_ls : List[Ast] = cmd_ls
 
 class AstDefinition(Ast):
-    def __init__(self, pos : PosInfo, var : AstID, vtype : AstType, scope_expr : AstScopeExpr):
+    def __init__(self, pos : PosInfo, var : AstID, vtype : AstType, expr : AstExpression):
         super().__init__(pos, "definition")
         self.var : AstID = var
         self.vtype : AstType = vtype
-        self.scope_expr : AstScopeExpr = scope_expr
+        self.expr : AstExpression = expr
 
 class AstAxiom(Ast):
     def __init__(self, pos : PosInfo, subproof : AstID, pre : AstPredicate,
@@ -58,16 +58,13 @@ class AstShow(Ast):
         super().__init__(pos, "show")
         self.var : AstID = var
 
-
-class AstScopeExpr(Ast):
-    def __init__(self, pos : PosInfo, scope : AstScope | None, expr : AstExpression):
-        super().__init__(pos, "scope expression")
-        self.scope : AstScope | None = scope
-        self.expr : AstExpression = expr
-
 class AstType(Ast):
     def __init__(self, pos : PosInfo):
         super().__init__(pos, "type")
+
+class AstTypeScope(AstType):
+    def __init__(self, pos : PosInfo):
+        super().__init__(pos)
 
 class AstTypeProg(AstType):
     def __init__(self, pos : PosInfo, qvarls : AstQvarLs):
@@ -84,10 +81,9 @@ class AstTypeProof(AstType):
         return "proof " + str(self.qvarls)
 
 class AstExpression(Ast):
-    def __init__(self, pos : PosInfo, elabel : str, data : AstProgSeq | AstProof):
+    def __init__(self, pos : PosInfo, data : Ast):
         super().__init__(pos, "expresssion")
-        self.elabel : str = elabel
-        self.data : AstProgSeq | AstProof = data
+        self.data : Ast = data
 
 class AstQvarLs(Ast):
     def __init__(self, pos : PosInfo, data : List[AstID]):

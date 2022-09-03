@@ -78,7 +78,7 @@ class VKernel:
         self.cur_scope.inject(scope)
 
 
-    def process_ast(self, env_ast : ast.AstScope) -> None:
+    def eval_scope(self, env_ast : ast.AstScope) -> None:
         '''
         in the current scope, process the scope abstract syntax tree
         '''
@@ -86,30 +86,7 @@ class VKernel:
 
             if isinstance(cmd, ast.AstDefinition):
 
-                # create the var being defined
-                if isinstance(cmd.vtype, ast.AstTypeProg):
-                    defining_var = ProgDefiningTerm(self.eval_qvarls(cmd.vtype.qvarls))
-                elif isinstance(cmd.vtype, ast.AstTypeProof):
-                    defining_var = ProofDefiningTerm(self.eval_qvarls(cmd.vtype.qvarls))
-                else:
-                    raise Exception("unexpected situation")
-                self.cur_scope[cmd.var.id] = defining_var
-
-                # create the subenvironments                        
-                self.push("scope_" + cmd.var.id)
-
-                # process the scope
-                if cmd.scope_expr.scope is not None:
-                    self.process_ast(cmd.scope_expr.scope)
-
-                # evaluate
-                value = self.eval_expr(cmd.vtype, cmd.scope_expr.expr.data)
-                # exit the subenvironments
-                self.pop()
-                
-                # assign
-                self.cur_scope.remove_var(cmd.var.id)
-                self.cur_scope[cmd.var.id] = value
+                self.eval_def(cmd)
 
             elif isinstance(cmd, ast.AstAxiom):
                 raise NotImplementedError()
@@ -118,7 +95,7 @@ class VKernel:
                 if id not in self.cur_scope:
                     raise RuntimeErrorWithLog("The variable of name '" + id + "' does not exist.")
                 # append the information
-                LogSystem.channels["info"].append(str(self.cur_scope[id].eval()))
+                LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(self.cur_scope[id].eval()))
             else:
                 raise Exception("unexpected situation")
     
@@ -242,34 +219,59 @@ class VKernel:
         else:
             raise Exception("unexpected situation")
 
-    def eval_expr(self, expr_type : ast.AstType, expr_data : ast.Ast) -> dts.Term:
+    def eval_def(self, cmd : ast.AstDefinition) -> None:
         '''
         evaluate the expression and return the value (containing type and data)
         '''
-        try:
-            if isinstance(expr_type, ast.AstTypeProg):
-                if not isinstance(expr_data, ast.AstProgSeq):
+        try:            
+            if isinstance(cmd.vtype, ast.AstTypeProg):
+                # create the var being defined
+                self.cur_scope[cmd.var.id] = ProgDefiningTerm(self.eval_qvarls(cmd.vtype.qvarls))
+
+                if not isinstance(cmd.expr.data, ast.AstProgSeq):
                     raise Exception("unexpected situation")
 
-                prog_content = self.eval_prog(expr_data)
-                arg_ls = self.eval_qvarls(expr_type.qvarls)
-                return ProgDefinedTerm(prog_content, arg_ls)
+                # evaluate
+                prog_content = self.eval_prog(cmd.expr.data)
+                arg_ls = self.eval_qvarls(cmd.vtype.qvarls)
+                value = ProgDefinedTerm(prog_content, arg_ls)
                 
-            elif isinstance(expr_type, ast.AstTypeProof):
-                if not isinstance(expr_data, ast.AstProof):
+                # assign
+                self.cur_scope.remove_var(cmd.var.id)
+                self.cur_scope[cmd.var.id] = value
+
+            elif isinstance(cmd.vtype, ast.AstTypeProof):
+                # create the var being defined
+                self.cur_scope[cmd.var.id] = ProofDefiningTerm(self.eval_qvarls(cmd.vtype.qvarls))
+
+                if not isinstance(cmd.expr.data, ast.AstProof):
                     raise Exception("unexpected situation")
                 
-                proof_hint = self.eval_proof(expr_data.seq)
-                arg_ls = self.eval_qvarls(expr_type.qvarls)
-                return ProofDefinedTerm(
-                    self.eval_qpre(expr_data.pre), 
+                # evaluate
+                proof_hint = self.eval_proof(cmd.expr.data.seq)
+                arg_ls = self.eval_qvarls(cmd.vtype.qvarls)
+                value = ProofDefinedTerm(
+                    self.eval_qpre(cmd.expr.data.pre), 
                     proof_hint, 
-                    self.eval_qpre(expr_data.post), 
+                    self.eval_qpre(cmd.expr.data.post), 
                     arg_ls, self.cur_scope
                 )
+
+                # assign
+                self.cur_scope.remove_var(cmd.var.id)
+                self.cur_scope[cmd.var.id] = value
+
+            elif isinstance(cmd.vtype, ast.AstTypeScope):
+                if not isinstance(cmd.expr.data, ast.AstScope):
+                    raise Exception("unexpected situation")
+                
+                self.push(cmd.var.id)
+                self.eval_scope(cmd.expr.data)
+                self.pop()
+
             else:
                 raise Exception("unexpected situation")
         except RuntimeErrorWithLog:
             # report the failure
-            raise RuntimeErrorWithLog("Invalid '" + expr_data.label + "' statement.", expr_data.pos)
+            raise RuntimeErrorWithLog("Invalid '" + cmd.expr.data.label + "' definition.", cmd.expr.data.pos)
 

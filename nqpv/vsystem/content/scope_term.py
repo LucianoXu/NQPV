@@ -27,7 +27,7 @@ from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
 fac = dts.TermFact()
 
-scope_type = fac.axiom("env", fac.sort_term(0))
+scope_type = fac.axiom("scope", fac.sort_term(0))
 
 class ScopeTerm(dts.Term):
 
@@ -67,7 +67,10 @@ class ScopeTerm(dts.Term):
             return self._parent_scope.scope_prefix + self._label + "."
 
     def __str__(self) -> str:
-        return "<scope " + self.scope_prefix + ">"
+        r = "<scope " + self.scope_prefix + ">\n"
+        for key in self._vars:
+            r += "\t" + key + "\t\t" + str(self._vars[key].type) + "\n"
+        return r
 
     def __getitem__(self, key : str) -> dts.Var:
         if key in self._vars:

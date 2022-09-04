@@ -22,10 +22,13 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
+import os
+
 from nqpv import dts
 
 from .settings import Settings
 from .syntax import ast
+from .syntax import vparser
 from .log_system import LogSystem, RuntimeErrorWithLog
 from .optenv import get_opt_env, optload, optsave
 
@@ -37,13 +40,18 @@ from .content.proof_term import type_proof, AbortHintTerm, IfHintTerm, InitHintT
 from .content.scope_term import ScopeTerm, VarPath
 
 
+def get_ast(code : str) -> ast.AstScope:
+    return vparser.parser.parse(code)
+
 class VKernel:
-    def __init__(self, name : str, parent : VKernel | None = None):
+    def __init__(self, name : str, folder_path : str = "", parent : VKernel | None = None):
         '''
         parent : the parent scope. if None, then the new scope will be created
+        folder_path : the folder path (relative to the run path) of the scope modules. (It is usually the folder where the file is located.)
         '''
         super().__init__()
         self.cur_scope : ScopeTerm
+        self.folder_path = folder_path
         if parent is None:
             self.cur_scope = ScopeTerm(name, None)
             self.cur_scope.inject(get_opt_env())
@@ -67,7 +75,7 @@ class VKernel:
         '''
         evaluate the scope using a subkernel. this allows the nested setting strategy
         '''
-        new_kernel = VKernel(name, self)
+        new_kernel = VKernel(name, self.folder_path, self)
         for cmd in scope_ast.cmd_ls:
 
             if isinstance(cmd, ast.AstDefinition):
@@ -92,7 +100,8 @@ class VKernel:
             elif isinstance(cmd, ast.AstSaveOpt):
                 try:
                     var_path = new_kernel.eval_varpath(cmd.var)
-                    optsave(new_kernel.cur_scope[var_path], cmd.path)
+                    real_path = os.path.join(self.folder_path, cmd.path)
+                    optsave(new_kernel.cur_scope[var_path], real_path)
                 except RuntimeErrorWithLog:
                     raise RuntimeErrorWithLog("Invalid 'save' command.", cmd.pos)
             else:
@@ -259,7 +268,8 @@ class VKernel:
                         raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.data.type) + "'.", expr.data.pos)
 
                 elif isinstance(expr.data, ast.AstLoadOpt):
-                    return optload(expr.data.path)
+                    real_path = os.path.join(self.folder_path, expr.data.path)
+                    return optload(real_path)
 
                 elif isinstance(expr.data, ast.AstScope):
                     return self.eval_scope(expr.data)

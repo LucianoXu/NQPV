@@ -100,7 +100,7 @@ class SkipTerm(ProgSttTerm):
         return SkipTerm()
 
     def eval(self) -> dts.Term:
-        return super().eval()
+        return SkipTerm()
     
     def str_content(self, prefix: str) -> str:
         return prefix + "skip"
@@ -121,7 +121,7 @@ class AbortTerm(ProgSttTerm):
         return AbortTerm()
 
     def eval(self) -> dts.Term:
-        return super().eval()
+        return AbortTerm()
     
     def expand(self) -> ProgSttTerm:
         return AbortTerm()
@@ -510,7 +510,7 @@ class ProgSttSeqTerm(ProgSttTerm):
         new_ls = []
         for item in self._stt_ls:
             new_ls.append(val_prog_stt(item).expand())
-        return NondetTerm(tuple(new_ls))
+        return ProgSttSeqTerm(tuple(new_ls))
 
     def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
         
@@ -641,6 +641,9 @@ class ProgDefinedTerm(ProgTerm):
             return NotImplemented
         else:
             return False
+    
+    def expand(self) -> ProgDefinedTerm:
+        return ProgDefinedTerm(self.prog_seq_val.expand(), self._arg_ls)
     
     def apply(self, arg_ls : QvarlsTerm) -> ProgSttTerm:
         cor = self.arg_ls_val.get_sub_correspond(arg_ls)

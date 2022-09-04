@@ -32,8 +32,8 @@ from .optenv import get_opt_env, optload, optsave
 from .content.qvarls_term import QvarlsTerm
 from .content.opt_pair_term import OptPairTerm
 from .content.qpre_term import QPreTerm
-from .content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
-from .content.proof_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
+from .content.prog_term import type_prog, AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
+from .content.proof_term import type_proof, AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
 from .content.scope_term import ScopeTerm, VarPath
 
 
@@ -85,7 +85,7 @@ class VKernel:
             elif isinstance(cmd, ast.AstShow):
                 try:
                     # append the information
-                    LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(new_kernel.eval_expr(cmd.expr).eval()))
+                    LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(new_kernel.eval_expr(cmd.expr)))
                 except RuntimeErrorWithLog:
                     raise RuntimeErrorWithLog("Invalid 'show' command.", cmd.pos)
 
@@ -169,7 +169,7 @@ class VKernel:
         else:
             raise Exception()
 
-    def eval_proof(self, data : ast.Ast) -> ProofHintTerm:
+    def eval_proof_hint(self, data : ast.Ast) -> ProofHintTerm:
         if isinstance(data, ast.AstSkip):
             return SkipHintTerm()
         elif isinstance(data, ast.AstAbort):
@@ -183,15 +183,15 @@ class VKernel:
             pair = OptPairTerm(opt, qvarls)
             return UnitaryHintTerm(pair)
         elif isinstance(data, ast.AstIfProof):
-            P1 = self.eval_proof(data.proof1)
-            P0 = self.eval_proof(data.proof0)
+            P1 = self.eval_proof_hint(data.proof1)
+            P0 = self.eval_proof_hint(data.proof0)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = OptPairTerm(opt, qvarls)
             return IfHintTerm(pair, P1, P0)
         elif isinstance(data, ast.AstWhileProof):
             inv = self.eval_qpre(data.inv)
-            P = self.eval_proof(data.proof)
+            P = self.eval_proof_hint(data.proof)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = OptPairTerm(opt, qvarls)
@@ -199,7 +199,7 @@ class VKernel:
         elif isinstance(data, ast.AstNondetProof):
             proof_ls = []
             for subproof in data.data:
-                proof_ls.append(self.eval_proof(subproof))
+                proof_ls.append(self.eval_proof_hint(subproof))
             return NondetHintTerm(tuple(proof_ls))
         elif isinstance(data, ast.AstSubproof):
             subproof = self.cur_scope[self.eval_varpath(data.subproof)]
@@ -208,12 +208,12 @@ class VKernel:
         elif isinstance(data, ast.AstUnionProof):
             proof_ls = []
             for subproof in data.data:
-                proof_ls.append(self.eval_proof(subproof))
+                proof_ls.append(self.eval_proof_hint(subproof))
             return UnionHintTerm(tuple(proof_ls))
         elif isinstance(data, ast.AstProofSeq):
             proof_ls = []
             for subproof in data.data:
-                proof_ls.append(self.eval_proof(subproof))
+                proof_ls.append(self.eval_proof_hint(subproof))
             return ProofSeqHintTerm(tuple(proof_ls))
         elif isinstance(data, ast.AstPredicate):
             qpre = self.eval_qpre(data)
@@ -222,46 +222,55 @@ class VKernel:
             raise Exception()
     
     def eval_expr(self, expr : ast.AstExpression) -> dts.Term:
+        '''
+        this method will always return the value, not the variable
+        '''
         try:
             if isinstance(expr, ast.AstExpressionVar):
                 var_path = self.eval_varpath(expr.var)
-                return self.cur_scope[var_path]
+                return self.cur_scope[var_path].val
+
             elif isinstance(expr, ast.AstExpressionValue):
-                if isinstance(expr.type, ast.AstTypeProg):
-                    if isinstance(expr.data, ast.AstProgSeq):
-                        prog_seq = self.eval_prog(expr.data)
-                        arg_ls = self.eval_qvarls(expr.type.qvarls)
+                if isinstance(expr.data, ast.AstProgExpr):    
+                    # definition
+                    if isinstance(expr.data.data, ast.AstProgSeq):
+                        if not isinstance(expr.data.type, ast.AstTypeProg):
+                            raise Exception()
+                        prog_seq = self.eval_prog(expr.data.data)
+                        arg_ls = self.eval_qvarls(expr.data.type.qvarls)
                         return ProgDefinedTerm(prog_seq, arg_ls)
                     else:
-                        raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.type) + "'.", expr.data.pos)
+                        raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.data.type) + "'.", expr.data.pos)
                     
-                elif isinstance(expr.type, ast.AstTypeProof):
-                    if isinstance(expr.data, ast.AstProof):
-                        pre = self.eval_qpre(expr.data.pre)
-                        proof_seq = self.eval_proof(expr.data.seq)
-                        post = self.eval_qpre(expr.data.post)
-                        arg_ls = self.eval_qvarls(expr.type.qvarls)
-                        return ProofDefinedTerm(
-                            pre,
-                            proof_seq,
-                            post,
-                            arg_ls, self.cur_scope
-                        )
+                elif isinstance(expr.data, ast.AstProofExpr):
+                    #definition
+                    if isinstance(expr.data.data, ast.AstProof):
+                        if not isinstance(expr.data.type, ast.AstTypeProof):
+                            raise Exception()
+                        pre = self.eval_qpre(expr.data.data.pre)
+                        proof_hint_seq = self.eval_proof_hint(expr.data.data.seq)
+                        post = self.eval_qpre(expr.data.data.post)
+                        arg_ls = self.eval_qvarls(expr.data.type.qvarls)
+                        return proof_hint_seq.construct_proof(pre, post, arg_ls, self.cur_scope)
                     else:
-                        raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.type) + "'.", expr.data.pos)
+                        raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.data.type) + "'.", expr.data.pos)
 
-                elif isinstance(expr.type, ast.AstTypeOperator):
-                    if isinstance(expr.data, ast.AstLoadOpt):
-                        return optload(expr.data.path)
+                elif isinstance(expr.data, ast.AstExpand):
+                    # expand
+                    var_path = self.eval_varpath(expr.data.var)
+                    item = self.cur_scope[var_path]
+                    if isinstance(item.val, ProgDefinedTerm):
+                        return item.val.expand()
+                    elif isinstance(item.val, ProofDefinedTerm):
+                        return item.val.expand()
                     else:
-                        raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.type) + "'.", expr.data.pos)
+                        raise RuntimeErrorWithLog("The variable '" + str(var_path) + "' is not program or proof.", expr.data.pos)
 
-                elif isinstance(expr.type, ast.AstTypeScope):
-                    # note : this should not be used in new scope defining
-                    if isinstance(expr.data, ast.AstScope):
-                        return self.eval_scope(expr.data)
-                    else:
-                        raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.type) + "'.", expr.data.pos)
+                elif isinstance(expr.data, ast.AstLoadOpt):
+                    return optload(expr.data.path)
+
+                elif isinstance(expr.data, ast.AstScope):
+                    return self.eval_scope(expr.data)
                 else:
                     raise Exception()
             else:
@@ -279,12 +288,11 @@ class VKernel:
                 var_path = self.eval_varpath(cmd.expr.var)
                 self.cur_scope[cmd.var.id] = self.cur_scope[var_path]
             elif isinstance(cmd.expr, ast.AstExpressionValue):
-                if isinstance(cmd.expr.type, ast.AstTypeProg):
-                    # create the var being defined
-                    self.cur_scope[cmd.var.id] = ProgDefiningTerm(self.eval_qvarls(cmd.expr.type.qvarls))
-
-                    if not isinstance(cmd.expr.data, ast.AstProgSeq):
+                if isinstance(cmd.expr.data, ast.AstProgExpr):
+                    if not isinstance(cmd.expr.data.type, ast.AstTypeProg):
                         raise Exception()
+                    # create the var being defined
+                    self.cur_scope[cmd.var.id] = ProgDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
 
                     # evaluate
                     value = self.eval_expr(cmd.expr)
@@ -293,12 +301,11 @@ class VKernel:
                     self.cur_scope.remove_var(cmd.var.id)
                     self.cur_scope[cmd.var.id] = value
 
-                elif isinstance(cmd.expr.type, ast.AstTypeProof):
-                    # create the var being defined
-                    self.cur_scope[cmd.var.id] = ProofDefiningTerm(self.eval_qvarls(cmd.expr.type.qvarls))
-
-                    if not isinstance(cmd.expr.data, ast.AstProof):
+                elif isinstance(cmd.expr.data, ast.AstProofExpr):
+                    if not isinstance(cmd.expr.data.type, ast.AstTypeProof):
                         raise Exception()
+                    # create the var being defined
+                    self.cur_scope[cmd.var.id] = ProofDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
                     
                     # evaluate
                     value = self.eval_expr(cmd.expr)
@@ -307,18 +314,14 @@ class VKernel:
                     self.cur_scope.remove_var(cmd.var.id)
                     self.cur_scope[cmd.var.id] = value
 
-                elif isinstance(cmd.expr.type, ast.AstTypeScope):
-                    if not isinstance(cmd.expr.data, ast.AstScope):
-                        raise Exception()
-                    
+                elif isinstance(cmd.expr.data, ast.AstScope):                    
                     subscope = self.eval_scope(cmd.expr.data, cmd.var.id)
                     self.cur_scope[cmd.var.id] = subscope
 
-                elif isinstance(cmd.expr.type, ast.AstTypeOperator):
-                    if isinstance(cmd.expr.data, ast.AstLoadOpt):
-                        self.cur_scope[cmd.var.id] = self.eval_expr(cmd.expr)
-                    else:
-                        raise Exception()
+                # normal assignment
+                elif isinstance(cmd.expr.data, ast.AstLoadOpt)\
+                        or isinstance(cmd.expr.data, ast.AstExpand):
+                    self.cur_scope[cmd.var.id] = self.eval_expr(cmd.expr)
                 else:
                     raise Exception()
             else:

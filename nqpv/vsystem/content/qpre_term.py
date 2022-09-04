@@ -29,7 +29,7 @@ from .qvarls_term import QvarlsTerm
 from . import opt_kernel
 from .opt_kernel import Precision
 from . import opt_pair_term
-from .opt_pair_term import OptPairTerm, type_opt_pair
+from .opt_pair_term import OptPairTerm, type_opt_pair, val_opt_pair
 from .scope_term import ScopeTerm
 
 import numpy as np
@@ -72,10 +72,7 @@ class QPreTerm(dts.Term):
         return len(self._opt_pairs)
 
     def get_pair(self, i : int) -> OptPairTerm:
-        temp = self._opt_pairs[i].eval()
-        if not isinstance(temp, OptPairTerm):
-            raise Exception()
-        return temp
+        return val_opt_pair(self._opt_pairs[i])
 
     def eval(self) -> dts.Term:
         evaluated = []

@@ -80,6 +80,32 @@ class ProofHintTerm(dts.Term):
 
     def __str__(self) -> str:
         return "\n" + self.str_content("") + "\n"
+    
+    def construct_proof(self, pre : dts.Term, post : dts.Term, arg_ls : dts.Term, scope : ScopeTerm) -> ProofTerm:
+        '''
+        construct a proof term from this hint
+        '''
+        if not isinstance(pre, dts.Term) or not isinstance(post, dts.Term)\
+             or not isinstance(arg_ls, dts.Term) or not isinstance(scope, ScopeTerm):
+            raise ValueError()
+        pre_val = val_qpre(pre)
+        post_val = val_qpre(post)
+
+        # need to check whether arg_ls covers the pre and the post
+        arg_ls_val = val_qvarls(arg_ls)
+        if not arg_ls_val.cover(pre_val.all_qvarls) or \
+                not arg_ls_val.cover(post_val.all_qvarls):
+            raise RuntimeErrorWithLog("The argument list '" + str(arg_ls) + "' must cover that of the precondition and the postcondition.")
+
+        # calculate the proof statements
+        proof_stts = self.wp_statement(post, scope)
+
+        try:
+            QPreTerm.sqsubseteq(pre_val, proof_stts.pre_val, scope)
+        except RuntimeErrorWithLog:
+            raise RuntimeErrorWithLog("The precondition of this proof does not hold.")
+
+        return ProofDefinedTerm(pre, self, proof_stts, post, arg_ls)
 
 def val_proof_hint(term : dts.Term) -> ProofHintTerm:
     if not isinstance(term, dts.Term):
@@ -559,13 +585,11 @@ class ProofSeqHintTerm(ProofHintTerm):
         proof_stts : List[ProofSttTerm] = []
         cur_post = post
         for i in range(len(self._proof_hints)-1, -1, -1):
-            item_val = self._proof_hints[i].eval()
-            if not isinstance(item_val, ProofHintTerm):
-                raise Exception()
+            item_val = val_proof_hint(self._proof_hints[i])
             proof_stts.insert(0, item_val.wp_statement(cur_post, scope))
             cur_post = proof_stts[0].pre_val
         
-        return SeqProofTerm(cur_post, post, tuple(proof_stts))
+        return ProofSeqTerm(cur_post, post, tuple(proof_stts))
     def str_content(self, prefix: str) -> str:
         if len(self._proof_hints) == 1:
             return self.get_proof_hint(0).str_content(prefix)
@@ -660,6 +684,12 @@ class SkipProofTerm(ProofSttTerm):
         r += prefix + "skip"
         return r
     
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        return SkipProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence)
+        )
+    
     def expand(self) -> ProofSttTerm:
         return SkipProofTerm(self._pre, self._post)
         
@@ -673,6 +703,12 @@ class AbortProofTerm(ProofSttTerm):
         r += prefix + "abort"
         return r
     
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        return AbortProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence)
+        )
+
     def expand(self) -> ProofSttTerm:
         return AbortProofTerm(self._pre, self._post)
 
@@ -695,6 +731,13 @@ class InitProofTerm(ProofSttTerm):
         r = prefix + str(self.pre_val) + ";\n"
         r += prefix + str(self.qvarls_val) + " :=0"
         return r
+    
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        return InitProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            self.qvarls_val.qvar_substitute(correspondence)
+        )
     
     def expand(self) -> ProofSttTerm:
         return InitProofTerm(self._pre, self._post, self._qvarls)
@@ -719,6 +762,14 @@ class UnitaryProofTerm(ProofSttTerm):
         r += prefix + str(self.opt_pair_val.qvarls_val) + " *= " + str(self.opt_pair_val.opt)
         return r
     
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        return UnitaryProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            self.opt_pair_val.qvar_substitute(correspondence)
+
+        )
+
     def expand(self) -> ProofSttTerm:
         return UnitaryProofTerm(self._pre, self._post, self._opt_pair)
     
@@ -761,6 +812,15 @@ class IfProofTerm(ProofSttTerm):
         r += self.P0_val.str_content(prefix + "\t") + "\n"
         r += prefix + "end"
         return r
+    
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        return IfProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            self.opt_pair_val.qvar_substitute(correspondence),
+            self.P1_val.arg_apply(correspondence),
+            self.P0_val.arg_apply(correspondence)
+        )
     
     def expand(self) -> ProofSttTerm:
         return IfProofTerm(
@@ -806,6 +866,15 @@ class WhileProofTerm(ProofSttTerm):
         r += prefix + "end"
         return r
     
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        return WhileProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            self.inv_val.qvar_subsitute(correspondence),
+            self.opt_pair_val.qvar_substitute(correspondence),
+            self.P_val.arg_apply(correspondence)
+        )
+
     def expand(self) -> ProofSttTerm:
         return WhileProofTerm(
             self._pre, self._post, self._inv, self._opt_pair, 
@@ -817,9 +886,7 @@ class NondetProofTerm(ProofSttTerm):
         if not isinstance(proof_ls, tuple):
             raise ValueError()
         for item in proof_ls:
-            item_val = item.eval()
-            if not isinstance(item_val, ProofSttTerm):
-                raise ValueError()
+            item_val = val_proof_stt(item)
         
         super().__init__(pre, post)
         for item in proof_ls:
@@ -840,6 +907,16 @@ class NondetProofTerm(ProofSttTerm):
         r += prefix + ")"
         return r
     
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        new_stts = []
+        for i in range(len(self._proof_ls)):
+            new_stts.append(self.get_proof(i).arg_apply(correspondence))
+        return NondetProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            tuple(new_stts)
+        )
+
     def expand(self) -> ProofSttTerm:
         new_ls = []
         for item in self._proof_ls:
@@ -863,9 +940,17 @@ class SubproofTerm(ProofSttTerm):
         return val_qvarls(self._arg_ls)
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
-        r += str(self._subproof) + " " + str(self.arg_ls_val)
+        r = prefix + str(self._pre) + ";\n"
+        r += prefix + str(self._subproof) + " " + str(self.arg_ls_val)
         return r
+    
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        return SubproofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            self._subproof,
+            self.arg_ls_val.qvar_substitute(correspondence)
+        )
     
     def expand(self) -> ProofSttTerm:
         return val_proof(self._subproof).apply(self.arg_ls_val)
@@ -888,6 +973,13 @@ class QPreProofTerm(ProofSttTerm):
     def str_content(self, prefix: str) -> str:
         return prefix + str(self.qpre_val)
     
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        return QPreProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            self.qpre_val.qvar_subsitute(correspondence)
+        )
+
     def expand(self) -> ProofSttTerm:
         return QPreProofTerm(self._pre, self._post, self._qpre)
 
@@ -896,9 +988,7 @@ class UnionProofTerm(ProofSttTerm):
         if not isinstance(proof_ls, tuple):
             raise ValueError()
         for item in proof_ls:
-            item_val = item.eval()
-            if not isinstance(item_val, ProofSttTerm):
-                raise ValueError()
+            item_val = val_proof_stt(item)
 
         super().__init__(pre, post)
         for item in proof_ls:
@@ -919,6 +1009,16 @@ class UnionProofTerm(ProofSttTerm):
         r += prefix + ")"
         return r
     
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        new_stts = []
+        for i in range(len(self._proof_ls)):
+            new_stts.append(self.get_proof(i).arg_apply(correspondence))
+        return UnionProofTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            tuple(new_stts)
+        )
+
     def expand(self) -> ProofSttTerm:
         new_ls = []
         for item in self._proof_ls:
@@ -926,14 +1026,12 @@ class UnionProofTerm(ProofSttTerm):
         return UnionProofTerm(self._pre, self._post, tuple(new_ls))
 
 
-class SeqProofTerm(ProofSttTerm):
+class ProofSeqTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, proof_ls : Tuple[dts.Term,...]):        
         if not isinstance(proof_ls, tuple):
             raise ValueError()
         for item in proof_ls:
-            item_val = item.eval()
-            if not isinstance(item_val, ProofSttTerm):
-                raise ValueError()
+            item_val = val_proof_stt(item)
         
         super().__init__(pre, post)
         for item in proof_ls:
@@ -956,11 +1054,22 @@ class SeqProofTerm(ProofSttTerm):
         else:
             raise Exception()
         
+    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
+        new_stts = []
+        for i in range(len(self._proof_ls)):
+            new_stts.append(self.get_proof(i).arg_apply(correspondence))
+        return ProofSeqTerm(
+            self.pre_val.qvar_subsitute(correspondence),
+            self.post_val.qvar_subsitute(correspondence),
+            tuple(new_stts)
+        )
+
+
     def expand(self) -> ProofSttTerm:
         new_ls = []
         for item in self._proof_ls:
             new_ls.append(val_proof_stt(item).expand())
-        return SeqProofTerm(self._pre, self._post, tuple(new_ls))
+        return ProofSeqTerm(self._pre, self._post, tuple(new_ls))
 
 
 class ProofTerm(dts.Term):
@@ -995,42 +1104,23 @@ class ProofDefinedTerm(ProofTerm):
     '''
     the completed proof
     '''
-    def __init__(self, pre : dts.Term, proof : dts.Term, post : dts.Term, arg_ls : dts.Term, scope : ScopeTerm):
+    def __init__(self, pre : dts.Term, proof_hint : dts.Term, proof_stts : dts.Term, post : dts.Term, arg_ls : dts.Term):
         '''
-        proof : proof_hint term
+        proof_hint : proof_hint is necessary for apply_hint method
         the specified pre and post conditions are necessary, because they are not the full extension
         '''
         
-        if not isinstance(pre, dts.Term) or not isinstance(proof, dts.Term) or not isinstance(post, dts.Term)\
-             or not isinstance(arg_ls, dts.Term) or not isinstance(scope, ScopeTerm):
+        if not isinstance(pre, dts.Term)\
+             or not isinstance(proof_hint, dts.Term)\
+             or not isinstance(proof_stts, dts.Term)\
+             or not isinstance(post, dts.Term)\
+             or not isinstance(arg_ls, dts.Term):
             raise ValueError()
-        pre_val = pre.eval()
-        post_val = post.eval()
-        if not isinstance(pre_val, QPreTerm) or not isinstance(post_val, QPreTerm):
-            raise ValueError()
-        proof_val = proof.eval()
-        if not isinstance(proof_val, ProofHintTerm):
-            raise ValueError()
-        self._arg_ls : dts.Term = arg_ls
-        arg_ls_val = arg_ls.eval()
-        if not isinstance(arg_ls_val, QvarlsTerm):
-            raise ValueError()
-        # need to check whether arg_ls covers the pre and the post
-        if not arg_ls_val.cover(pre_val.all_qvarls) or \
-                not arg_ls_val.cover(post_val.all_qvarls):
-            raise RuntimeErrorWithLog("The argument list '" + str(arg_ls) + "' must cover that of the precondition and the postcondition.")
-
-        # calculate the proof statements
-        proof_stts = proof_val.wp_statement(post, scope)
-
-        try:
-            QPreTerm.sqsubseteq(pre_val, proof_stts.pre_val, scope)
-        except RuntimeErrorWithLog:
-            raise RuntimeErrorWithLog("The precondition of this proof does not hold.")
 
         super().__init__(arg_ls)
-        self._proof_hint : dts.Term = proof
-        self._proof_stts = proof_stts
+        self._arg_ls : dts.Term = arg_ls
+        self._proof_hint : dts.Term = proof_hint
+        self._proof_stts : dts.Term = proof_stts
         self._pre = pre
         self._post = post
 
@@ -1054,6 +1144,9 @@ class ProofDefinedTerm(ProofTerm):
     def apply_hint(self, arg_ls : QvarlsTerm) -> ProofHintTerm:
         cor = self.arg_ls_val.get_sub_correspond(arg_ls)
         return self.proof_hint_val.arg_apply(cor)
+
+    def expand(self) -> ProofDefinedTerm:
+        return ProofDefinedTerm(self._pre, self._proof_hint, self.proof_stts_val.expand(), self._post, self._arg_ls)
 
     def apply(self, arg_ls : QvarlsTerm) -> ProofSttTerm:
         '''

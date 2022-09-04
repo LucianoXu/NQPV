@@ -260,7 +260,7 @@ class Var(Term):
             return self.val == other
     
     def eval(self) -> Term:
-        return self._value
+        return self._value.eval()
 
 
 class ToType(Term):

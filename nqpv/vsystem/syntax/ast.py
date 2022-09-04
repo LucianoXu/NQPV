@@ -91,14 +91,30 @@ class AstLoadOpt(Ast):
         super().__init__(pos, "load operator")
         self.path : str = path
 
+class AstExpand(Ast):
+    def __init__(self, pos : PosInfo, var : AstVar):
+        super().__init__(pos, "expand")
+        self.var : AstVar = var
+
 class AstExpression(Ast):
     def __init__(self, pos : PosInfo):
         super().__init__(pos, "expresssion")
 
-class AstExpressionValue(AstExpression):
-    def __init__(self, pos : PosInfo, type : AstType, data : Ast):
-        super().__init__(pos)
+class AstProofExpr(Ast):
+    def __init__(self, pos : PosInfo, type : AstType, data : AstProofSeq):
+        super().__init__(pos, "proof expression")
         self.type : AstType = type
+        self.data : AstProofSeq = data
+
+class AstProgExpr(Ast):
+    def __init__(self, pos : PosInfo, type : AstType, data : AstProgSeq):
+        super().__init__(pos, "program expression")
+        self.type : AstType = type
+        self.data : AstProgSeq = data
+
+class AstExpressionValue(AstExpression):
+    def __init__(self, pos : PosInfo, data : Ast):
+        super().__init__(pos)
         self.data : Ast = data
 
 class AstExpressionVar(AstExpression):

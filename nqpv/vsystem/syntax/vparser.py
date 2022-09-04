@@ -117,28 +117,45 @@ def p_type(p):
 
 def p_expression(p):
     '''
-    expression  : type ':' expr_data
+    expression  : expr_data
                 | var
     '''
-    if len(p) == 2:
+    if isinstance(p[1], ast.AstVar):
         p[0] = ast.AstExpressionVar(p[1].pos, p[1])
     else:
-        p[0] = ast.AstExpressionValue(p[1].pos, p[1], p[3])
+        p[0] = ast.AstExpressionValue(p[1].pos, p[1])
 
     if p[0] is None:
         raise Exception()
 
 def p_expr_data(p):
     '''
-    expr_data   : prog
-                | proof
+    expr_data   : type ':' prog
+                | type ':' proof
                 | scope
                 | load
+                | expand
     '''
-    p[0] = p[1]
+    if len(p) > 2:
+        if isinstance(p[3], ast.AstProgSeq):
+            p[0] = ast.AstProgExpr(p[1].pos, p[1], p[3])
+        elif isinstance(p[3], ast.AstProof):
+            p[0] = ast.AstProofExpr(p[1].pos, p[1], p[3])
+    else:
+        p[0] = p[1]
 
     if p[0] is None:
         raise Exception()
+
+def p_expand_prog(p):
+    '''
+    expand : EXPAND var
+    '''
+    p[0] = ast.AstExpand(PosInfo(p.slice[1].lineno), p[2])
+
+    if p[0] is None:
+        raise Exception()
+
 
 def p_load(p):
     '''

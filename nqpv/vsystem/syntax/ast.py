@@ -91,11 +91,6 @@ class AstLoadOpt(Ast):
         super().__init__(pos, "load operator")
         self.path : str = path
 
-class AstExpand(Ast):
-    def __init__(self, pos : PosInfo, var : AstVar):
-        super().__init__(pos, "expand")
-        self.var : AstVar = var
-
 class AstExpression(Ast):
     def __init__(self, pos : PosInfo):
         super().__init__(pos, "expresssion")

@@ -47,15 +47,6 @@ class ProgSttTerm(dts.Term):
     def all_qvarls(self) -> QvarlsTerm:
         return self._all_qvarls
 
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        raise NotImplementedError()
-
-    def expand(self) -> ProgSttTerm:
-        '''
-        return the expanded program (subprograms substituted)
-        '''
-        raise NotImplementedError()
-    
     def __str__(self) -> str:
         return "\n" + self.str_content("") + "\n"
     
@@ -88,16 +79,10 @@ class SkipTerm(ProgSttTerm):
     def __eq__(self, other) -> bool:
         if isinstance(other, SkipTerm):
             return True
-        elif isinstance(other, dts.Var) or isinstance(other, SubProgTerm):
+        elif isinstance(other, dts.Var):
             raise NotImplemented
         else:
             return False
-
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        return SkipTerm()
-    
-    def expand(self) -> ProgSttTerm:
-        return SkipTerm()
 
     def eval(self) -> dts.Term:
         return SkipTerm()
@@ -112,20 +97,14 @@ class AbortTerm(ProgSttTerm):
     def __eq__(self, other) -> bool:
         if isinstance(other, AbortTerm):
             return True
-        elif isinstance(other, dts.Var) or isinstance(other, SubProgTerm):
+        elif isinstance(other, dts.Var):
             raise NotImplemented
         else:
             return False
 
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        return AbortTerm()
-
     def eval(self) -> dts.Term:
         return AbortTerm()
-    
-    def expand(self) -> ProgSttTerm:
-        return AbortTerm()
-    
+        
     def str_content(self, prefix: str) -> str:
         return prefix + "abort"
 
@@ -148,16 +127,10 @@ class InitTerm(ProgSttTerm):
     def __eq__(self, other) -> bool:
         if isinstance(other, InitTerm):
             return self._qvarls == other._qvarls
-        elif isinstance(other, dts.Var) or isinstance(other, SubProgTerm):
+        elif isinstance(other, dts.Var):
             raise NotImplemented
         else:
             return False
-
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        return InitTerm(self.qvarls_val.qvar_substitute(correspondence))
-    
-    def expand(self) -> ProgSttTerm:
-        return InitTerm(self._qvarls)
 
     def eval(self) -> dts.Term:
         return InitTerm(self._qvarls.eval())
@@ -187,22 +160,10 @@ class UnitaryTerm(ProgSttTerm):
     def __eq__(self, other) -> bool:
         if isinstance(other, UnitaryTerm):
             return self._opt_pair == other._opt_pair
-        elif isinstance(other, dts.Var) or isinstance(other, SubProgTerm):
+        elif isinstance(other, dts.Var):
             raise NotImplemented
         else:
             return False
-
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        opt_pair_val = self.opt_pair_val
-        return UnitaryTerm(
-            OptPairTerm(
-                opt_pair_val.opt,
-                opt_pair_val.qvarls_val.qvar_substitute(correspondence)
-            )
-        )
-    
-    def expand(self) -> ProgSttTerm:
-        return UnitaryTerm(self._opt_pair)
 
     def eval(self) -> dts.Term:
         return UnitaryTerm(self._opt_pair.eval())
@@ -249,26 +210,12 @@ class IfTerm(ProgSttTerm):
     def S0_val(self) -> ProgSttTerm:
         return val_prog_stt(self._S0)
 
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        opt_pair_val = self.opt_pair_val
-        return IfTerm(
-            OptPairTerm(
-                opt_pair_val.opt,
-                opt_pair_val.qvarls_val.qvar_substitute(correspondence)
-            ),
-            self.S1_val.arg_apply(correspondence),
-            self.S0_val.arg_apply(correspondence)
-        )
-
-    def expand(self) -> ProgSttTerm:
-        return IfTerm(self._opt_pair, self.S1_val.expand(), self.S0_val.expand())
-
     def __eq__(self, other) -> bool:
         if isinstance(other, IfTerm):
             return self._opt_pair == other._opt_pair \
-                and self.S1_val.expand() == other.S1_val.expand() \
-                and self.S0_val.expand() == other.S0_val.expand()
-        elif isinstance(other, dts.Var) or isinstance(other, SubProgTerm):
+                and self.S1_val == other.S1_val \
+                and self.S0_val == other.S0_val
+        elif isinstance(other, dts.Var):
             raise NotImplemented
         else:
             return False
@@ -314,23 +261,10 @@ class WhileTerm(ProgSttTerm):
     def S_val(self) -> ProgSttTerm:
         return val_prog_stt(self._S)
 
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        opt_pair_val = self.opt_pair_val
-        return WhileTerm(
-            OptPairTerm(
-                opt_pair_val.opt,
-                opt_pair_val.qvarls_val.qvar_substitute(correspondence)
-            ),
-            self.S_val.arg_apply(correspondence)
-        )
-
-    def expand(self) -> ProgSttTerm:
-        return WhileTerm(self._opt_pair, self.S_val.expand())
-
     def __eq__(self, other) -> bool:
         if isinstance(other, WhileTerm):
-            return self._opt_pair == other._opt_pair and self.S_val.expand() == other.S_val.expand()
-        elif isinstance(other, dts.Var) or isinstance(other, SubProgTerm):
+            return self._opt_pair == other._opt_pair and self.S_val == other.S_val
+        elif isinstance(other, dts.Var):
             raise NotImplemented
         else:
             return False
@@ -365,31 +299,19 @@ class NondetTerm(ProgSttTerm):
     def get_stt(self, i : int) -> ProgSttTerm:
         return val_prog_stt(self._subprog_ls[i])
 
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        new_ls = []
-        for i in range(len(self._subprog_ls)):
-            new_ls.append(self.get_stt(i).arg_apply(correspondence))
-        return NondetTerm(tuple(new_ls))
-
     def __len__(self) -> int:
         return len(self._subprog_ls)
     
-    def expand(self) -> ProgSttTerm:
-        new_ls = []
-        for item in self._subprog_ls:
-            new_ls.append(val_prog_stt(item).expand())
-        return NondetTerm(tuple(new_ls))
-
     def __eq__(self, other) -> bool:
         if isinstance(other, NondetTerm):
             if len(self) != len(other):
                 return False
             # compare each element
             for i in range(len(self)):
-                if self.get_stt(i).expand() != other.get_stt(i).expand():
+                if self.get_stt(i) != other.get_stt(i):
                     return False
             return True
-        elif isinstance(other, dts.Var) or isinstance(other, SubProgTerm):
+        elif isinstance(other, dts.Var):
             raise NotImplemented
         else:
             return False
@@ -426,7 +348,7 @@ class SubProgTerm(ProgSttTerm):
             raise RuntimeErrorWithLog("The argument list '" + str(arg_ls) + "' does not match the program '" + str(subprog) + "'.")
         
         super().__init__(arg_ls_val)
-        self._subprog : dts.Term = subprog
+        self._subprog : dts.Var = subprog
         self._arg_ls : dts.Term = arg_ls
 
     @property
@@ -438,16 +360,12 @@ class SubProgTerm(ProgSttTerm):
         return val_qvarls(self._arg_ls)
 
     def __eq__(self, other) -> bool:
-        # this should not be used, since subprograms will be substituted in syntactic equivalence checking
-        return NotImplemented
-
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        # Note: local variables can also be substituted
-        # substitute the arg_ls only
-        return SubProgTerm(self.subprog_val, self.arg_ls_val.qvar_substitute(correspondence))
-
-    def expand(self) -> ProgSttTerm:
-        return self.subprog_val.apply(self.arg_ls_val)
+        if isinstance(other, SubProgTerm):
+            return self._subprog == other._subprog and self._arg_ls == other._arg_ls
+        elif isinstance(other, dts.Var):
+            raise NotImplemented
+        else:
+            return False
 
     def eval(self) -> dts.Term:
         # construct the substitution correspondence
@@ -498,27 +416,14 @@ class ProgSttSeqTerm(ProgSttTerm):
                 return False
             # compare each statement
             for i in range(len(self)):
-                if self.get_stt(i).expand() != other.get_stt(i).expand():
+                if self.get_stt(i) != other.get_stt(i):
                     return False
             return True
-        elif isinstance(other, dts.Var) or isinstance(other, SubProgTerm):
+        elif isinstance(other, dts.Var):
             raise NotImplemented
         else:
             return False
         
-    def expand(self) -> ProgSttTerm:
-        new_ls = []
-        for item in self._stt_ls:
-            new_ls.append(val_prog_stt(item).expand())
-        return ProgSttSeqTerm(tuple(new_ls))
-
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProgSttTerm:
-        
-        new_ls = []
-        for i in range(len(self)):
-            new_ls.append(self.get_stt(i).arg_apply(correspondence))
-        return ProgSttSeqTerm(tuple(new_ls))
-
     def eval(self) -> dts.Term:
         new_ls = []
         for i in range(len(self)):
@@ -571,6 +476,9 @@ class ProgTerm(dts.Term):
     @property
     def arg_ls_val(self) -> QvarlsTerm:
         return val_qvarls(self._arg_ls)
+
+    def __eq__(self, other) -> bool:
+        raise NotImplementedError()
 
     def __str__(self) -> str:
         raise NotImplementedError()
@@ -629,25 +537,9 @@ class ProgDefinedTerm(ProgTerm):
 
     def __eq__(self, other) -> bool:
         if isinstance(other, ProgDefinedTerm):
-            # compare variable arguments and all variables appeared
-            if len(self.prog_seq_val.all_qvarls) != len(other.prog_seq_val.all_qvarls):
-                return False
-            if len(self.all_qvarls) != len(other.all_qvarls):
-                return False
-            # substitute the parameters and compare
-            cor = other.all_qvarls.get_sub_correspond(self.all_qvarls)
-            return self.prog_seq_val == other.prog_seq_val.arg_apply(cor)
-        elif isinstance(other, dts.Var):
-            return NotImplemented
+            return self.prog_seq_val == other.prog_seq_val and self._arg_ls == other._arg_ls
         else:
-            return False
-    
-    def expand(self) -> ProgDefinedTerm:
-        return ProgDefinedTerm(self.prog_seq_val.expand(), self._arg_ls)
-    
-    def apply(self, arg_ls : QvarlsTerm) -> ProgSttTerm:
-        cor = self.arg_ls_val.get_sub_correspond(arg_ls)
-        return self.prog_seq_val.arg_apply(cor)
+            raise NotImplemented
 
     def __str__(self) -> str:
         return "\nprogram " + str(self._arg_ls) + " : \n" + self.prog_seq_val.str_content("\t") + "\n"

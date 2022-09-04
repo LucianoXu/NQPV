@@ -134,7 +134,6 @@ def p_expr_data(p):
                 | type ':' proof
                 | scope
                 | load
-                | expand
     '''
     if len(p) > 2:
         if isinstance(p[3], ast.AstProgSeq):
@@ -146,16 +145,6 @@ def p_expr_data(p):
 
     if p[0] is None:
         raise Exception()
-
-def p_expand_prog(p):
-    '''
-    expand : EXPAND var
-    '''
-    p[0] = ast.AstExpand(PosInfo(p.slice[1].lineno), p[2])
-
-    if p[0] is None:
-        raise Exception()
-
 
 def p_load(p):
     '''

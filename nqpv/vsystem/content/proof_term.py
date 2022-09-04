@@ -45,28 +45,15 @@ class ProofHintTerm(dts.Term):
 
         super().__init__(type_proof_hint, None)
         self._all_qvarls : QvarlsTerm = all_qvarls
-        # this item should be set by its concrete class objects
-        self._prog : ProgSttTerm | None = None
 
     @property
     def all_qvarls(self) -> QvarlsTerm:
         return self._all_qvarls
     
-    @property
-    def prog(self) -> ProgSttTerm:
-        if self._prog is None:
-            raise RuntimeErrorWithLog("The proof '" + str(self) + "' is not about any program.")
-        else:
-            return self._prog
-    
-    def _get_prog(self) -> ProgSttTerm | None:
+    def prog_consistent(self, other : ProofHintTerm) -> bool:
         '''
-        return the program that this proof is about
-        (return None if this proof is not about a program)
+        check whether the two proof hints are about the same program (syntactically)
         '''
-        raise NotImplementedError()
-
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
         raise NotImplementedError()
 
     def wp_statement(self, post : dts.Term, scope : ScopeTerm) -> ProofSttTerm:
@@ -126,28 +113,28 @@ def val_proof_hint(term : dts.Term) -> ProofHintTerm:
 class SkipHintTerm(ProofHintTerm):
     def __init__(self):
         super().__init__(QvarlsTerm(()))
-        self._prog : ProgSttTerm | None = self._get_prog()
-    def _get_prog(self) -> ProgSttTerm | None:
-        return SkipTerm()
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return SkipHintTerm()
+
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        return isinstance(other, SkipHintTerm)
+
     def wp_statement(self, post: dts.Term, scope : ScopeTerm) -> ProofSttTerm:
         return SkipProofTerm(post, post)
+
     def str_content(self, prefix: str) -> str:
         return prefix + "skip"
 
 class AbortHintTerm(ProofHintTerm):
     def __init__(self):
         super().__init__(QvarlsTerm(()))
-        self._prog : ProgSttTerm | None = self._get_prog()
-    def _get_prog(self) -> ProgSttTerm | None:
-        return AbortTerm()
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return AbortHintTerm()
+
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        return isinstance(other, AbortHintTerm)
+
     def wp_statement(self, post: dts.Term, scope : ScopeTerm) -> ProofSttTerm:
         post_val = val_qpre(post)
         pre = qpre_term.qpre_I(post_val.all_qvarls, scope)
         return AbortProofTerm(pre, post)
+
     def str_content(self, prefix: str) -> str:
         return prefix + "abort"
 
@@ -162,22 +149,24 @@ class InitHintTerm(ProofHintTerm):
 
         super().__init__(qvarls_val)
         self._qvarls : dts.Term = qvarls
-        self._prog : ProgSttTerm | None = self._get_prog()
 
     @property
     def qvarls_val(self) -> QvarlsTerm:
         return val_qvarls(self._qvarls)
 
-    def _get_prog(self) -> ProgSttTerm | None:
-        return InitTerm(self._qvarls)
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return InitHintTerm(self.qvarls_val.qvar_substitute(correspondence))
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        if isinstance(other, InitHintTerm):
+            return self._qvarls == other._qvarls
+        else:
+            return False
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         post_val = val_qpre(post)
         pre = qpre_term.qpre_init(post_val, self.qvarls_val, scope)
         return InitProofTerm(pre, post, self._qvarls)
+
     def str_content(self, prefix: str) -> str:
-        return prefix + str(self.qvarls_val) + " :=0"
+        return prefix + str(self._qvarls) + " :=0"
 
 class UnitaryHintTerm(ProofHintTerm):
     def __init__(self, opt_pair : dts.Term):
@@ -192,22 +181,24 @@ class UnitaryHintTerm(ProofHintTerm):
         all_qvarls = opt_pair_val.qvarls_val
         super().__init__(all_qvarls)
         self._opt_pair : dts.Term = opt_pair
-        self._prog : ProgSttTerm | None = self._get_prog()
 
     @property
     def opt_pair_val(self) -> OptPairTerm:
         return val_opt_pair(self._opt_pair)
 
-    def _get_prog(self) -> ProgSttTerm | None:
-        return UnitaryTerm(self._opt_pair)
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return UnitaryHintTerm(self.opt_pair_val.qvar_substitute(correspondence))
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        if isinstance(other, UnitaryHintTerm):
+            return self._opt_pair == other._opt_pair
+        else:
+            return False
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         post_val = val_qpre(post)        
         pre = qpre_term.qpre_contract(post_val, self.opt_pair_val.dagger(), scope)
         return UnitaryProofTerm(pre, post, self._opt_pair)
+
     def str_content(self, prefix: str) -> str:
-        return prefix + str(self.opt_pair_val.qvarls_val) + " *= " + str(self.opt_pair_val.opt_val)
+        return prefix + str(self.opt_pair_val._qvarls) + " *= " + str(self.opt_pair_val._opt)
 
 class IfHintTerm(ProofHintTerm):
     def __init__(self, opt_pair : dts.Term, P0 : dts.Term, P1 : dts.Term):
@@ -225,12 +216,8 @@ class IfHintTerm(ProofHintTerm):
         if P1.type != type_proof_hint:
             raise RuntimeErrorWithLog("The term '" + str(P1) + "' is not a proof hint.")
         
-        # check the subprograms
-
         P0_val = val_proof_hint(P0)
         P1_val = val_proof_hint(P1)
-        check = P0_val.prog
-        check = P1_val.prog
         
         all_qvarls = opt_pair_val.qvarls_val
         all_qvarls = all_qvarls.join(P0_val.all_qvarls)
@@ -239,7 +226,6 @@ class IfHintTerm(ProofHintTerm):
         self._opt_pair : dts.Term = opt_pair
         self._P0 : dts.Term = P0
         self._P1 : dts.Term = P1
-        self._prog : ProgSttTerm | None = self._get_prog()
 
     @property
     def opt_pair_val(self) -> OptPairTerm:
@@ -253,22 +239,23 @@ class IfHintTerm(ProofHintTerm):
     def P1_val(self) -> ProofHintTerm:
         return val_proof_hint(self._P1)
 
-    def _get_prog(self) -> ProgSttTerm | None:
-        return IfTerm(self._opt_pair, self.P1_val.prog, self.P0_val.prog)
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return IfHintTerm(
-            self.opt_pair_val.qvar_substitute(correspondence),
-            self.P0_val.arg_apply(correspondence),
-            self.P1_val.arg_apply(correspondence)
-        )
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        if isinstance(other, IfHintTerm):
+            return self._opt_pair == other._opt_pair\
+                and self.P1_val.prog_consistent(other.P1_val)\
+                and self.P0_val.prog_consistent(other.P0_val)
+        else:
+            return False
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         P1 = self.P1_val.wp_statement(post, scope)
         P0 = self.P0_val.wp_statement(post, scope)
 
         pre = qpre_term.qpre_mea_proj_sum(P0.pre_val, P1.pre_val, self.opt_pair_val, scope)
         return IfProofTerm(pre, post, self._opt_pair, P1, P0)
+
     def str_content(self, prefix: str) -> str:
-        r = prefix + "if " + str(self.opt_pair_val) + " then\n"
+        r = prefix + "if " + str(self._opt_pair) + " then\n"
         r += self.P1_val.str_content(prefix + "\t") + "\n"
         r += prefix + "else\n"
         r += self.P0_val.str_content(prefix + "\t") + "\n"
@@ -293,9 +280,7 @@ class WhileHintTerm(ProofHintTerm):
         if P.type != type_proof_hint:
             raise RuntimeErrorWithLog("The term '" + str(P) + "' is not a proof hint.")
 
-        # check the subprogram
         P_val = val_proof_hint(P)
-        check = P_val.prog
         
         all_qvarls = opt_pair_val.qvarls_val
         all_qvarls = all_qvarls.join(P_val.all_qvarls)
@@ -303,7 +288,6 @@ class WhileHintTerm(ProofHintTerm):
         self._inv : dts.Term = inv
         self._opt_pair : dts.Term = opt_pair
         self._P : dts.Term = P
-        self._prog : ProgSttTerm | None = self._get_prog()
 
     @property
     def inv_val(self) -> QPreTerm:
@@ -317,14 +301,13 @@ class WhileHintTerm(ProofHintTerm):
     def P_val(self) -> ProofHintTerm:
         return val_proof_hint(self._P)
 
-    def _get_prog(self) -> ProgSttTerm | None:
-        return WhileTerm(self._opt_pair, self.P_val.prog)
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return WhileHintTerm(
-            self.inv_val.qvar_subsitute(correspondence),
-            self.opt_pair_val.qvar_substitute(correspondence),
-            self.P_val.arg_apply(correspondence)
-        )
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        if isinstance(other, WhileHintTerm):
+            return self._opt_pair == other._opt_pair\
+                and self.P_val.prog_consistent(other.P_val)
+        else:
+            return False
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         post_val = val_qpre(post)
         proposed_pre = qpre_term.qpre_mea_proj_sum(post_val, self.inv_val, self.opt_pair_val, scope)
@@ -338,7 +321,7 @@ class WhileHintTerm(ProofHintTerm):
     
     def str_content(self, prefix: str) -> str:
         r = prefix + "{ inv: " + self.inv_val.str_content() + "};\n"
-        r += prefix + "while " + str(self.opt_pair_val) + " do\n"
+        r += prefix + "while " + str(self._opt_pair) + " do\n"
         r += self.P_val.str_content(prefix + "\t") + "\n"
         r += prefix + "end"
         return r
@@ -354,30 +337,26 @@ class NondetHintTerm(ProofHintTerm):
                 raise ValueError()
             if item.type != type_proof_hint:
                 raise RuntimeErrorWithLog("The term '" + str(item) + "' is not a proof hint.")
-            # check the program
             item_val = val_proof_hint(item)
-            check = item_val.prog
             all_qvarls = all_qvarls.join(item_val.all_qvarls)
         
         super().__init__(all_qvarls)
         self._proof_hints : Tuple[dts.Term,...] = proof_hints
-        self._prog : ProgSttTerm | None = self._get_prog()
     
     def get_proof_hint(self, i : int) -> ProofHintTerm:
         return val_proof_hint(self._proof_hints[i])
 
-    def _get_prog(self) -> ProgSttTerm | None:
-        prog_ls = []
-        for item in self._proof_hints:
-            item_val = val_proof_hint(item)
-            prog_ls.append(item_val.prog)
-        return NondetTerm(tuple(prog_ls))
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        new_hints = []
-        for item in self._proof_hints:
-            item_val = val_proof_hint(item)
-            new_hints.append(item_val.arg_apply(correspondence))
-        return NondetHintTerm(tuple(new_hints))
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        if isinstance(other, NondetHintTerm):
+            if len(self._proof_hints) != len(other._proof_hints):
+                return False
+            for i in range(len(self._proof_hints)):
+                if not self.get_proof_hint(i).prog_consistent(other.get_proof_hint(i)):
+                    return False
+            return True
+        else:
+            return False
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         proof_stts = []
         pre = QPreTerm(())
@@ -409,9 +388,8 @@ class SubproofHintTerm(ProofHintTerm):
         
         arg_ls_val = val_qvarls(arg_ls)
         super().__init__(arg_ls_val)
-        self._subproof : dts.Term = subproof
+        self._subproof : dts.Var = subproof
         self._arg_ls : dts.Term = arg_ls
-        self._prog : ProgSttTerm | None = self._get_prog()
 
     @property
     def subproof_val(self) -> ProofDefinedTerm:
@@ -420,14 +398,13 @@ class SubproofHintTerm(ProofHintTerm):
     @property
     def arg_ls_val(self) -> QvarlsTerm:
         return val_qvarls(self._arg_ls)
-    
-    def _get_prog(self) -> ProgSttTerm | None:
-        '''
-        this method will expand the subproof
-        '''
-        return self.subproof_val.apply_hint(self.arg_ls_val).prog
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return SubproofHintTerm(self._subproof, self.arg_ls_val.qvar_substitute(correspondence))
+
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        if isinstance(other, SubproofHintTerm):
+            return self.subproof_val.prog_consistent(other.subproof_val) and self._arg_ls == other._arg_ls
+        else:
+            return False
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         cor = self.subproof_val.arg_ls_val.get_sub_correspond(self.arg_ls_val)
         pre_sub = self.subproof_val.pre_val.qvar_subsitute(cor)
@@ -455,15 +432,17 @@ class QPreHintTerm(ProofHintTerm):
 
         super().__init__(qpre_val.all_qvarls)
         self._qpre : dts.Term = qpre_val
-        self._prog : ProgSttTerm | None = self._get_prog()
 
     @property
     def qpre_val(self) -> QPreTerm:
         return val_qpre(self._qpre)
-    def _get_prog(self) -> ProgSttTerm | None:
-        return None
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return QPreHintTerm(self.qpre_val.qvar_subsitute(correspondence))
+
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        '''
+        not meant for qpre
+        '''
+        raise Exception()
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         try:
             QPreTerm.sqsubseteq(self._qpre, post, scope)
@@ -486,16 +465,14 @@ class UnionHintTerm(ProofHintTerm):
                 raise ValueError()
             if item.type != type_proof_hint:
                 raise RuntimeErrorWithLog("The term '" + str(item) + "' is not a proof hint.")
-            # check the programas
             item_val = val_proof_hint(item)
-            check = item_val.prog
             all_qvarls = all_qvarls.join(item_val.all_qvarls)
         
         # check whether the program of all proofs are the same
-        example_prog = val_proof_hint(proof_hints[0]).prog
+        example_proof_hint = val_proof_hint(proof_hints[0])
         for i in range(1, len(proof_hints)):
             item_val = val_proof_hint(proof_hints[i])
-            if example_prog != item_val.prog:
+            if not example_proof_hint.prog_consistent(item_val):
                 raise RuntimeErrorWithLog(
                     "The (Union) rule requires that all the proofs are about the same program, but proof '" +\
                         str(proof_hints[0]) + "' and proof '" + str(proof_hints[i]) + "' are not."
@@ -504,15 +481,16 @@ class UnionHintTerm(ProofHintTerm):
 
         super().__init__(all_qvarls)
         self._proof_hints : Tuple[dts.Term,...] = proof_hints
-        self._prog : ProgSttTerm | None = self._get_prog()
     
     def get_proof_hint(self, i : int) -> ProofHintTerm:
         return val_proof_hint(self._proof_hints[i])
 
-    def _get_prog(self) -> ProgSttTerm | None:
-        return self.get_proof_hint(0)._get_prog()
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        return self.get_proof_hint(0).arg_apply(correspondence)
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        if isinstance(other, UnionHintTerm):
+            return self.get_proof_hint(0) == other.get_proof_hint(0)
+        else:
+            return False
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
             proof_stts = []
             pre = QPreTerm(())
@@ -525,6 +503,7 @@ class UnionHintTerm(ProofHintTerm):
                 except RuntimeErrorWithLog:
                     raise RuntimeErrorWithLog("The proof '" + str(item) + "' in the union proof does not hold.")
             return UnionProofTerm(pre, post, tuple(proof_stts))
+
     def str_content(self, prefix: str) -> str:
         r = prefix + "(\n"
         r += self.get_proof_hint(0).str_content(prefix + "\t") + "\n"
@@ -558,28 +537,33 @@ class ProofSeqHintTerm(ProofHintTerm):
             else:
                 flattened = flattened + (item,)
         self._proof_hints : Tuple[dts.Term,...] = flattened
-        self._prog : ProgSttTerm | None = self._get_prog()
 
     def get_proof_hint(self, i : int) -> ProofHintTerm:
         return val_proof_hint(self._proof_hints[i])
 
-    def _get_prog(self) -> ProgSttTerm | None:
-        prog_ls = []
-        for item in self._proof_hints:
-            item_val = val_proof_hint(item)
-            # filter out the predicate proofs
-            if not isinstance(item_val, QPreHintTerm):
-                prog_ls.append(item_val.prog)
-        if len(prog_ls) == 0:
-            return None
+    def prog_consistent(self, other: ProofHintTerm) -> bool:
+        if isinstance(other, ProofSeqHintTerm):
+            # get the list without qpredicate
+            ls_self : List[ProofHintTerm] = []
+            for i in range(len(self._proof_hints)):
+                temp = self.get_proof_hint(i)
+                if not isinstance(temp, QPreHintTerm):
+                    ls_self.append(temp)
+            ls_other : List[ProofHintTerm] = []
+            for i in range(len(other._proof_hints)):
+                temp = other.get_proof_hint(i)
+                if not isinstance(temp, QPreHintTerm):
+                    ls_other.append(temp)
+            if len(ls_self) != len(ls_other):
+                return False
+            # begin comparing
+            for i in range(len(ls_self)):
+                if not ls_self[i].prog_consistent(ls_other[i]):
+                    return False
+            return True
         else:
-            return ProgSttSeqTerm(tuple(prog_ls))
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofHintTerm:
-        new_hints = []
-        for item in self._proof_hints:
-            item_val = val_proof_hint(item)
-            new_hints.append(item_val.arg_apply(correspondence))
-        return ProofSeqHintTerm(tuple(new_hints))
+            return False
+
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         # backward transformation
         proof_stts : List[ProofSttTerm] = []
@@ -590,6 +574,7 @@ class ProofSeqHintTerm(ProofHintTerm):
             cur_post = proof_stts[0].pre_val
         
         return ProofSeqTerm(cur_post, post, tuple(proof_stts))
+
     def str_content(self, prefix: str) -> str:
         if len(self._proof_hints) == 1:
             return self.get_proof_hint(0).str_content(prefix)
@@ -638,9 +623,6 @@ class ProofSttTerm(dts.Term):
     def post_val(self) -> QPreTerm:
         return val_qpre(self._post)
 
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        raise NotImplementedError()
-
     def get_prog(self) -> ProgSttTerm:
         raise NotImplementedError()
     
@@ -650,7 +632,7 @@ class ProofSttTerm(dts.Term):
     def __str__(self) -> str:
         return "\n" + self.str_content("") + "\n"
 
-    def expand(self) -> ProofSttTerm:
+    def expand(self, global_qvarls : set[str]) -> ProofSttTerm:
         '''
         get the proof statement with all subproofs substituted
         '''
@@ -684,15 +666,6 @@ class SkipProofTerm(ProofSttTerm):
         r += prefix + "skip"
         return r
     
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        return SkipProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence)
-        )
-    
-    def expand(self) -> ProofSttTerm:
-        return SkipProofTerm(self._pre, self._post)
-        
 
 class AbortProofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term):
@@ -703,14 +676,6 @@ class AbortProofTerm(ProofSttTerm):
         r += prefix + "abort"
         return r
     
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        return AbortProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence)
-        )
-
-    def expand(self) -> ProofSttTerm:
-        return AbortProofTerm(self._pre, self._post)
 
 class InitProofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, qvarls : dts.Term):
@@ -731,17 +696,7 @@ class InitProofTerm(ProofSttTerm):
         r = prefix + str(self.pre_val) + ";\n"
         r += prefix + str(self.qvarls_val) + " :=0"
         return r
-    
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        return InitProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            self.qvarls_val.qvar_substitute(correspondence)
-        )
-    
-    def expand(self) -> ProofSttTerm:
-        return InitProofTerm(self._pre, self._post, self._qvarls)
-    
+        
 class UnitaryProofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, opt_pair : dts.Term):
         if not isinstance(opt_pair, dts.Term):
@@ -761,18 +716,7 @@ class UnitaryProofTerm(ProofSttTerm):
         r = prefix + str(self.pre_val) + ";\n"
         r += prefix + str(self.opt_pair_val.qvarls_val) + " *= " + str(self.opt_pair_val.opt)
         return r
-    
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        return UnitaryProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            self.opt_pair_val.qvar_substitute(correspondence)
-
-        )
-
-    def expand(self) -> ProofSttTerm:
-        return UnitaryProofTerm(self._pre, self._post, self._opt_pair)
-    
+        
 class IfProofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, opt_pair : dts.Term, P1 : dts.Term, P0 : dts.Term):        
         if not isinstance(opt_pair, dts.Term) or not isinstance(P1, dts.Term) or not isinstance(P0, dts.Term):
@@ -813,21 +757,6 @@ class IfProofTerm(ProofSttTerm):
         r += prefix + "end"
         return r
     
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        return IfProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            self.opt_pair_val.qvar_substitute(correspondence),
-            self.P1_val.arg_apply(correspondence),
-            self.P0_val.arg_apply(correspondence)
-        )
-    
-    def expand(self) -> ProofSttTerm:
-        return IfProofTerm(
-            self._pre, self._post, self._opt_pair, 
-            self.P1_val.expand(), self.P0_val.expand()
-        )
-
     
 class WhileProofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, inv : dts.Term, opt_pair : dts.Term, P : dts.Term):        
@@ -866,21 +795,6 @@ class WhileProofTerm(ProofSttTerm):
         r += prefix + "end"
         return r
     
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        return WhileProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            self.inv_val.qvar_subsitute(correspondence),
-            self.opt_pair_val.qvar_substitute(correspondence),
-            self.P_val.arg_apply(correspondence)
-        )
-
-    def expand(self) -> ProofSttTerm:
-        return WhileProofTerm(
-            self._pre, self._post, self._inv, self._opt_pair, 
-            self.P_val.expand()
-        )
-
 class NondetProofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, proof_ls : Tuple[dts.Term,...]):        
         if not isinstance(proof_ls, tuple):
@@ -907,22 +821,6 @@ class NondetProofTerm(ProofSttTerm):
         r += prefix + ")"
         return r
     
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        new_stts = []
-        for i in range(len(self._proof_ls)):
-            new_stts.append(self.get_proof(i).arg_apply(correspondence))
-        return NondetProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            tuple(new_stts)
-        )
-
-    def expand(self) -> ProofSttTerm:
-        new_ls = []
-        for item in self._proof_ls:
-            new_ls.append(val_proof_stt(item).expand())
-        return NondetProofTerm(self._pre, self._post, tuple(new_ls))
-
 class SubproofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, subproof : dts.Term, arg_ls : dts.Term):
         if not isinstance(subproof, dts.Term) or not isinstance(arg_ls, dts.Term):
@@ -931,7 +829,7 @@ class SubproofTerm(ProofSttTerm):
             raise ValueError()
 
         super().__init__(pre, post)
-        self._all_qvarls = self._all_qvarls.join(val_qvarls(arg_ls))
+        self._all_qvarls = val_qvarls(arg_ls)
         self._subproof = subproof
         self._arg_ls = arg_ls
     
@@ -944,17 +842,6 @@ class SubproofTerm(ProofSttTerm):
         r += prefix + str(self._subproof) + " " + str(self.arg_ls_val)
         return r
     
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        return SubproofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            self._subproof,
-            self.arg_ls_val.qvar_substitute(correspondence)
-        )
-    
-    def expand(self) -> ProofSttTerm:
-        return val_proof(self._subproof).apply(self.arg_ls_val)
-
 class QPreProofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, qpre : dts.Term):
         if not isinstance(qpre, dts.Term):
@@ -973,16 +860,6 @@ class QPreProofTerm(ProofSttTerm):
     def str_content(self, prefix: str) -> str:
         return prefix + str(self.qpre_val)
     
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        return QPreProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            self.qpre_val.qvar_subsitute(correspondence)
-        )
-
-    def expand(self) -> ProofSttTerm:
-        return QPreProofTerm(self._pre, self._post, self._qpre)
-
 class UnionProofTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, proof_ls : Tuple[dts.Term,...]):
         if not isinstance(proof_ls, tuple):
@@ -1009,22 +886,6 @@ class UnionProofTerm(ProofSttTerm):
         r += prefix + ")"
         return r
     
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        new_stts = []
-        for i in range(len(self._proof_ls)):
-            new_stts.append(self.get_proof(i).arg_apply(correspondence))
-        return UnionProofTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            tuple(new_stts)
-        )
-
-    def expand(self) -> ProofSttTerm:
-        new_ls = []
-        for item in self._proof_ls:
-            new_ls.append(val_proof_stt(item).expand())
-        return UnionProofTerm(self._pre, self._post, tuple(new_ls))
-
 
 class ProofSeqTerm(ProofSttTerm):
     def __init__(self, pre : dts.Term, post : dts.Term, proof_ls : Tuple[dts.Term,...]):        
@@ -1048,29 +909,12 @@ class ProofSeqTerm(ProofSttTerm):
         elif len(self._proof_ls) > 1:
             r = ""
             for i in range(len(self._proof_ls)-1):
-                r += self.get_proof(i).str_content(prefix) + ";\n"
+                r += self.get_proof(i).str_content(prefix) + ";\n\n"
             r += self.get_proof(len(self._proof_ls)-1).str_content(prefix)
             return r
         else:
             raise Exception()
         
-    def arg_apply(self, correspondence: Dict[str, str]) -> ProofSttTerm:
-        new_stts = []
-        for i in range(len(self._proof_ls)):
-            new_stts.append(self.get_proof(i).arg_apply(correspondence))
-        return ProofSeqTerm(
-            self.pre_val.qvar_subsitute(correspondence),
-            self.post_val.qvar_subsitute(correspondence),
-            tuple(new_stts)
-        )
-
-
-    def expand(self) -> ProofSttTerm:
-        new_ls = []
-        for item in self._proof_ls:
-            new_ls.append(val_proof_stt(item).expand())
-        return ProofSeqTerm(self._pre, self._post, tuple(new_ls))
-
 
 class ProofTerm(dts.Term):
     def __init__(self, arg_ls : dts.Term):
@@ -1089,6 +933,9 @@ class ProofTerm(dts.Term):
     @property
     def arg_ls_val(self) -> QvarlsTerm:
         return val_qvarls(self._arg_ls)
+
+    def __eq__(self, other) -> bool:
+        raise NotImplementedError()
 
     def __str__(self) -> str:
         raise NotImplementedError()
@@ -1123,6 +970,7 @@ class ProofDefinedTerm(ProofTerm):
         self._proof_stts : dts.Term = proof_stts
         self._pre = pre
         self._post = post
+        self._all_qvarls = self._all_qvarls.join(val_proof_stt(self._proof_stts).all_qvarls)
 
     
     @property
@@ -1140,20 +988,10 @@ class ProofDefinedTerm(ProofTerm):
     @property
     def post_val(self) -> QPreTerm:
         return val_qpre(self._post)
+
+    def prog_consistent(self, other : ProofDefinedTerm) -> bool:
+        return self.proof_hint_val.prog_consistent(other.proof_hint_val) and self._arg_ls == other._arg_ls
         
-    def apply_hint(self, arg_ls : QvarlsTerm) -> ProofHintTerm:
-        cor = self.arg_ls_val.get_sub_correspond(arg_ls)
-        return self.proof_hint_val.arg_apply(cor)
-
-    def expand(self) -> ProofDefinedTerm:
-        return ProofDefinedTerm(self._pre, self._proof_hint, self.proof_stts_val.expand(), self._post, self._arg_ls)
-
-    def apply(self, arg_ls : QvarlsTerm) -> ProofSttTerm:
-        '''
-        apply the argument list to get the expaneded proof
-        '''
-        cor = self.arg_ls_val.get_sub_correspond(arg_ls)
-        return self.proof_stts_val.arg_apply(cor)
 
     def __str__(self) -> str:
         r = "\nproof " + str(self.arg_ls_val) + " : \n" 

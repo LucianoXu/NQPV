@@ -104,8 +104,11 @@ class VKernel:
         try:
             id_ls = []
             for item in qvarls.data:
+                # now we do not require this
+                '''
                 if VarPath((item.id,)) in self.cur_scope:
                     raise RuntimeErrorWithLog("The variable '" + str(item) + "' already exists, and cannot be used as a quantum variable identifier.")
+                '''
                 id_ls.append(item.id)
 
             return QvarlsTerm(tuple(id_ls))
@@ -255,17 +258,6 @@ class VKernel:
                     else:
                         raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.data.type) + "'.", expr.data.pos)
 
-                elif isinstance(expr.data, ast.AstExpand):
-                    # expand
-                    var_path = self.eval_varpath(expr.data.var)
-                    item = self.cur_scope[var_path]
-                    if isinstance(item.val, ProgDefinedTerm):
-                        return item.val.expand()
-                    elif isinstance(item.val, ProofDefinedTerm):
-                        return item.val.expand()
-                    else:
-                        raise RuntimeErrorWithLog("The variable '" + str(var_path) + "' is not program or proof.", expr.data.pos)
-
                 elif isinstance(expr.data, ast.AstLoadOpt):
                     return optload(expr.data.path)
 
@@ -319,8 +311,7 @@ class VKernel:
                     self.cur_scope[cmd.var.id] = subscope
 
                 # normal assignment
-                elif isinstance(cmd.expr.data, ast.AstLoadOpt)\
-                        or isinstance(cmd.expr.data, ast.AstExpand):
+                elif isinstance(cmd.expr.data, ast.AstLoadOpt):
                     self.cur_scope[cmd.var.id] = self.eval_expr(cmd.expr)
                 else:
                     raise Exception()

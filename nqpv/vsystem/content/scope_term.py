@@ -65,7 +65,6 @@ class VarPath:
 class ScopeTerm(dts.Term):
 
     auto_naming_no : int = 0
-    auto_naming_prefix : str = "VAR"
 
     def __init__(self, label : str, parent_scope : dts.Term | None):
         if not (isinstance(parent_scope, dts.Term) or parent_scope is None) or not isinstance(label, str):
@@ -193,15 +192,15 @@ class ScopeTerm(dts.Term):
         for var in var_env._vars:
             self[var] = var_env[var].val
     
-    def auto_name(self) -> str:
+    def auto_name(self, naming_prefix = "VAR") -> str:
         '''
         return an auto name, which does not appear in this environment
         '''
-        r = ScopeTerm.auto_naming_prefix + str(ScopeTerm.auto_naming_no)
+        r = naming_prefix + str(ScopeTerm.auto_naming_no)
         ScopeTerm.auto_naming_no += 1
         # ensure that the new name will not overlap any old name
         while r in self:
-            r = ScopeTerm.auto_naming_prefix + str(ScopeTerm.auto_naming_no)
+            r = naming_prefix + str(ScopeTerm.auto_naming_no)
             ScopeTerm.auto_naming_no += 1
         return r
         

@@ -535,7 +535,7 @@ class ProgSttSeqTerm(ProgSttTerm):
             r += self.get_stt(len(self._stt_ls)-1).str_content(prefix)
             return r
         else:
-            raise Exception("unexpected situation")
+            raise Exception()
 
 
 def val_prog_stt_seq(term : dts.Term) -> ProgSttSeqTerm:

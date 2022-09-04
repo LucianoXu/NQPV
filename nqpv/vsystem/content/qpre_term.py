@@ -74,7 +74,7 @@ class QPreTerm(dts.Term):
     def get_pair(self, i : int) -> OptPairTerm:
         temp = self._opt_pairs[i].eval()
         if not isinstance(temp, OptPairTerm):
-            raise Exception("unexpected situation")
+            raise Exception()
         return temp
 
     def eval(self) -> dts.Term:

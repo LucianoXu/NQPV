@@ -79,7 +79,7 @@ class ScopeTerm(dts.Term):
                 raise ValueError()
             parent_scope = parent_scope.eval()
             if not isinstance(parent_scope, ScopeTerm):
-                raise Exception("unexpecetd situation")
+                raise Exception()
         self._parent_scope : ScopeTerm | None = parent_scope
 
         # the label of this environment

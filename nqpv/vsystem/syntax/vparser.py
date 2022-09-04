@@ -43,7 +43,7 @@ def p_scope(p):
         p[0] = ast.AstScope(p[1].pos, [p[1]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_cmd(p):
     '''
@@ -55,35 +55,35 @@ def p_cmd(p):
     p[0] = p[1]
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_save(p):
     '''
-    save    : SAVE var AT STRING
+    save    : SAVE var AT STRING END
     '''
     p[0] = ast.AstSaveOpt(PosInfo(p.slice[1].lineno), p[2], p[4][1:-1])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 
 def p_show(p):
     '''
-    show    : SHOW var
+    show    : SHOW expression END
     '''
     p[0] = ast.AstShow(PosInfo(p.slice[1].lineno), p[2])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_definition(p):
     '''
-    definition  : DEF id ':' type ASSIGN expression END
+    definition  : DEF id ASSIGN expression END
     '''
-    p[0] = ast.AstDefinition(PosInfo(p.slice[1].lineno), p[2], p[4], p[6])
+    p[0] = ast.AstDefinition(PosInfo(p.slice[1].lineno), p[2], p[4])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 
 def p_axiom(p):
@@ -93,7 +93,7 @@ def p_axiom(p):
     p[0] = ast.AstAxiom(PosInfo(p.slice[1].lineno), p[2], p[4], p[5], p[6], p[7])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_type(p):
     '''
@@ -113,19 +113,32 @@ def p_type(p):
         p[0] = ast.AstTypeOperator(PosInfo(p.slice[1].lineno))
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_expression(p):
     '''
-    expression  : prog
+    expression  : type ':' expr_data
+                | var
+    '''
+    if len(p) == 2:
+        p[0] = ast.AstExpressionVar(p[1].pos, p[1])
+    else:
+        p[0] = ast.AstExpressionValue(p[1].pos, p[1], p[3])
+
+    if p[0] is None:
+        raise Exception()
+
+def p_expr_data(p):
+    '''
+    expr_data   : prog
                 | proof
                 | scope
                 | load
     '''
-    p[0] = ast.AstExpression(p[1].pos, p[1])
+    p[0] = p[1]
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_load(p):
     '''
@@ -134,7 +147,7 @@ def p_load(p):
     p[0] = ast.AstLoadOpt(PosInfo(p.slice[1].lineno), p[2][1:-1])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_qvar_ls(p):
     '''
@@ -143,7 +156,7 @@ def p_qvar_ls(p):
     p[0] = p[1]
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_qvar_ls_pre(p):
     '''
@@ -156,7 +169,7 @@ def p_qvar_ls_pre(p):
         p[0] = ast.AstQvarLs(p[1].pos, p[1].data + [p[2]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_predicate(p):
     '''
@@ -165,7 +178,7 @@ def p_predicate(p):
     p[0] = p[1]
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_predicate_pre(p):
     '''
@@ -178,7 +191,7 @@ def p_predicate_pre(p):
         p[0] = ast.AstPredicate(p[1].pos, p[1].data + [(p[2], p[3])])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 
 def p_prog(p):
@@ -192,7 +205,7 @@ def p_prog(p):
         p[0] = ast.AstProgSeq(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_statement(p):
     '''
@@ -211,7 +224,7 @@ def p_statement(p):
         p[0] = ast.AstSubprog(p[1].pos, p[1], p[2])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_skip(p):
     '''
@@ -220,7 +233,7 @@ def p_skip(p):
     p[0] = ast.AstSkip(PosInfo(p.slice[1].lineno))
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_abort(p):
     '''
@@ -229,7 +242,7 @@ def p_abort(p):
     p[0] = ast.AstAbort(PosInfo(p.slice[1].lineno))
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_init(p):
     '''
@@ -243,7 +256,7 @@ def p_init(p):
         p[0] = ast.AstInit(qvar_ls.pos, qvar_ls)
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_unitary(p):
     '''
@@ -257,7 +270,7 @@ def p_unitary(p):
         p[0] = ast.AstUnitary(qvar_ls.pos, p[3], qvar_ls)
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_if(p):
     '''
@@ -266,7 +279,7 @@ def p_if(p):
     p[0] = ast.AstIf(PosInfo(p.slice[1].lineno), p[2], p[3], p[5], p[7])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_while(p):
     '''
@@ -275,7 +288,7 @@ def p_while(p):
     p[0] = ast.AstWhile(PosInfo(p.slice[1].lineno), p[2], p[3], p[5])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_nondet(p):
     '''
@@ -284,7 +297,7 @@ def p_nondet(p):
     p[0] = ast.AstNondet(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_nondet_pre(p):
     '''
@@ -297,7 +310,7 @@ def p_nondet_pre(p):
         p[0] = ast.AstNondet(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_proof(p):
     '''
@@ -306,7 +319,7 @@ def p_proof(p):
     p[0] = ast.AstProof(p[1].pos, p[1], p[3], p[5])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_proof_mid(p):
     '''
@@ -319,7 +332,7 @@ def p_proof_mid(p):
         p[0] = ast.AstProofSeq(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_proof_statement(p):
     '''
@@ -340,7 +353,7 @@ def p_proof_statement(p):
         p[0] = p[1]
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_if_proof(p):
     '''
@@ -349,7 +362,7 @@ def p_if_proof(p):
     p[0] = ast.AstIfProof(PosInfo(p.slice[1].lineno), p[2], p[3], p[5], p[7])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_while_proof(p):
     '''
@@ -358,7 +371,7 @@ def p_while_proof(p):
     p[0] = ast.AstWhileProof(p[1].pos, p[1], p[4], p[5], p[7])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_nondet_proof(p):
     '''
@@ -367,7 +380,7 @@ def p_nondet_proof(p):
     p[0] = ast.AstNondetProof(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_nondet_proof_pre(p):
     '''
@@ -380,7 +393,7 @@ def p_nondet_proof_pre(p):
         p[0] = ast.AstNondetProof(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_union_proof(p):
     '''
@@ -389,7 +402,7 @@ def p_union_proof(p):
     p[0] = ast.AstUnionProof(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_union_proof_pre(p):
     '''
@@ -402,7 +415,7 @@ def p_union_proof_pre(p):
         p[0] = ast.AstUnionProof(p[1].pos, p[1].data + [p[3]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 
 def p_inv(p):
@@ -412,7 +425,7 @@ def p_inv(p):
     p[0] = p[1]
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_inv_pre(p):
     '''
@@ -425,7 +438,7 @@ def p_inv_pre(p):
         p[0] = ast.AstInv(p[1].pos, p[1].data + [(p[2], p[3])])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_var(p):
     '''
@@ -438,7 +451,7 @@ def p_var(p):
         p[0] = ast.AstVar(p[1].pos, p[1].data + [p[2]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_var_pre(p):
     '''
@@ -451,7 +464,7 @@ def p_var_pre(p):
         p[0] = ast.AstVar(p[1].pos, p[1].data + [p[2]])
 
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_id (p):
     '''
@@ -460,7 +473,7 @@ def p_id (p):
     p[0] = ast.AstID(PosInfo(p.slice[1].lineno), p[1])
     
     if p[0] is None:
-        raise Exception("unexpected situation")
+        raise Exception()
 
 def p_error(p):
     if p is None:

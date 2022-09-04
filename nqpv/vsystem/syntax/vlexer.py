@@ -40,6 +40,7 @@ reserved = {
     # inner calculation methods
     'import': 'IMPORT',
     'load'  : 'LOAD',
+    'expand'    : 'EXPAND',
 
     # keywords for type
     'operator'  : 'OPERATOR',

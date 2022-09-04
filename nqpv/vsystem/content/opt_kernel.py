@@ -279,11 +279,11 @@ def hermitian_extend(qvar: Tuple[str,...], H : np.ndarray, qvar_H: Tuple[str,...
 
 def get_opt_qnum(m : np.ndarray) -> int:
     if not isinstance(m, np.ndarray):
-        raise Exception("unexpected situation")
+        raise Exception()
     
     for dim in m.shape:
         if dim != 2:
-            raise Exception("unexpected situation")
+            raise Exception()
 
     if len(m.shape) % 2 == 1:
         return (len(m.shape) - 1)//2

@@ -104,7 +104,7 @@ class ParaMicroEnv:
             # set the parent environment
             self._parent_env = parent
         else:
-            raise Exception("unexpected situation")
+            raise Exception()
 
     def get_term(self, ask_id : str) -> Term:
         '''
@@ -289,7 +289,7 @@ class ToType(Term):
     @property
     def para(self) -> Para:
         if self._para_env.para is None:
-            raise Exception("unexpected situation")
+            raise Exception()
         return self._para_env.para
     
     @property
@@ -318,14 +318,14 @@ class ToType(Term):
 
     def substitute(self, para: Para, val: Term | Para) -> Term:
         if self._type is None:
-            raise Exception("unexpected situation")
+            raise Exception()
         else:
             new_type = self._type.substitute(para, val)
 
         new_para = self.para.substitute(para, val)
         if isinstance(new_para, Term):
             # this should not happen, because parameter id are unique
-            raise Exception("unexpected situation")
+            raise Exception()
 
         new_term = ToType(new_type, new_para, self._type_right.substitute(para, val))
         new_term.set_parent_env(self._para_env)
@@ -352,7 +352,7 @@ class Lambda(Term):
     @property
     def para(self) -> Para:
         if self._para_env.para is None:
-            raise Exception("unexpected situation")
+            raise Exception()
         return self._para_env.para
 
     def eval_on_val(self, val : Term | Para) -> Term:
@@ -363,7 +363,7 @@ class Lambda(Term):
 
         result = self._output.substitute(self.para, val)
         if not isinstance(result, Term):
-            raise Exception("unexpected situation")
+            raise Exception()
         return result
     
     def __str__(self) -> str:
@@ -377,14 +377,14 @@ class Lambda(Term):
 
     def substitute(self, para: Para, val: Term | Para) -> Term:
         if self._type is None:
-            raise Exception("unexpected situation")
+            raise Exception()
         else:
             new_type = self._type.substitute(para, val)
 
         new_para = self.para.substitute(para, val)
         if isinstance(new_para, Term):
             # this should not happen, because parameter id are unique
-            raise Exception("unexpected situation")
+            raise Exception()
 
         new_term = Lambda(new_type, new_para, self._output.substitute(para, val))
         return new_term
@@ -442,20 +442,20 @@ class Apply(Term):
             return result
         
         else:
-            raise Exception("unexpected situation")
+            raise Exception()
 
     def __eq__(self, other) -> bool:
         return self.eval() == other
 
     def substitute(self, para: Para, val: Term | Para) -> Term:
         if self._type is None:
-            raise Exception("unexpected situation")
+            raise Exception()
         else:
             new_type = self._type.substitute(para, val)
 
         new_term_fun = self._term_fun.substitute(para, val)
         if not isinstance(new_term_fun, ToType):
-            raise Exception("unexpected situation")
+            raise Exception()
 
         new_term = Apply(new_type, new_term_fun, self._term_val.substitute(para, val))
         new_term.set_parent_env(self._para_env)
@@ -551,7 +551,7 @@ class TermFact:
             self._no_para_check_iter(term._term_val, term.para_env)
             return
             
-        raise Exception("unexpected situation")
+        raise Exception()
 
 
     def no_para_check(self, term : Term) -> None:
@@ -625,7 +625,7 @@ class TermFact:
         # calculate the type
         apply_type = fun.type.type_right.substitute(fun.type.para, value)
         if isinstance(apply_type, Para):
-            raise Exception("unexpected situation")
+            raise Exception()
         
         return Apply(apply_type, fun, value)
 

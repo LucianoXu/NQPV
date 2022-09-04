@@ -561,7 +561,7 @@ class ProofSeqHintTerm(ProofHintTerm):
         for i in range(len(self._proof_hints)-1, -1, -1):
             item_val = self._proof_hints[i].eval()
             if not isinstance(item_val, ProofHintTerm):
-                raise Exception("unexpected situation")
+                raise Exception()
             proof_stts.insert(0, item_val.wp_statement(cur_post, scope))
             cur_post = proof_stts[0].pre_val
         
@@ -576,7 +576,7 @@ class ProofSeqHintTerm(ProofHintTerm):
             r += self.get_proof_hint(len(self._proof_hints)-1).str_content(prefix)
             return r
         else:
-            raise Exception("unexpected situation")
+            raise Exception()
 
 
 
@@ -954,7 +954,7 @@ class SeqProofTerm(ProofSttTerm):
             r += self.get_proof(len(self._proof_ls)-1).str_content(prefix)
             return r
         else:
-            raise Exception("unexpected situation")
+            raise Exception()
         
     def expand(self) -> ProofSttTerm:
         new_ls = []

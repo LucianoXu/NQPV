@@ -29,7 +29,6 @@ class Ast:
         pass
         self.pos : PosInfo = pos
         self.label : str = ast_label
-        #self.legal : bool = True
 
 class AstScope(Ast):
     def __init__(self, pos : PosInfo, cmd_ls : List[Ast]):
@@ -37,10 +36,9 @@ class AstScope(Ast):
         self.cmd_ls : List[Ast] = cmd_ls
 
 class AstDefinition(Ast):
-    def __init__(self, pos : PosInfo, var : AstID, vtype : AstType, expr : AstExpression):
+    def __init__(self, pos : PosInfo, var : AstID, expr : AstExpression):
         super().__init__(pos, "definition")
         self.var : AstID = var
-        self.vtype : AstType = vtype
         self.expr : AstExpression = expr
 
 class AstAxiom(Ast):
@@ -50,9 +48,9 @@ class AstAxiom(Ast):
         raise NotImplementedError()
 
 class AstShow(Ast):
-    def __init__(self, pos : PosInfo, var : AstVar):
+    def __init__(self, pos : PosInfo, expr : AstExpression):
         super().__init__(pos, "show")
-        self.var : AstVar = var
+        self.expr : AstExpression = expr
 
 class AstSaveOpt(Ast):
     def __init__(self, pos : PosInfo, var : AstVar, path : str):
@@ -94,9 +92,19 @@ class AstLoadOpt(Ast):
         self.path : str = path
 
 class AstExpression(Ast):
-    def __init__(self, pos : PosInfo, data : Ast):
+    def __init__(self, pos : PosInfo):
         super().__init__(pos, "expresssion")
+
+class AstExpressionValue(AstExpression):
+    def __init__(self, pos : PosInfo, type : AstType, data : Ast):
+        super().__init__(pos)
+        self.type : AstType = type
         self.data : Ast = data
+
+class AstExpressionVar(AstExpression):
+    def __init__(self, pos : PosInfo, var : AstVar):
+        super().__init__(pos)
+        self.var : AstVar = var
 
 class AstQvarLs(Ast):
     def __init__(self, pos : PosInfo, data : List[AstID]):

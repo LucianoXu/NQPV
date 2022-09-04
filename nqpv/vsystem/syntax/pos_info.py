@@ -33,7 +33,7 @@ class PosInfo:
         elif isinstance(data, int) or data is None:
             self.lineno : int | None = data
         else:
-            raise Exception("unexpected situation")
+            raise Exception()
 
     @staticmethod
     def str(pos : PosInfo | None) -> str:

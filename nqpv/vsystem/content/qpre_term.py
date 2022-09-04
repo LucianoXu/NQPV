@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Any, List, Tuple, Dict
 
 from nqpv import dts
+from nqpv.vsystem.content.opt_term import OperatorTerm
 
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
@@ -170,21 +171,17 @@ class QPreTerm(dts.Term):
 
                 # rescale to satisfy trace(rho) = 1
                 sol = X.value / np.trace(X.value)
+                
+                sol_name = scope.append(OperatorTerm(sol))
 
-                raise RuntimeErrorWithLog("Partial order not satisfied.")
-                '''
-                sol_name = OptEnv.append(sol, "", False)
-                # require this opt
-                OptEnv.use_opt(sol_name, None)
-
-                LogSystem.channels["witness"].append(
+                raise RuntimeErrorWithLog(
+                    "Partial order not satisfied." +
                     "\nOrder relation not satisfied: \n\t" + 
-                    str(preA) + " <= " + str(preB) + "\n"+
-                    "The operator '" + str(opt_b) + "' can be violated.\n"+
+                    str(qpreA) + " <= " + str(qpreB) + "\n" +
+                    "The operator '" + str(qpreB_val.get_pair(j)) + "' can be violated.\n" +
                     "Density operator witnessed: '" + sol_name + "'.\n"
-                    + PosInfo.str(preA.pos) + PosInfo.str(preB.pos)
                 )
-                '''
+                
 
 def val_qpre(term : dts.Term) -> QPreTerm:
     if not isinstance(term, dts.Term):

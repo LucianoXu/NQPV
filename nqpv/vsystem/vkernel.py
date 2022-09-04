@@ -275,50 +275,45 @@ class VKernel:
         '''
         evaluate the expression and return the value (containing type and data)
         '''
-        try:            
-            if isinstance(cmd.expr, ast.AstExpressionVar):
-                var_path = self.eval_varpath(cmd.expr.var)
-                self.cur_scope[cmd.var.id] = self.cur_scope[var_path]
-            elif isinstance(cmd.expr, ast.AstExpressionValue):
-                if isinstance(cmd.expr.data, ast.AstProgExpr):
-                    if not isinstance(cmd.expr.data.type, ast.AstTypeProg):
-                        raise Exception()
-                    # create the var being defined
-                    self.cur_scope[cmd.var.id] = ProgDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
-
-                    # evaluate
-                    value = self.eval_expr(cmd.expr)
-                    
-                    # assign
-                    self.cur_scope.remove_var(cmd.var.id)
-                    self.cur_scope[cmd.var.id] = value
-
-                elif isinstance(cmd.expr.data, ast.AstProofExpr):
-                    if not isinstance(cmd.expr.data.type, ast.AstTypeProof):
-                        raise Exception()
-                    # create the var being defined
-                    self.cur_scope[cmd.var.id] = ProofDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
-                    
-                    # evaluate
-                    value = self.eval_expr(cmd.expr)
-
-                    # assign
-                    self.cur_scope.remove_var(cmd.var.id)
-                    self.cur_scope[cmd.var.id] = value
-
-                elif isinstance(cmd.expr.data, ast.AstScope):                    
-                    subscope = self.eval_scope(cmd.expr.data, cmd.var.id)
-                    self.cur_scope[cmd.var.id] = subscope
-
-                # normal assignment
-                elif isinstance(cmd.expr.data, ast.AstLoadOpt):
-                    self.cur_scope[cmd.var.id] = self.eval_expr(cmd.expr)
-                else:
+        if isinstance(cmd.expr, ast.AstExpressionVar):
+            var_path = self.eval_varpath(cmd.expr.var)
+            self.cur_scope[cmd.var.id] = self.cur_scope[var_path]
+        elif isinstance(cmd.expr, ast.AstExpressionValue):
+            if isinstance(cmd.expr.data, ast.AstProgExpr):
+                if not isinstance(cmd.expr.data.type, ast.AstTypeProg):
                     raise Exception()
+                # create the var being defined
+                self.cur_scope[cmd.var.id] = ProgDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
+
+                # evaluate
+                value = self.eval_expr(cmd.expr)
+                
+                # assign
+                self.cur_scope.remove_var(cmd.var.id)
+                self.cur_scope[cmd.var.id] = value
+
+            elif isinstance(cmd.expr.data, ast.AstProofExpr):
+                if not isinstance(cmd.expr.data.type, ast.AstTypeProof):
+                    raise Exception()
+                # create the var being defined
+                self.cur_scope[cmd.var.id] = ProofDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
+                
+                # evaluate
+                value = self.eval_expr(cmd.expr)
+
+                # assign
+                self.cur_scope.remove_var(cmd.var.id)
+                self.cur_scope[cmd.var.id] = value
+
+            elif isinstance(cmd.expr.data, ast.AstScope):                    
+                subscope = self.eval_scope(cmd.expr.data, cmd.var.id)
+                self.cur_scope[cmd.var.id] = subscope
+
+            # normal assignment
+            elif isinstance(cmd.expr.data, ast.AstLoadOpt):
+                self.cur_scope[cmd.var.id] = self.eval_expr(cmd.expr)
             else:
                 raise Exception()
-
-        except RuntimeErrorWithLog:
-            # report the failure
-            raise RuntimeErrorWithLog("Invalid definition command.", cmd.pos)
+        else:
+            raise Exception()
 

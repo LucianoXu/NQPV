@@ -201,7 +201,7 @@ class UnitaryHintTerm(ProofHintTerm):
         return prefix + str(self.opt_pair_val._qvarls) + " *= " + str(self.opt_pair_val._opt)
 
 class IfHintTerm(ProofHintTerm):
-    def __init__(self, opt_pair : dts.Term, P0 : dts.Term, P1 : dts.Term):
+    def __init__(self, opt_pair : dts.Term, P1 : dts.Term, P0 : dts.Term):
         if not isinstance(opt_pair, dts.Term) or not isinstance(P0, dts.Term) or not isinstance(P1, dts.Term):
             raise ValueError()
         # check the measurement

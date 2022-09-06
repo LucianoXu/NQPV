@@ -32,6 +32,7 @@ from .pos_info import PosInfo
 reserved = {
     # for vsystem
     'def'   : 'DEF',
+    'example'   : 'EXAMPLE',
     'axiom' : 'AXIOM',
     'setting'   : 'SETTING',
     'show'  : 'SHOW',

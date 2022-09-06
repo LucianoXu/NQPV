@@ -87,6 +87,9 @@ class VKernel:
                 if isinstance(cmd, ast.AstDefinition):
                     new_kernel.eval_def(cmd)
 
+                elif isinstance(cmd, ast.AstExample):
+                    new_kernel.eval_expr(cmd.expr)
+
                 elif isinstance(cmd, ast.AstAxiom):
                     raise NotImplementedError()
 

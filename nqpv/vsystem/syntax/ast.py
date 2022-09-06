@@ -41,6 +41,11 @@ class AstDefinition(Ast):
         self.var : AstID = var
         self.expr : AstExpression = expr
 
+class AstExample(Ast):
+    def __init__(self, pos : PosInfo, expr : AstExpression):
+        super().__init__(pos, "example")
+        self.expr : AstExpression = expr
+
 class AstAxiom(Ast):
     def __init__(self, pos : PosInfo, subproof : AstID, pre : AstPredicate,
         subprog : AstID, qvar_ls : AstQvarLs, post : AstPredicate):

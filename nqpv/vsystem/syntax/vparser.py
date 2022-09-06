@@ -48,6 +48,7 @@ def p_scope(p):
 def p_cmd(p):
     '''
     cmd     : definition
+            | example
             | axiom
             | show
             | setting
@@ -98,6 +99,14 @@ def p_definition(p):
     if p[0] is None:
         raise Exception()
 
+def p_example(p):
+    '''
+    example : EXAMPLE ASSIGN expression END
+    '''
+    p[0] = ast.AstExample(PosInfo(p.slice[1].lineno), p[3])
+
+    if p[0] is None:
+        raise Exception()
 
 def p_axiom(p):
     '''

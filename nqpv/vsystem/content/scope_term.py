@@ -116,6 +116,9 @@ class ScopeTerm(dts.Term):
             return self._vars[label]
         elif self._parent_scope is not None:
             return self._parent_scope._search(label)
+        # may found global itself
+        elif self._label == label:
+            return dts.Var(label, type_scope, self)
         else:
             return None
 

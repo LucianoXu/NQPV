@@ -28,25 +28,14 @@ def verify(path : str) -> None:
     LogSystem("error", "Error: ")
     LogSystem("warning", "Warning: ")
     LogSystem("info")
-    
-    try:
-        p_prog = open(path, 'r')
-        prog_str = p_prog.read()
-        p_prog.close()
-    except:
-        raise FileNotFoundError()
-    
-    folder_path = os.path.dirname(path)
-
-    kernel = vkernel.VKernel("global", folder_path)
 
     try:
-        ast_scope = vkernel.get_ast(prog_str)
-        scope = kernel.eval_scope(ast_scope)
+        vkernel.VKernel.process_module(path)
     except RuntimeErrorWithLog:
         pass
 
     LogSystem("error").summary(None, True)
+    LogSystem("warning").summary(None, True)
     LogSystem("info").summary(None, True)
     
 

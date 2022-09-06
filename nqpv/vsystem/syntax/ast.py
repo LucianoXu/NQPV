@@ -96,6 +96,10 @@ class AstTypeOperator(AstType):
     def __init__(self, pos : PosInfo):
         super().__init__(pos)
 
+class AstImport(Ast):
+    def __init__(self, pos : PosInfo, path : str):
+        super().__init__(pos, "import module")
+        self.path : str = path
 
 class AstLoadOpt(Ast):
     def __init__(self, pos : PosInfo, path : str):

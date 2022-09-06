@@ -68,15 +68,47 @@ class VKernel:
         self.cur_scope.inject(scope)
 
 
+    @staticmethod
+    def process_module(path : str) -> ScopeTerm:
+        '''
+        Note : there is the requirement for filename extension ".nqpv"
+        '''
+        folder_path = os.path.dirname(path)
+        file_name = os.path.basename(path)
+        index_dot = file_name.find(".")
+        if file_name[index_dot:] != ".nqpv":
+            raise RuntimeErrorWithLog("The file '" + path + "' is not a '.npqv' file.")
+
+        try:
+            p_prog = open(path, 'r')
+            prog_str = p_prog.read()
+            p_prog.close()
+        except:
+            raise RuntimeErrorWithLog("The file '" + path + "' not found.")
+        
+
+        module_name = file_name[:index_dot]
+        kernel = VKernel("global", folder_path)
+
+        try:
+            ast_scope = get_ast(prog_str)
+            scope = kernel.eval_scope(ast_scope, module_name)
+            return scope
+        except RuntimeErrorWithLog:
+            raise RuntimeErrorWithLog("in module '" + module_name + "'.")
+
+
     def eval_varpath(self, varpath_ast : ast.AstVar) -> VarPath:
         list = [item.id for item in varpath_ast.data]
         return VarPath(tuple(list))
 
-    def eval_scope(self, scope_ast : ast.AstScope, name = "local_scope") -> ScopeTerm:
+    def eval_scope(self, scope_ast : ast.AstScope, name = "__local_scope") -> ScopeTerm:
         '''
         evaluate the scope using a subkernel. this allows the nested setting strategy
         '''
         new_kernel = VKernel(name, self.folder_path, self)
+        # register the scope
+        self.cur_scope[name] = new_kernel.cur_scope
         # enter the new setting 
         parent_setting = ScopeTerm.cur_setting 
         ScopeTerm.cur_setting = new_kernel.cur_scope.settings
@@ -344,6 +376,11 @@ class VKernel:
             # normal assignment
             elif isinstance(cmd.expr.data, ast.AstLoadOpt):
                 self.cur_scope[cmd.var.id] = self.eval_expr(cmd.expr)
+            elif isinstance(cmd.expr.data, ast.AstImport):
+                # get a new kernel
+                module_scope = VKernel.process_module(os.path.join(self.folder_path, cmd.expr.data.path))
+                self.cur_scope[cmd.var.id] = module_scope
+                
             else:
                 raise Exception()
         else:

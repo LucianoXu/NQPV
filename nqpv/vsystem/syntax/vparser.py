@@ -50,6 +50,7 @@ def p_cmd(p):
     cmd     : definition
             | axiom
             | show
+            | setting
             | save
     '''
     p[0] = p[1]
@@ -62,6 +63,18 @@ def p_save(p):
     save    : SAVE var AT STRING END
     '''
     p[0] = ast.AstSaveOpt(PosInfo(p.slice[1].lineno), p[2], p[4][1:-1])
+
+    if p[0] is None:
+        raise Exception()
+
+def p_setting(p):
+    '''
+    setting : SETTING EPS ASSIGN FLOAT_NUM END
+            | SETTING SDP_PRECISION ASSIGN FLOAT_NUM END
+    '''
+
+    # FLOAT_NUM is already checked
+    p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], float(p[4]))
 
     if p[0] is None:
         raise Exception()

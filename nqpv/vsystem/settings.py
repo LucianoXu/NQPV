@@ -16,25 +16,20 @@
 # ------------------------------------------------------------
 # settings.py
 #
-# provides the settings of an environment
+# provides the settings of a scope
 # ------------------------------------------------------------
 
 from __future__ import annotations
 from typing import Any, List, Dict
 
 class Settings:
-    def __init__(self, parent : Settings | None):
+    def __init__(self):
         super().__init__()
-        if parent is None:
-            # use the default settings
-            self.EPS : float = 1e-7
-            self.SDP_precision : float = 1e-9
-        else:
-            self.EPS = parent.EPS
-            self.SDP_precision = parent.SDP_precision
-        
-    def apply(self) -> None:
-        '''
-        apply the settings
-        '''
-        pass
+        # use the default settings
+        self.EPS : float = 1e-7
+        self.SDP_precision : float = 1e-9
+
+    def __str__(self) -> str:
+        r = "EPS : " + str(self.EPS) + " ; SDP precision : " + str(self.SDP_precision)
+        return r
+    

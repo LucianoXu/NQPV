@@ -47,6 +47,12 @@ class AstAxiom(Ast):
         super().__init__(pos, "axiom")
         raise NotImplementedError()
 
+class AstSetting(Ast):
+    def __init__(self, pos : PosInfo, setting_item : str, data : Any):
+        super().__init__(pos, "setting")
+        self.setting_item : str = setting_item
+        self.data : Any = data
+
 class AstShow(Ast):
     def __init__(self, pos : PosInfo, expr : AstExpression):
         super().__init__(pos, "show")

@@ -24,6 +24,7 @@ from typing import Any, List, Dict, Tuple
 
 from nqpv import dts
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
+from nqpv.vsystem.settings import Settings
 
 fac = dts.TermFact()
 
@@ -66,6 +67,8 @@ class ScopeTerm(dts.Term):
 
     auto_naming_no : int = 0
 
+    cur_setting : Settings = Settings()
+
     def __init__(self, label : str, parent_scope : dts.Term | None):
         if not (isinstance(parent_scope, dts.Term) or parent_scope is None) or not isinstance(label, str):
             raise ValueError()
@@ -86,6 +89,7 @@ class ScopeTerm(dts.Term):
         # dictionary to store all the variables in this environment
         # note: the dictionary is the local id, and the dict value (var) has a polished id
         self._vars : Dict[str, dts.Var] = {}
+        self.settings = Settings()
 
     @property
     def parent_scope(self) -> ScopeTerm | None:
@@ -100,6 +104,7 @@ class ScopeTerm(dts.Term):
 
     def __str__(self) -> str:
         r = "<scope " + self.scope_prefix + ">\n"
+        r += str(self.settings) + "\n"
         for key in self._vars:
             r += "\t" + key + "\t\t" + str(self._vars[key].type) + "\n"
         return r

@@ -33,9 +33,14 @@ reserved = {
     # for vsystem
     'def'   : 'DEF',
     'axiom' : 'AXIOM',
+    'setting'   : 'SETTING',
     'show'  : 'SHOW',
     'save'  : 'SAVE',
     'at'    : 'AT',
+
+    # settings
+    'EPS'   : 'EPS',
+    'SDP_PRECISION' : 'SDP_PRECISION',
 
     # inner calculation methods
     'import': 'IMPORT',
@@ -62,6 +67,7 @@ reserved = {
 # List of token names.
 tokens = [
     'ID',
+    'FLOAT_NUM',
     'STRING',
     'INIT',
     'ASSIGN',
@@ -91,6 +97,16 @@ def t_ID(t):
     r'[a-zA-Z_][a-zA-Z_0-9]*'
     t.type = reserved.get(t.value,'ID')    # Check for reserved words
     return t
+
+def t_FLOAT_NUM(t):
+    r'(\+|-)?([1-9]\d*|0)(\.\d+)?([Ee](\+|-)?\d+)?'
+    try:
+        # test the transform
+        float(t.value)
+        return t
+    except:
+        LogSystem.channels["error"].append("Syntax Error. Illegal number '" + t.value[0] + "'." + str(PosInfo(t.lineno)))
+        t.lexer.skip(1)
 
 # Define a rule so we can track line numbers
 def t_newline(t):

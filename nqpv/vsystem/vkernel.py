@@ -77,28 +77,46 @@ class VKernel:
         evaluate the scope using a subkernel. this allows the nested setting strategy
         '''
         new_kernel = VKernel(name, self.folder_path, self)
+        # enter the new setting 
+        parent_setting = ScopeTerm.cur_setting 
+        ScopeTerm.cur_setting = new_kernel.cur_scope.settings
+
         for cmd in scope_ast.cmd_ls:
 
             try:
                 if isinstance(cmd, ast.AstDefinition):
-                        new_kernel.eval_def(cmd)
+                    new_kernel.eval_def(cmd)
 
                 elif isinstance(cmd, ast.AstAxiom):
-                        raise NotImplementedError()
+                    raise NotImplementedError()
 
                 elif isinstance(cmd, ast.AstShow):
-                        # append the information
-                        LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(new_kernel.eval_expr(cmd.expr)))
+                    # append the information
+                    LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(new_kernel.eval_expr(cmd.expr)))
+
+                elif isinstance(cmd, ast.AstSetting):
+                    if cmd.setting_item == "EPS":
+                        if cmd.data <= 0:
+                            raise RuntimeErrorWithLog("The setting 'EPS' must be greater than 0.", cmd.pos)
+                        new_kernel.cur_scope.settings.EPS = cmd.data
+                    elif cmd.setting_item == "SDP_PRECISION":
+                        if cmd.data <= 0:
+                            raise RuntimeErrorWithLog("The setting 'SDP_PRECISION' must be greater than 0.", cmd.pos)
+                        new_kernel.cur_scope.settings.SDP_precision = cmd.data
+                    else:
+                        raise Exception()
 
                 elif isinstance(cmd, ast.AstSaveOpt):
-                        var_path = new_kernel.eval_varpath(cmd.var)
-                        real_path = os.path.join(self.folder_path, cmd.path)
-                        optsave(new_kernel.cur_scope[var_path], real_path)
+                    var_path = new_kernel.eval_varpath(cmd.var)
+                    real_path = os.path.join(self.folder_path, cmd.path)
+                    optsave(new_kernel.cur_scope[var_path], real_path)
                 else:
                     raise Exception()
             except RuntimeErrorWithLog:
                 LogSystem.channels["error"].append("Invalid '" + cmd.label + "' command." + PosInfo.str(cmd.pos))
 
+        # return to the parent setting
+        ScopeTerm.cur_setting = parent_setting
             
         return new_kernel.cur_scope
     

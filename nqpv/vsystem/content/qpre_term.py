@@ -28,7 +28,6 @@ from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
 from .qvarls_term import QvarlsTerm
 from . import opt_kernel
-from .opt_kernel import Precision
 from . import opt_pair_term
 from .opt_pair_term import OptPairTerm, type_opt_pair, val_opt_pair
 from .scope_term import ScopeTerm
@@ -152,11 +151,11 @@ class QPreTerm(dts.Term):
             X = cp.Variable((dim, dim), hermitian=True) # type: ignore
             constraints = [X >> 0]  # type: ignore
             constraints += [
-                cp.real(cp.trace((mB - mA) @ X)) <= -Precision.EPS() for mA in msetA    # type: ignore
+                cp.real(cp.trace((mB - mA) @ X)) <= -ScopeTerm.cur_setting.EPS for mA in msetA    # type: ignore
             ]
             prob = cp.Problem(cp.Minimize(0), constraints)  # type: ignore
 
-            prob.solve(eps = opt_kernel.Precision.SDP_precision())
+            prob.solve(eps = ScopeTerm.cur_setting.SDP_precision)
 
             # Print result. debug purpose.
             '''
@@ -175,11 +174,14 @@ class QPreTerm(dts.Term):
                 sol_name = scope.append(OperatorTerm(sol))
 
                 raise RuntimeErrorWithLog(
-                    "Partial order not satisfied." +
                     "\nOrder relation not satisfied: \n\t" + 
                     str(qpreA) + " <= " + str(qpreB) + "\n" +
                     "The operator '" + str(qpreB_val.get_pair(j)) + "' can be violated.\n" +
-                    "Density operator witnessed: '" + sol_name + "'.\n"
+                    "Density operator witnessed: '" + sol_name + "'.\n" +
+                    "This conclusion may be incorrect due to the precision settings:\n"+
+                    "\t EPS : " + str(ScopeTerm.cur_setting.EPS ) + "\n" +
+                    "\t SDP_PRECISION :" + str(ScopeTerm.cur_setting.SDP_precision) + "\n" + 
+                    "This relation may still hold with a trial of better SDP solver precision or lower equivalence requirement.\n\n"
                 )
                 
 

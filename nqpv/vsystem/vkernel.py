@@ -25,6 +25,7 @@ from typing import Any, List, Dict, Tuple
 import os
 
 from nqpv import dts
+from nqpv.vsystem.syntax.pos_info import PosInfo
 
 from .settings import Settings
 from .syntax import ast
@@ -78,34 +79,26 @@ class VKernel:
         new_kernel = VKernel(name, self.folder_path, self)
         for cmd in scope_ast.cmd_ls:
 
-            if isinstance(cmd, ast.AstDefinition):
-                try:
-                    new_kernel.eval_def(cmd)
-                except RuntimeErrorWithLog:
-                    raise RuntimeErrorWithLog("Invalid 'def' command.", cmd.pos)
+            try:
+                if isinstance(cmd, ast.AstDefinition):
+                        new_kernel.eval_def(cmd)
 
-            elif isinstance(cmd, ast.AstAxiom):
-                try:
-                    raise NotImplementedError()
-                except RuntimeErrorWithLog:
-                    raise RuntimeErrorWithLog("Invalid 'axiom' command.", cmd.pos)
+                elif isinstance(cmd, ast.AstAxiom):
+                        raise NotImplementedError()
 
-            elif isinstance(cmd, ast.AstShow):
-                try:
-                    # append the information
-                    LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(new_kernel.eval_expr(cmd.expr)))
-                except RuntimeErrorWithLog:
-                    raise RuntimeErrorWithLog("Invalid 'show' command.", cmd.pos)
+                elif isinstance(cmd, ast.AstShow):
+                        # append the information
+                        LogSystem.channels["info"].append("\n" + str(cmd.pos) + "\n" + str(new_kernel.eval_expr(cmd.expr)))
 
-            elif isinstance(cmd, ast.AstSaveOpt):
-                try:
-                    var_path = new_kernel.eval_varpath(cmd.var)
-                    real_path = os.path.join(self.folder_path, cmd.path)
-                    optsave(new_kernel.cur_scope[var_path], real_path)
-                except RuntimeErrorWithLog:
-                    raise RuntimeErrorWithLog("Invalid 'save' command.", cmd.pos)
-            else:
-                raise Exception()
+                elif isinstance(cmd, ast.AstSaveOpt):
+                        var_path = new_kernel.eval_varpath(cmd.var)
+                        real_path = os.path.join(self.folder_path, cmd.path)
+                        optsave(new_kernel.cur_scope[var_path], real_path)
+                else:
+                    raise Exception()
+            except RuntimeErrorWithLog:
+                LogSystem.channels["error"].append("Invalid '" + cmd.label + "' command." + PosInfo.str(cmd.pos))
+
             
         return new_kernel.cur_scope
     
@@ -287,30 +280,41 @@ class VKernel:
             self.cur_scope[cmd.var.id] = self.cur_scope[var_path]
         elif isinstance(cmd.expr, ast.AstExpressionValue):
             if isinstance(cmd.expr.data, ast.AstProgExpr):
-                if not isinstance(cmd.expr.data.type, ast.AstTypeProg):
-                    raise Exception()
-                # create the var being defined
-                self.cur_scope[cmd.var.id] = ProgDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
+                try:
+                    if not isinstance(cmd.expr.data.type, ast.AstTypeProg):
+                        raise Exception()
+                    # create the var being defined
+                    self.cur_scope[cmd.var.id] = ProgDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
 
-                # evaluate
-                value = self.eval_expr(cmd.expr)
-                
-                # assign
-                self.cur_scope.remove_var(cmd.var.id)
-                self.cur_scope[cmd.var.id] = value
+                    # evaluate
+                    value = self.eval_expr(cmd.expr)
+                    
+                    # assign
+                    self.cur_scope.remove_var(cmd.var.id)
+                    self.cur_scope[cmd.var.id] = value
+
+                except RuntimeErrorWithLog:
+                    self.cur_scope.remove_var(cmd.var.id)
+                    raise RuntimeErrorWithLog("Invalid program definition.", cmd.pos)
+
 
             elif isinstance(cmd.expr.data, ast.AstProofExpr):
-                if not isinstance(cmd.expr.data.type, ast.AstTypeProof):
-                    raise Exception()
-                # create the var being defined
-                self.cur_scope[cmd.var.id] = ProofDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
-                
-                # evaluate
-                value = self.eval_expr(cmd.expr)
+                try:
+                    if not isinstance(cmd.expr.data.type, ast.AstTypeProof):
+                        raise Exception()
+                    # create the var being defined
+                    self.cur_scope[cmd.var.id] = ProofDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
+                    
+                    # evaluate
+                    value = self.eval_expr(cmd.expr)
 
-                # assign
-                self.cur_scope.remove_var(cmd.var.id)
-                self.cur_scope[cmd.var.id] = value
+                    # assign
+                    self.cur_scope.remove_var(cmd.var.id)
+                    self.cur_scope[cmd.var.id] = value
+                
+                except RuntimeErrorWithLog:
+                    self.cur_scope.remove_var(cmd.var.id)
+                    raise RuntimeErrorWithLog("Invalid proof definition.", cmd.pos)
 
             elif isinstance(cmd.expr.data, ast.AstScope):                    
                 subscope = self.eval_scope(cmd.expr.data, cmd.var.id)

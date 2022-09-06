@@ -65,7 +65,6 @@ class VarPath:
 
 class ScopeTerm(dts.Term):
 
-    auto_naming_no : int = 0
 
     cur_setting : Settings = Settings()
 
@@ -75,6 +74,9 @@ class ScopeTerm(dts.Term):
         
 
         super().__init__(type_scope, None)
+
+        # auto naming number for every scope
+        self.auto_naming_no : int = 0
 
         if parent_scope is not None:
             if parent_scope.type != type_scope:
@@ -147,9 +149,6 @@ class ScopeTerm(dts.Term):
         if not isinstance(value, dts.Term):
             raise ValueError()
         
-        if key in self._vars:
-            raise RuntimeErrorWithLog("The variable '" + key + "' already exists in the scope '" + str(self.scope_prefix) + "'.")
-
         self._vars[key] = dts.Var(self.scope_prefix + key, value.type, value, key)
 
     def append(self, value : dts.Term) -> str:
@@ -201,12 +200,12 @@ class ScopeTerm(dts.Term):
         '''
         return an auto name, which does not appear in this environment
         '''
-        r = naming_prefix + str(ScopeTerm.auto_naming_no)
-        ScopeTerm.auto_naming_no += 1
-        # ensure that the new name will not overlap any old name
-        while r in self:
-            r = naming_prefix + str(ScopeTerm.auto_naming_no)
-            ScopeTerm.auto_naming_no += 1
+        r = naming_prefix + str(self.auto_naming_no)
+        self.auto_naming_no += 1
+        # ensure that the new name will not overlap any current variable
+        while r in self._vars:
+            r = naming_prefix + str(self.auto_naming_no)
+            self.auto_naming_no += 1
         return r
         
     def move_up(self, key : str) -> None:

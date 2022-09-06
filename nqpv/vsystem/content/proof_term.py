@@ -493,16 +493,29 @@ class UnionHintTerm(ProofHintTerm):
 
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
             proof_stts = []
-            pre = QPreTerm(())
+            pre_cal = QPreTerm(())
+            post_cal = QPreTerm(())
             for item in self._proof_hints:
                 try:
                     item_val = val_proof_hint(item)
-                    new_proof_stt = item_val.wp_statement(post, scope)
-                    proof_stts.append(new_proof_stt)
-                    pre = pre.union(new_proof_stt.pre_val)
+                    # different tactics for subproofs and proof hints
+                    if isinstance(item_val, ProofSeqHintTerm):
+                        subhint = item_val.get_proof_hint(len(item_val._proof_hints)-1)
+                        if isinstance(subhint, SubproofHintTerm):
+                            item_post = subhint.subproof_val.post_val
+                        elif isinstance(subhint, QPreHintTerm):
+                            item_post = subhint.qpre_val
+                        else:
+                            raise RuntimeErrorWithLog("The postcondition of proof hint '" + str(item) + "' cannot be automatically deduced.")
+
+                        new_proof_stt = item_val.wp_statement(item_post, scope)
+                        proof_stts.append(new_proof_stt)
+                        post_cal = post_cal.union(item_post)
+                        pre_cal = pre_cal.union(new_proof_stt.pre_val)
+
                 except RuntimeErrorWithLog:
                     raise RuntimeErrorWithLog("The proof '" + str(item) + "' in the union proof does not hold.")
-            return UnionProofTerm(pre, post, tuple(proof_stts))
+            return UnionProofTerm(pre_cal, post_cal, tuple(proof_stts))
 
     def str_content(self, prefix: str) -> str:
         r = prefix + "(\n"

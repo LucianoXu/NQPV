@@ -113,11 +113,8 @@ class VKernel:
         try:
             id_ls = []
             for item in qvarls.data:
-                # now we do not require this
-                '''
                 if VarPath((item.id,)) in self.cur_scope:
                     raise RuntimeErrorWithLog("The variable '" + str(item) + "' already exists, and cannot be used as a quantum variable identifier.")
-                '''
                 id_ls.append(item.id)
 
             return QvarlsTerm(tuple(id_ls))

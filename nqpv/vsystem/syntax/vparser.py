@@ -483,7 +483,7 @@ def p_id (p):
 
 def p_error(p):
     if p is None:
-        raise RuntimeErrorWithLog("unexpected end of fild")
+        raise RuntimeErrorWithLog("unexpected end of file")
     raise RuntimeErrorWithLog("Syntax error in input: '" + str(p.value) + "'.", PosInfo(p.lineno))
 
 

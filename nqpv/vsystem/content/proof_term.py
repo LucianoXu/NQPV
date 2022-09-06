@@ -248,11 +248,31 @@ class IfHintTerm(ProofHintTerm):
             return False
 
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
-        P1 = self.P1_val.wp_statement(post, scope)
-        P0 = self.P0_val.wp_statement(post, scope)
+        post_val = val_qpre(post)
 
-        pre = qpre_term.qpre_mea_proj_sum(P0.pre_val, P1.pre_val, self.opt_pair_val, scope)
-        return IfProofTerm(pre, post, self._opt_pair, P1, P0)
+        if len(post_val.opt_pairs) == 1:            
+
+            P1 = self.P1_val.wp_statement(post, scope)
+            P0 = self.P0_val.wp_statement(post, scope)
+
+            pre = qpre_term.qpre_mea_proj_sum(P0.pre_val, P1.pre_val, self.opt_pair_val, scope)
+            return IfProofTerm(pre, post, self._opt_pair, P1, P0)
+
+        else:
+            # break the set using (Union) rule
+            proof_ls : List[ProofSttTerm]= []
+            union_pre = QPreTerm(())
+            for pair in post_val.opt_pairs:
+                pair_val = val_opt_pair(pair)
+                P1 = self.P1_val.wp_statement(QPreTerm((pair_val,)), scope)
+                P0 = self.P0_val.wp_statement(QPreTerm((pair_val,)), scope)
+                pre = qpre_term.qpre_mea_proj_sum(P0.pre_val, P1.pre_val, self.opt_pair_val, scope)
+                union_pre = union_pre.union(pre)
+                proof_ls.append(IfProofTerm(pre, post, self._opt_pair, P1, P0))
+            
+            return UnionProofTerm(union_pre, post, tuple(proof_ls))
+
+
 
     def str_content(self, prefix: str) -> str:
         r = prefix + "if " + str(self._opt_pair) + " then\n"
@@ -310,14 +330,36 @@ class WhileHintTerm(ProofHintTerm):
 
     def wp_statement(self, post: dts.Term, scope: ScopeTerm) -> ProofSttTerm:
         post_val = val_qpre(post)
-        proposed_pre = qpre_term.qpre_mea_proj_sum(post_val, self.inv_val, self.opt_pair_val, scope)
-        P = self.P_val.wp_statement(proposed_pre, scope)
-        try:
-            QPreTerm.sqsubseteq(self.inv_val, P.pre_val, scope)
-        except:
-            raise RuntimeErrorWithLog("The predicate '" + str(self._inv) + "' is not a valid loop invariant.")  
 
-        return WhileProofTerm(proposed_pre, post, self._inv, self._opt_pair, P)
+        if len(post_val.opt_pairs) == 1:            
+            proposed_pre = qpre_term.qpre_mea_proj_sum(post_val, self.inv_val, self.opt_pair_val, scope)
+            P = self.P_val.wp_statement(proposed_pre, scope)
+            try:
+                QPreTerm.sqsubseteq(self.inv_val, P.pre_val, scope)
+            except:
+                raise RuntimeErrorWithLog("The predicate '" + str(self._inv) + "' is not a valid loop invariant.")  
+
+            return WhileProofTerm(proposed_pre, post, self._inv, self._opt_pair, P)
+        else:
+            # break the set using (Union) rule
+            proof_ls : List[ProofSttTerm]= []
+            union_pre = QPreTerm(())
+            for pair in post_val.opt_pairs:
+                pair_val = val_opt_pair(pair)
+
+                proposed_pre = qpre_term.qpre_mea_proj_sum(QPreTerm((pair_val,)), self.inv_val, self.opt_pair_val, scope)
+                P = self.P_val.wp_statement(proposed_pre, scope)
+                try:
+                    QPreTerm.sqsubseteq(self.inv_val, P.pre_val, scope)
+                except:
+                    raise RuntimeErrorWithLog("The predicate '" + str(self._inv) + "' is not a valid loop invariant.")  
+
+                union_pre = union_pre.union(proposed_pre)
+                proof_ls.append(WhileProofTerm(proposed_pre, post, self._inv, self._opt_pair, P))
+            
+            return UnionProofTerm(union_pre, post, tuple(proof_ls))
+            
+
     
     def str_content(self, prefix: str) -> str:
         r = prefix + "{ inv: " + self.inv_val.str_content() + "};\n"
@@ -515,6 +557,12 @@ class UnionHintTerm(ProofHintTerm):
 
                 except RuntimeErrorWithLog:
                     raise RuntimeErrorWithLog("The proof '" + str(item) + "' in the union proof does not hold.")
+            
+            try:
+                QPreTerm.sqsubseteq(post_cal, post, scope)
+            except RuntimeErrorWithLog:
+                raise RuntimeErrorWithLog("The postcondition and the (Union) proof hint do not fit.")
+
             return UnionProofTerm(pre_cal, post_cal, tuple(proof_stts))
 
     def str_content(self, prefix: str) -> str:

@@ -219,6 +219,10 @@ def hermitian_extend(H : OptPairTerm, all_qvarls : QvarlsTerm) -> OptPairTerm:
     if not all_qvarls.cover(H.qvarls_val):
         raise RuntimeErrorWithLog("The variable list of '" + str(H) + "' must be covered by the quantum variable list '" + str(all_qvarls) + "' to expand to.")
 
+    # check whether extend is unnecessary
+    if all_qvarls == H.qvarls_val:
+        return H
+
     new_m = opt_kernel.hermitian_extend(all_qvarls.vls,  H.opt_val.m, H.qvarls_val.vls)
     new_opt = OperatorTerm(new_m)
     new_opt.ensure_hermitian_predicate()

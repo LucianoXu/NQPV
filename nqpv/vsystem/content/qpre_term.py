@@ -272,8 +272,6 @@ def qpre_extend(qpre : QPreTerm, all_qvarls : QvarlsTerm, scope : ScopeTerm) -> 
     pairs = []
     for i in range(len(qpre)):
         new_pair = opt_pair_term.hermitian_extend(qpre.get_pair(i), all_qvarls)
-        new_name = scope.append(new_pair.opt)
-        new_pair = OptPairTerm(scope[new_name], new_pair.qvarls)
         pairs.append(new_pair)
     
     return QPreTerm(tuple(pairs))

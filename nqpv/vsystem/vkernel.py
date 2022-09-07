@@ -25,6 +25,7 @@ from typing import Any, List, Dict, Tuple
 import os
 
 from nqpv import dts
+from nqpv.vsystem.content.proof_tacits import construct_proof
 from nqpv.vsystem.syntax.pos_info import PosInfo
 
 from .settings import Settings
@@ -37,7 +38,8 @@ from .content.qvarls_term import QvarlsTerm
 from .content.opt_pair_term import OptPairTerm
 from .content.qpre_term import QPreTerm
 from .content.prog_term import type_prog, AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
-from .content.proof_term import type_proof, AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofDefiningTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
+from .content.proof_term import ProofDefiningTerm
+from .content.proof_hint_term import type_proof, AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
 from .content.scope_term import ScopeTerm, VarPath
 
 
@@ -304,7 +306,7 @@ class VKernel:
                         proof_hint_seq = self.eval_proof_hint(expr.data.data.seq)
                         post = self.eval_qpre(expr.data.data.post)
                         arg_ls = self.eval_qvarls(expr.data.type.qvarls)
-                        return proof_hint_seq.construct_proof(pre, post, arg_ls, self.cur_scope)
+                        return construct_proof(proof_hint_seq, pre, post, arg_ls, self.cur_scope)
                     else:
                         raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.data.type) + "'.", expr.data.pos)
 

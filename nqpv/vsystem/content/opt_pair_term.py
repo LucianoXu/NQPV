@@ -48,6 +48,12 @@ class OptPairTerm(dts.Term):
         opt_val : OperatorTerm = val_opt(opt)
         qvarls_val : QvarlsTerm = val_qvarls(qvarls)
 
+        try:
+            opt_val.qnum
+        except ValueError:
+            raise RuntimeErrorWithLog("The operator '" + str(opt) + "' can not be used here. All indices must be 2 valued.")
+
+
         # check the qubit number
         if opt_val.qnum != qvarls_val.qnum:
             raise RuntimeErrorWithLog("The operator '" + str(opt) + "' and the quantum variable list '" + 

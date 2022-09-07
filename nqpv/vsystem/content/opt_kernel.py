@@ -258,7 +258,7 @@ def get_opt_qnum(m : np.ndarray) -> int:
     
     for dim in m.shape:
         if dim != 2:
-            raise Exception()
+            raise ValueError()
 
     if len(m.shape) % 2 == 1:
         return (len(m.shape) - 1)//2

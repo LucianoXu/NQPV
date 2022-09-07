@@ -72,10 +72,22 @@ def p_setting(p):
     '''
     setting : SETTING EPS ASSIGN FLOAT_NUM END
             | SETTING SDP_PRECISION ASSIGN FLOAT_NUM END
+            | SETTING SILENT ASSIGN TRUE END
+            | SETTING SILENT ASSIGN FALSE END
     '''
 
     # FLOAT_NUM is already checked
-    p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], float(p[4]))
+    if p[2] == "EPS":
+        p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], float(p[4]))
+    elif p[2] == "SDP_PRECISION":
+        p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], float(p[4]))
+    elif p[2] == "SILENT":
+        if p[4] == "true":
+            p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], True)
+        else:
+            p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], False)
+    else:
+        raise Exception()
 
     if p[0] is None:
         raise Exception()

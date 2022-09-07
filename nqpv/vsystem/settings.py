@@ -28,8 +28,9 @@ class Settings:
         # use the default settings
         self.EPS : float = 1e-7
         self.SDP_precision : float = 1e-9
+        self.silent = True
 
     def __str__(self) -> str:
-        r = "EPS : " + str(self.EPS) + " ; SDP precision : " + str(self.SDP_precision)
+        r = "EPS : " + str(self.EPS) + " ; SDP precision : " + str(self.SDP_precision) + " ; SILENT : " + str(self.silent)
         return r
     

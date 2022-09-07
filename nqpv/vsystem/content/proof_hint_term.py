@@ -37,15 +37,20 @@ fac = dts.TermFact()
 type_proof_hint = fac.axiom("proof_hint", fac.sort_term(0))
 
 class ProofHintTerm(dts.Term):
-    def __init__(self, all_qvarls : QvarlsTerm):
+    def __init__(self, all_qvarls : QvarlsTerm, label : str):
         val_qvarls(all_qvarls)
 
         super().__init__(type_proof_hint, None)
         self._all_qvarls : QvarlsTerm = all_qvarls
+        self._label : str = label
 
     @property
     def all_qvarls(self) -> QvarlsTerm:
         return self._all_qvarls
+    
+    @property
+    def label(self) -> str:
+        return self._label
     
     def prog_consistent(self, other : ProofHintTerm) -> bool:
         '''
@@ -77,7 +82,7 @@ def val_proof_hint(term : dts.Term) -> ProofHintTerm:
 
 class SkipHintTerm(ProofHintTerm):
     def __init__(self):
-        super().__init__(QvarlsTerm(()))
+        super().__init__(QvarlsTerm(()), "skip hint")
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         return isinstance(other, SkipHintTerm)
@@ -87,7 +92,7 @@ class SkipHintTerm(ProofHintTerm):
 
 class AbortHintTerm(ProofHintTerm):
     def __init__(self):
-        super().__init__(QvarlsTerm(()))
+        super().__init__(QvarlsTerm(()), "abort hint")
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         return isinstance(other, AbortHintTerm)
@@ -104,7 +109,7 @@ class InitHintTerm(ProofHintTerm):
         
         qvarls_val = val_qvarls(qvarls)
 
-        super().__init__(qvarls_val)
+        super().__init__(qvarls_val, "initialization hint")
         self._qvarls : dts.Term = qvarls
 
     @property
@@ -131,7 +136,7 @@ class UnitaryHintTerm(ProofHintTerm):
             raise RuntimeErrorWithLog("The operator variable pair '" + str(opt_pair) + "' is not an unitary pair.")
         
         all_qvarls = opt_pair_val.qvarls_val
-        super().__init__(all_qvarls)
+        super().__init__(all_qvarls, "unitary hint")
         self._opt_pair : dts.Term = opt_pair
 
     @property
@@ -169,7 +174,7 @@ class IfHintTerm(ProofHintTerm):
         all_qvarls = opt_pair_val.qvarls_val
         all_qvarls = all_qvarls.join(P0_val.all_qvarls)
         all_qvarls = all_qvarls.join(P1_val.all_qvarls)
-        super().__init__(all_qvarls)
+        super().__init__(all_qvarls, "if hint")
         self._opt_pair : dts.Term = opt_pair
         self._P0 : dts.Term = P0
         self._P1 : dts.Term = P1
@@ -224,7 +229,7 @@ class WhileHintTerm(ProofHintTerm):
         
         all_qvarls = opt_pair_val.qvarls_val
         all_qvarls = all_qvarls.join(P_val.all_qvarls)
-        super().__init__(all_qvarls)
+        super().__init__(all_qvarls, "while hint")
         self._inv : dts.Term = inv
         self._opt_pair : dts.Term = opt_pair
         self._P : dts.Term = P
@@ -269,7 +274,7 @@ class NondetHintTerm(ProofHintTerm):
             item_val = val_proof_hint(item)
             all_qvarls = all_qvarls.join(item_val.all_qvarls)
         
-        super().__init__(all_qvarls)
+        super().__init__(all_qvarls, "nondeterministic hint")
         self._proof_hints : Tuple[dts.Term,...] = proof_hints
     
     def get_proof_hint(self, i : int) -> ProofHintTerm:
@@ -305,7 +310,7 @@ class SubproofHintTerm(ProofHintTerm):
             raise RuntimeErrorWithLog("The term '" + str(subproof) + "' is not a subproof.")
         
         arg_ls_val = val_qvarls(arg_ls)
-        super().__init__(arg_ls_val)
+        super().__init__(arg_ls_val, 'subproof hint')
         self._subproof : dts.Var = subproof
         self._arg_ls : dts.Term = arg_ls
 
@@ -344,7 +349,7 @@ class QPreHintTerm(ProofHintTerm):
         
         qpre_val = val_qpre(qpre)
 
-        super().__init__(qpre_val.all_qvarls)
+        super().__init__(qpre_val.all_qvarls,"predicate hint")
         self._qpre : dts.Term = qpre_val
 
     @property
@@ -385,7 +390,7 @@ class UnionHintTerm(ProofHintTerm):
                 )
 
 
-        super().__init__(all_qvarls)
+        super().__init__(all_qvarls, "union hint")
         self._proof_hints : Tuple[dts.Term,...] = proof_hints
     
     def get_proof_hint(self, i : int) -> ProofHintTerm:
@@ -421,7 +426,7 @@ class ProofSeqHintTerm(ProofHintTerm):
             item_val = val_proof_hint(item)
             all_qvarls = all_qvarls.join(item_val.all_qvarls)
         
-        super().__init__(all_qvarls)
+        super().__init__(all_qvarls, "sequential hint")
         # flatten the sequential composition
         flattened = ()
         for item in proof_hints:

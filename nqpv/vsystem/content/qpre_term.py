@@ -139,7 +139,8 @@ class QPreTerm(dts.Term):
         qpreA_val = qpre_extend(qpreA_val, all_qvarls, scope)
         qpreB_val = qpre_extend(qpreB_val, all_qvarls, scope)
         
-        #print("begin SDP ...")
+        scope.report("SDP solver : ")
+        scope.report(str(qpreA) + " <= " + str(qpreB) + "\n")
 
         # transform all the hermitian operators into matrices
         dim = 2**all_qvarls.qnum

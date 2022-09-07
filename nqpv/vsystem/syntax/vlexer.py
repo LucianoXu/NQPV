@@ -39,9 +39,14 @@ reserved = {
     'save'  : 'SAVE',
     'at'    : 'AT',
 
+    # constants
+    'true'  : "TRUE",
+    "false" : "FALSE",
+
     # settings
     'EPS'   : 'EPS',
     'SDP_PRECISION' : 'SDP_PRECISION',
+    'SILENT'    : 'SILENT',
 
     # inner calculation methods
     'import': 'IMPORT',

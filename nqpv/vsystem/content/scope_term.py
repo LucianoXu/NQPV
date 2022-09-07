@@ -210,18 +210,7 @@ class ScopeTerm(dts.Term):
             r = naming_prefix + str(self.auto_naming_no)
             self.auto_naming_no += 1
         return r
-        
-    def move_up(self, key : str) -> None:
-        '''
-        move the variable key to the higher scope
-        variable of the same id will not be overwritten
-        '''
-        if self._parent_scope is None:
-            raise RuntimeErrorWithLog("The scope '" + str(self) + "' does not have a parent scope.")
-        
-        if key not in self._vars:
-            raise RuntimeErrorWithLog("The variable with id '" + key + "' does not exist in this particular scope.")
-        
-        self._parent_scope[key] = self._vars[key].val
-        self._vars.pop(key)
-        
+
+    def report(self, msg : str) -> None:
+        if not self.settings.silent:
+            print(msg)

@@ -67,6 +67,9 @@ class VKernel:
         self.cur_scope.inject(scope)
 
 
+    def report(self, msg : str) -> None:
+        self.cur_scope.report(msg)
+
     @staticmethod
     def process_module(path : str) -> ScopeTerm:
         '''
@@ -116,6 +119,8 @@ class VKernel:
         for cmd in scope_ast.cmd_ls:
 
             try:
+                new_kernel.report("Evaluating the '" + cmd.label + "' command." + PosInfo.str(cmd.pos) + "\n")
+
                 if isinstance(cmd, ast.AstDefinition):
                     new_kernel.eval_def(cmd)
 
@@ -138,6 +143,8 @@ class VKernel:
                         if cmd.data <= 0:
                             raise RuntimeErrorWithLog("The setting 'SDP_PRECISION' must be greater than 0.", cmd.pos)
                         new_kernel.cur_scope.settings.SDP_precision = cmd.data
+                    elif cmd.setting_item == "SILENT":
+                        new_kernel.cur_scope.settings.silent = cmd.data
                     else:
                         raise Exception()
 

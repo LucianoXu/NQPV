@@ -67,6 +67,11 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
     calculate the weakest precondition, of a program given by proof_hint with respect to the post condition
     return a proof statement for this
     '''
+    scope.report("wp calculus : " + str(hint.label))
+    scope.report("{ ? }")
+    scope.report(str(hint))
+    scope.report(str(post) + "\n")
+    
     if isinstance(hint, SkipHintTerm):
         return SkipProofTerm(post, post)
         

@@ -329,10 +329,12 @@ class UnionProofTerm(ProofSttTerm):
     def str_content(self, prefix: str) -> str:
         r = prefix + str(self.pre_val) + ";\n"
         r += prefix + "(\n"
-        r += self.get_proof(0).str_content(prefix + "\t") + "\n"
+        r += self.get_proof(0).str_content(prefix + "\t") + ";\n"
+        r += prefix + "\t" + str(self.get_proof(0).post_val) + "\n"
         for i in range(1, len(self._proof_ls)):
             r += prefix + ",\n"
-            r += self.get_proof(i).str_content(prefix + "\t") + "\n"
+            r += self.get_proof(i).str_content(prefix + "\t") + ";\n"
+            r += prefix + "\t" + str(self.get_proof(i).post_val) + "\n"
         r += prefix + ")"
         return r
     

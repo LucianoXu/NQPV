@@ -107,12 +107,13 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
             union_pre = QPreTerm(())
             for pair in post_val.opt_pairs:
                 pair_val = val_opt_pair(pair)
+                this_post = QPreTerm((pair_val,))
 
-                P1 = wp_calculus(hint.P1_val, QPreTerm((pair_val,)), scope)
-                P0 = wp_calculus(hint.P0_val, QPreTerm((pair_val,)), scope)
-                pre = qpre_term.qpre_mea_proj_sum(P0.pre_val, P1.pre_val, hint.opt_pair_val, scope)
-                union_pre = union_pre.union(pre)
-                proof_ls.append(IfProofTerm(pre, post, hint._opt_pair, P1, P0))
+                P1 = wp_calculus(hint.P1_val, this_post, scope)
+                P0 = wp_calculus(hint.P0_val, this_post, scope)
+                this_pre = qpre_term.qpre_mea_proj_sum(P0.pre_val, P1.pre_val, hint.opt_pair_val, scope)
+                union_pre = union_pre.union(this_pre)
+                proof_ls.append(IfProofTerm(this_pre, this_post, hint._opt_pair, P1, P0))
             
             return UnionProofTerm(union_pre, post, tuple(proof_ls))
         
@@ -134,8 +135,9 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
             union_pre = QPreTerm(())
             for pair in post_val.opt_pairs:
                 pair_val = val_opt_pair(pair)
+                this_post = QPreTerm((pair_val,))
 
-                proposed_pre = qpre_term.qpre_mea_proj_sum(QPreTerm((pair_val,)), hint.inv_val, hint.opt_pair_val, scope)
+                proposed_pre = qpre_term.qpre_mea_proj_sum(this_post, hint.inv_val, hint.opt_pair_val, scope)
                 P = wp_calculus(hint.P_val, proposed_pre, scope)
                 try:
                     QPreTerm.sqsubseteq(hint.inv_val, P.pre_val, scope)
@@ -143,7 +145,7 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
                     raise RuntimeErrorWithLog("The predicate '" + str(hint._inv) + "' is not a valid loop invariant.")  
 
                 union_pre = union_pre.union(proposed_pre)
-                proof_ls.append(WhileProofTerm(proposed_pre, post, hint._inv, hint._opt_pair, P))
+                proof_ls.append(WhileProofTerm(proposed_pre, this_post, hint._inv, hint._opt_pair, P))
             
             return UnionProofTerm(union_pre, post, tuple(proof_ls))
 

@@ -41,9 +41,6 @@ from .content.proof_term import type_proof, AbortHintTerm, IfHintTerm, InitHintT
 from .content.scope_term import ScopeTerm, VarPath
 
 
-def get_ast(code : str) -> ast.AstScope:
-    return vparser.parser.parse(code)
-
 class VKernel:
     def __init__(self, name : str, folder_path : str = "", parent : VKernel | None = None):
         '''
@@ -91,7 +88,8 @@ class VKernel:
         kernel = VKernel("global", folder_path)
 
         try:
-            ast_scope = get_ast(prog_str)
+            PosInfo.cur_file = module_name
+            ast_scope = vparser.parser.parse(prog_str)
             scope = kernel.eval_scope(ast_scope, module_name)
             return scope
         except RuntimeErrorWithLog:

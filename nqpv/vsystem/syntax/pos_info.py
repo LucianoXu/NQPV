@@ -23,15 +23,20 @@ from __future__ import annotations
 from typing import Any, List
 
 class PosInfo:
-    def __init__(self, data : int | PosInfo | None = None):
+
+    cur_file : str = ""
+
+    def __init__(self, data : int | PosInfo | None = None, ):
         '''
         lineno = None means there is no position information
         '''
         # check for copy construction
         if isinstance(data, PosInfo):
             self.lineno = data.lineno
+            self.file = data.file
         elif isinstance(data, int) or data is None:
             self.lineno : int | None = data
+            self.file : str = PosInfo.cur_file
         else:
             raise Exception()
 
@@ -46,4 +51,4 @@ class PosInfo:
         if self.lineno is None:
             return ""
         else:
-            return " (line " + str(self.lineno) + ") "
+            return " (" + self.file + ", line " + str(self.lineno) + ") "

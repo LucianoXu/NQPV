@@ -139,7 +139,7 @@ class QPreTerm(dts.Term):
         qpreA_val = qpre_extend(qpreA_val, all_qvarls, scope)
         qpreB_val = qpre_extend(qpreB_val, all_qvarls, scope)
         
-        scope.report("SDP solver : ")
+        scope.report("Determining : ")
         scope.report(str(qpreA) + " <= " + str(qpreB) + "\n")
 
         # transform all the hermitian operators into matrices
@@ -149,41 +149,55 @@ class QPreTerm(dts.Term):
         for j in range(len(qpreB_val)):
             mB = opt_kernel.tensor_to_matrix(qpreB_val.get_pair(j).opt_val.m)
 
-            X = cp.Variable((dim, dim), hermitian=True) # type: ignore
-            constraints = [X >> 0]  # type: ignore
-            constraints += [
-                cp.real(cp.trace((mB - mA) @ X)) <= -ScopeTerm.cur_setting.EPS for mA in msetA    # type: ignore
-            ]
-            prob = cp.Problem(cp.Minimize(0), constraints)  # type: ignore
+            if len(msetA) == 1:
+                # use eigen solver
+                e_vals = np.linalg.eigvals(mB - msetA[0])   # type: ignore
+                if np.any(e_vals < 0 - ScopeTerm.cur_setting.EPS):
+                    raise RuntimeErrorWithLog(
+                        "\nOrder relation not satisfied: \n\t" + 
+                        str(qpreA) + " <= " + str(qpreB) + "\n" +
+                        "The operator '" + str(qpreB_val.get_pair(j)) + "' can be violated.\n" +
+                        "This conclusion may be incorrect due to the precision settings:\n"+
+                        "\t EPS : " + str(ScopeTerm.cur_setting.EPS ) + "\n" +
+                        "This relation may still hold with a trial of lower equivalence requirement.\n\n"
+                    )
+            else:
+                # use SDP solver
+                X = cp.Variable((dim, dim), hermitian=True) # type: ignore
+                constraints = [X >> 0]  # type: ignore
+                constraints += [
+                    cp.real(cp.trace((mB - mA) @ X)) <= -ScopeTerm.cur_setting.EPS for mA in msetA    # type: ignore
+                ]
+                prob = cp.Problem(cp.Minimize(0), constraints)  # type: ignore
 
-            prob.solve(eps = ScopeTerm.cur_setting.SDP_precision)
+                prob.solve(eps = ScopeTerm.cur_setting.SDP_precision)
 
-            # Print result. debug purpose.
-            '''
-            print(constraints[-1])
-            print("The optimal value is", prob.value)
-            print("A solution X is")
-            print(X.value)
-            '''
+                # Print result. debug purpose.
+                '''
+                print(constraints[-1])
+                print("The optimal value is", prob.value)
+                print("A solution X is")
+                print(X.value)
+                '''
 
-            # if a solution has been found, register the result
-            if X.value is not None:
+                # if a solution has been found, register the result
+                if X.value is not None:
 
-                # rescale to satisfy trace(rho) = 1
-                sol = X.value / np.trace(X.value)
-                
-                sol_name = scope.append(OperatorTerm(sol))
+                    # rescale to satisfy trace(rho) = 1
+                    sol = X.value / np.trace(X.value)
+                    
+                    sol_name = scope.append(OperatorTerm(sol))
 
-                raise RuntimeErrorWithLog(
-                    "\nOrder relation not satisfied: \n\t" + 
-                    str(qpreA) + " <= " + str(qpreB) + "\n" +
-                    "The operator '" + str(qpreB_val.get_pair(j)) + "' can be violated.\n" +
-                    "Density operator witnessed: '" + sol_name + "'.\n" +
-                    "This conclusion may be incorrect due to the precision settings:\n"+
-                    "\t EPS : " + str(ScopeTerm.cur_setting.EPS ) + "\n" +
-                    "\t SDP_PRECISION :" + str(ScopeTerm.cur_setting.SDP_precision) + "\n" + 
-                    "This relation may still hold with a trial of better SDP solver precision or lower equivalence requirement.\n\n"
-                )
+                    raise RuntimeErrorWithLog(
+                        "\nOrder relation not satisfied: \n\t" + 
+                        str(qpreA) + " <= " + str(qpreB) + "\n" +
+                        "The operator '" + str(qpreB_val.get_pair(j)) + "' can be violated.\n" +
+                        "Density operator witnessed: '" + sol_name + "'.\n" +
+                        "This conclusion may be incorrect due to the precision settings:\n"+
+                        "\t EPS : " + str(ScopeTerm.cur_setting.EPS ) + "\n" +
+                        "\t SDP_PRECISION :" + str(ScopeTerm.cur_setting.SDP_precision) + "\n" + 
+                        "This relation may still hold with a trial of better SDP solver precision or lower equivalence requirement.\n\n"
+                    )
                 
 
 def val_qpre(term : dts.Term) -> QPreTerm:
@@ -273,6 +287,8 @@ def qpre_extend(qpre : QPreTerm, all_qvarls : QvarlsTerm, scope : ScopeTerm) -> 
     pairs = []
     for i in range(len(qpre)):
         new_pair = opt_pair_term.hermitian_extend(qpre.get_pair(i), all_qvarls)
+        new_name = scope.append(new_pair.opt)
+        new_pair = OptPairTerm(scope[new_name], new_pair.qvarls)
         pairs.append(new_pair)
     
     return QPreTerm(tuple(pairs))

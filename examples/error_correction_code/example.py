@@ -9,7 +9,7 @@ ket = np.array([np.cos(theta), np.sin(theta)*np.exp(phi*1j)])
 
 Hrand = np.outer(ket, np.conj(ket))
 
-nqpv.save_hermitian("./example_ErrCorr", "Hrand", Hrand)
+np.save("Hrand", Hrand)
 
 # verify
-nqpv.verify("./example_ErrCorr", opt_in_output = True)
+nqpv.verify("./prog.nqpv")

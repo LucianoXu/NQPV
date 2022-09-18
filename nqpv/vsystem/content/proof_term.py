@@ -239,7 +239,7 @@ class WhileProofTerm(ProofSttTerm):
     
     def str_content(self, prefix: str) -> str:
         r = prefix + str(self.pre_val) + ";\n"
-        r += prefix + "{ inv: " + str(self.inv_val) + " };\n"
+        r += prefix + "{ inv: " + self.inv_val.str_content() + " };\n"
         r += prefix + "while " + str(self.opt_pair_val) + " do\n"
         r += self.P_val.str_content(prefix + "\t") + "\n"
         r += prefix + "end"

@@ -1,0 +1,12 @@
+
+def pf := proof[coin guess] :
+    { Idiv2[coin] };
+    coin :=0;
+    coin *=H;
+    if M01[coin] then skip else skip end;
+    guess :=0;
+    (skip # guess *= X);
+    { Eq01_2[coin guess] }
+end
+
+show pf end

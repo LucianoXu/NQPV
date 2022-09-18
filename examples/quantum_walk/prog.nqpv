@@ -1,0 +1,26 @@
+
+def invN := load "invN.npy" end
+def MQWalk := load "MQWalk.npy" end
+def W1 := load "W1.npy" end
+def W2 := load "W2.npy" end
+
+def pf := proof[q1] :
+    { I[q1] };
+
+    [q1 q2] :=0;
+
+    {inv: invN[q1 q2]};
+    while MQWalk[q1 q2] do
+        (
+            [q1 q2] *= W1; [q1 q2] *= W2
+        #
+            [q1 q2] *= W2; [q1 q2] *= W1
+        )
+    end;
+
+    { Zero[q1] }
+
+end
+
+show pf end
+

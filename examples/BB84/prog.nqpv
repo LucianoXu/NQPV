@@ -1,0 +1,56 @@
+setting SILENT := true end
+
+def BB84_loop := proof[key2 q2] :
+    { I[key2] };
+
+    [key1 key2] :=0;
+    (skip # key1 *= X);
+    (skip # key2 *= X);
+
+    f :=0; // flag of basis coincidence
+
+    // repeat until the encoding basis coincide
+    { inv : P0[f] };
+    while M10[f] do
+
+        // Alice chooses a set of basis and encode
+        [a1 a2] :=0;
+        (skip # a1 *= X);
+        (skip # a2 *= X);
+        [q1 q2] :=0;
+        if M01[key1] then q1 *= X else skip end;
+        if M01[key2] then q2 *= X else skip end;
+        if M01[a1] then q1 *= H else skip end;
+        if M01[a2] then q2 *= H else skip end;
+
+        // transmit, Bob chooses a set of basis
+        [b1 b2] :=0;
+        (skip # b1 *= X);
+        (skip # b2 *= X);
+
+        if MEq01_2[a1 b1] then 
+            if MEq01_2[a2 b2] then 
+                f :=0;
+                f *= X
+            else 
+                skip 
+            end
+        else 
+            skip 
+        end
+    end;
+
+    // decode
+    if M01[b1] then q1 *= H else skip end;
+    if M01[b2] then q2 *= H else skip end;
+    if M01[q1] then skip else skip end;
+    if M01[q2] then skip else skip end;
+
+    // check on the first bit
+    if MEq01_2[key1 q1] then skip else abort end;
+
+    { Eq01_2[key2 q2] }
+
+end
+
+show BB84_loop end

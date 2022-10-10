@@ -153,15 +153,36 @@ class ScopeTerm(dts.Term):
             raise ValueError()
         
         self._vars[key] = dts.Var(self.scope_prefix + key, value.type, value, key)
+    
+    def _search_value(self, value : dts.Term, id_used : set[str]) -> str | None :
+        '''
+        id_used : preserved the searched ids in child scopes to avoid the references to overlapped old variables.
+        '''
+        for key in self._vars:
+            if key in id_used:
+                continue
+            id_used.add(key)
+            if self[key] == value:
+                return key
+        
+        if self.parent_scope is None:
+            return None
+        else:
+            return self.parent_scope._search_value(value, id_used)
 
     def append(self, value : dts.Term) -> str:
         '''
-        append the value into the scope, with an auto name
-        return the auto name used
+        check whether the value already exists in this environment.
+        If yes, return the variable.
+        If not, create a new variable with an auto name and return the name used.
         '''
-        name = self.auto_name()
-        self[name] = value
-        return name
+        search_res = self._search_value(value, set())
+        if search_res is None:
+            name = self.auto_name()
+            self[name] = value
+            return name
+        else:
+            return search_res
 
 
     def remove_var(self, key : str) -> None:

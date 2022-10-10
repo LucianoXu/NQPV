@@ -4,7 +4,7 @@ def MQWalk := load "MQWalk.npy" end
 def W1 := load "W1.npy" end
 def W2 := load "W2.npy" end
 
-def pf := proof[q1] :
+def pf := proof[q1 q2] :
     { I[q1] };
 
     [q1 q2] :=0;

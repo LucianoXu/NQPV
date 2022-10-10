@@ -387,7 +387,7 @@ class ProofTerm(dts.Term):
         return val_qvarls(self._arg_ls)
 
     def __eq__(self, other) -> bool:
-        raise NotImplementedError()
+        return NotImplemented
 
     def __str__(self) -> str:
         raise NotImplementedError()

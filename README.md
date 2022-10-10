@@ -80,7 +80,7 @@ The expected output should be:
 proof [q] :
         { P0[q] };
 
-        { VAR0[q] };
+        { P0[q] };
         [q] *= X;
 
         { P1[q] }
@@ -250,7 +250,7 @@ proof [q0] :
         { P0[q0] };
         cnot_pf [q0];
 
-        { VAR0[q0] };
+        { P1[q0] };
         [q0] *= H;
 
         { Pm[q0] }
@@ -629,6 +629,9 @@ This example shows that the error correction code here is robust against single 
 
 4. Run the python script in the folder. (Note that the run path also needs to be the folder.)
 
+## Development Log
+### 0.3b9
+- Now the verification tool will try to find an existing variable for the particular value before creating a new one with an auto name.
 
 ## Contact
 If you find any bug or have any questions, do not hesitate to contact lucianoxu@foxmail.com.

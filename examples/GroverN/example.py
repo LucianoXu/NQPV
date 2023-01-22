@@ -1,5 +1,6 @@
 import nqpv
 import numpy as np
+import time
 
 def qvarlv_n(n : int) -> str:
     r = "["
@@ -67,5 +68,28 @@ def verify_grover_n (n : int):
     nqpv.verify("./prog.nqpv")
 
 
+def grover_performance_test(n_max : int = 14):
+    with open("test_result.txt", "w") as p:
+        p.write("Grover N performance test \n\nqubit_n\t\ttime (s)\n")
+        p.flush()
+
+        for i in range(1, n_max + 1):
+            print("grover " + str(i) + "...", end="")
+
+            T1 = time.time()
+
+            verify_grover_n(i)
+
+            T2 = time.time()
+            t = (T2 - T1)
+
+            p.write(str(i) + "\t\t" + str(t) + "\n")
+            p.flush()
+            print(str(t) + " (s)\n")
+
+
+            
+
+
 if __name__ == "__main__":
-    verify_grover_n(13)
+    grover_performance_test(15)

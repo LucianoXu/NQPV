@@ -15,7 +15,7 @@
 
 # NQPV - Nondeterministic Quantum Program Verifier
 
-**Version: 0.3b**
+**Version: 0.4b1**
 
 NQPV is an verification assistant tool for the formal verification of nondeterministic quantum programs. Different former tools which are based on theorem provers, the goal of NQPV is to mitigate the overload of the user and help complete particular verification tasks efficiently.
 
@@ -37,7 +37,7 @@ For a general introduction to the formal verification of quantum programs using 
 
 *Ying M. Floyd--hoare logic for quantum programs[J]. ACM Transactions on Programming Languages and Systems (TOPLAS), 2012, 33(6): 1-49.*
 
-This assistant tool is an implementation of [not submitted yet], and please refer to this article for more detailed information. Briefly speaking, formal verification means to check whether particular properties hold for the given program, with the solid gurantee from mathematics. This tool, NQPV, mainly focuses on the partial correctness of quantum programs, which says that initial quantum states satisfying the precondition will also satisfy the postcondition when they terminate after the program computation. 
+This assistant tool is an implementation of [not published yet], and please refer to this article for more detailed information. Briefly speaking, formal verification means to check whether particular properties hold for the given program, with the solid gurantee from mathematics. This tool, NQPV, mainly focuses on the partial correctness of quantum programs, which says that initial quantum states satisfying the precondition will also satisfy the postcondition when they terminate after the program computation. 
 
 Here, the quantum programs in consideration consist of skip, abort, initialization, unitary transformation, if, while and nondeterministic choice. The conditions (or assertions) are represented by sets of proper Hermitian operators. These will be introduced in the following.
 
@@ -114,37 +114,42 @@ show global end
 the processing output should be something like 
 ```
 
- (example, line 2)
+ (prog, line 1) 
 <scope global.>
-EPS : 1e-07 ; SDP precision : 1e-09 ; SILENT : True
-        I               operator
-        X               operator
-        Y               operator
-        Z               operator
-        H               operator
-        CX              operator
-        CH              operator
-        SWAP            operator
-        CCX             operator
-        M01             operator
-        M10             operator
-        Mpm             operator
-        Mmp             operator
-        MEq01_2         operator
-        Idiv2           operator
-        Zero            operator
-        P0              operator
-        P0div2          operator
-        P1              operator
-        P1div2          operator
-        Pp              operator
-        Ppdiv2          operator
-        Pm              operator
-        Pmdiv2          operator
-        Eq01_2          operator
-        Neq01_2         operator
-        Eq01_3          operator
-        example         scope
+EPS : 1e-07 ;
+SDP precision : 1e-09 ;
+SILENT : True ;
+IDENTIVAL_VAR_CHECK : True ;
+OPT_PRESERVING : True
+        I               operator 1 qubit
+        X               operator 1 qubit
+        Y               operator 1 qubit
+        Z               operator 1 qubit
+        H               operator 1 qubit
+        CX              operator 2 qubit
+        CH              operator 2 qubit
+        SWAP            operator 2 qubit
+        CCX             operator 3 qubit
+        Idiv2           operator 1 qubit
+        Zero            operator 1 qubit
+        P0              operator 1 qubit
+        P0div2          operator 1 qubit
+        P1              operator 1 qubit
+        P1div2          operator 1 qubit
+        Pp              operator 1 qubit
+        Ppdiv2          operator 1 qubit
+        Pm              operator 1 qubit
+        Pmdiv2          operator 1 qubit
+        Eq01_2          operator 2 qubit
+        Neq01_2         operator 2 qubit
+        Eq01_3          operator 3 qubit
+        M01             measurement 1 qubit
+        M10             measurement 1 qubit
+        Mpm             measurement 1 qubit
+        Mmp             measurement 1 qubit
+        MEq01_2         measurement 2 qubit
+        MEq10_2         measurement 2 qubit
+        prog            scope
 
 ```
 The description contains the local settings for the scope and the variables in the scope. In fact, the processing result of a ".npqv" file is also returned as a scope.
@@ -189,7 +194,6 @@ The name of the variable is determined by the *identifier*, and its value is det
 - proof hint : we will focus on it in the next section.
 - loaded operator : the verifier loads a numpy ".npy" file as the operator value.
 - scope : a new sub-scope will be defined.
-- imported module : process another ".npqv" file, and import it as a scope variable.
 
 **loaded operator**: example code. Of course, there should exists the binary file at the specified location. The location is relative to the ".nqpv" module file.
 ```
@@ -200,63 +204,6 @@ show Hpost end
 
 **scope**: example code already shown in the last subsection.
 
-**imported module**: example code.
-
-Create a "module.nqpv" file with the following content:
-```
-//module.nqpv
-def cnot_pf := proof [q] :
-    { P0[q] };
-    q *= X;
-    { P1[q] }
-end
-```
-
-After that, create a "example.nqpv" file in the same folder with the following content:
-```
-//example.nqpv
-def mod := import "module.nqpv" end
-
-show mod end
-
-def pf := proof [q0] :
-    { P0[q0] };
-    mod.cnot_pf[q0];
-    q0 *= H;
-    { Pm[q0] }
-end
-
-show pf end
-```
-
-Create a Python script to process the "example.nqpv" file using the *verify* method (again, execute the script in the same folder). The output should be something like:
-
-```
-
- (example, line 4)
-<scope global.module.>
-EPS : 1e-07 ; SDP precision : 1e-09 ; SILENT : True
-        VAR0            operator
-        VAR1            operator
-        VAR2            operator
-        cnot_pf         proof
-
-
- (example, line 13)
-
-proof [q0] :
-        { P0[q0] };
-
-        { P0[q0] };
-        cnot_pf [q0];
-
-        { P1[q0] };
-        [q0] *= H;
-
-        { Pm[q0] }
-
-```
-We can see that the file "module.nqpv" is processed and stored as a scope, and the proof of CNOT defined in the module is reused.
 
 #### Command : **show**
 The usage of the *show* command is simple. It just outputs the expression. The syntax is:
@@ -301,6 +248,7 @@ A scope contains the settings for the verification. There are three settings:
 - EPS (float) : controls the precision of equivalence between float numbers.
 - SDP_PRECISION (float) : controls the precision of the SDP solver.
 - SILENT (**true** or **false**) : controls whether the intermediate procedures are output during the verification. This is for the purpose of monitoring a time consuming task.
+- IDENTICAL_VAR_CHECK (**true** or **false**) : controls whether identical variables (operators) are detected to keep the naming more informative. Default is on, and this function is especially time consuming. Turn if off for verification of programs with large qubit number.
   
 The syntax of **setting** is:
 ```
@@ -411,7 +359,6 @@ And "sentence" is just a piece of verification task, which can be skip, abort, i
 > | if id [ id_ls ] then sequence else sequence end <br>
 > | { inv : herm_ls } while id [  id_ls ] do sequence end <br>
 > | ( sequence \# sequence \# ... \# sequence) <br>
-> | id [ id_ls ] <br>
 > | { herm_ls }
 
 <!--
@@ -566,7 +513,7 @@ This example shows that the error correction code here is robust against single 
     def W1 := load "W1.npy" end
     def W2 := load "W2.npy" end
 
-    def pf := proof[q1] :
+    def pf := proof[q1 q2] :
         { I[q1] };
 
         [q1 q2] :=0;
@@ -613,7 +560,7 @@ This example shows that the error correction code here is robust against single 
                         [0., 0., 0., 0.],
                         [0., 0., 0., 1.]])
                         
-    MQWalk = np.stack((P0,P1), axis = 0)
+    MQWalk = np.stack((P1,P0), axis = 0)
     np.save("MQWalk", MQWalk.reshape((2,2,2,2,2)))
 
     # the invariant N
@@ -629,9 +576,14 @@ This example shows that the error correction code here is robust against single 
 
 4. Run the python script in the folder. (Note that the run path also needs to be the folder.)
 
-## Development Log
-### 0.3b9
-- Now the verification tool will try to find an existing variable for the particular value before creating a new one with an auto name.
 
 ## Contact
 If you find any bug or have any questions, do not hesitate to contact lucianoxu@foxmail.com.
+
+
+## Development Log
+### 0.4b1
+- We refactored this software and deleted some redundant functions, including subprogram, subproof and module import.
+
+### 0.3b9
+- Now the verification tool will try to find an existing variable for the particular value before creating a new one with an auto name.

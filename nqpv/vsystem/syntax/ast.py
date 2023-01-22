@@ -117,6 +117,9 @@ class AstProofExpr(Ast):
         self.data : AstProofSeq = data
 
 class AstProgExpr(Ast):
+    '''
+    A program expression consists of the program and the program type (variable number).
+    '''
     def __init__(self, pos : PosInfo, type : AstType, data : AstProgSeq):
         super().__init__(pos, "program expression")
         self.type : AstType = type
@@ -187,15 +190,6 @@ class AstUnionProof(Ast):
         super().__init__(pos, "union proof")
         self.data : List[Ast] = data
 
-class AstSubproof(Ast):
-    def __init__(self, pos : PosInfo, subproof : AstVar, qvar_ls : AstQvarLs):
-        super().__init__(pos, "subproof")
-        self.subproof : AstVar = subproof
-        self.qvar_ls : AstQvarLs = qvar_ls
-    
-    def __str__(self) -> str:
-        return str(self.subproof) + str(self.qvar_ls)
-
 
 class AstWhileProof(Ast):
     def __init__(self, pos : PosInfo, inv : AstInv, opt : AstVar, qvar_ls : AstQvarLs, proof : AstProof):
@@ -265,6 +259,7 @@ class AstInit(Ast):
     def __init__(self, pos : PosInfo, qvar_ls : AstQvarLs):
         super().__init__(pos, "initialization")
         self.qvar_ls : AstQvarLs = qvar_ls
+
 class AstAbort(Ast):
     def __init__(self, pos : PosInfo):
         super().__init__(pos, "abort")
@@ -273,10 +268,3 @@ class AstAbort(Ast):
 class AstSkip(Ast):
     def __init__(self, pos : PosInfo):
         super().__init__(pos, "skip")
-
-
-class AstSubprog(Ast):
-    def __init__(self, pos : PosInfo, subprog : AstVar, qvar_ls : AstQvarLs):
-        super().__init__(pos, "subprogram")
-        self.subprog : AstVar = subprog
-        self.qvar_ls : AstQvarLs = qvar_ls

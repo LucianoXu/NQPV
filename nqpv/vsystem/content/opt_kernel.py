@@ -25,7 +25,7 @@ import numpy as np
 
 
 from nqpv.vsystem.log_system import LogSystem
-from .scope_term import ScopeTerm    
+from ..var_scope import VarScope    
 
 def np_eps_equal(a : np.ndarray, b : np.ndarray) -> bool:
     '''
@@ -35,7 +35,7 @@ def np_eps_equal(a : np.ndarray, b : np.ndarray) -> bool:
         return False
 
     diff = np.max(np_complex_norm(a - b))  # type: ignore
-    return diff < ScopeTerm.cur_setting.EPS
+    return diff < VarScope.cur_setting.EPS
 
 def np_complex_norm(m : np.ndarray) -> np.ndarray:
     '''
@@ -97,7 +97,7 @@ def check_hermitian_predicate(m : np.ndarray) -> bool:
 
     # check 0 <= matrix <= I
     e_vals = np.linalg.eigvals(matrix)
-    if np.any(e_vals < 0 - ScopeTerm.cur_setting.EPS) or np.any(e_vals > 1 + ScopeTerm.cur_setting.EPS):
+    if np.any(e_vals < 0 - VarScope.cur_setting.EPS) or np.any(e_vals > 1 + VarScope.cur_setting.EPS):
         #LogSystem.channels["error"].append("The requirement 0 <= Predicate <= I is not satisfied.")
         return False
         

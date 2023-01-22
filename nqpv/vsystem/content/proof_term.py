@@ -22,56 +22,49 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
-from nqpv import dts
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
-from .qvarls_term import QvarlsTerm, type_qvarls, val_qvarls
+from .qvarls_term import QvarlsTerm
 from .opt_term import OperatorTerm
-from .opt_pair_term import OptPairTerm, type_opt_pair, val_opt_pair
+from .opt_pair_term import OptPairTerm, MeaPairTerm
 from . import qpre_term
-from .qpre_term import QPreTerm, type_qpre, val_qpre
+from .qpre_term import QPreTerm
 from .prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgSttSeqTerm, ProgSttTerm, SkipTerm, UnitaryTerm, WhileTerm
-from .scope_term import ScopeTerm
+from ..var_scope import VVar, VarScope
 
-fac = dts.TermFact()
-type_proof_stt = fac.axiom("proof_statement", fac.sort_term(0))
-type_proof = fac.axiom("proof", fac.sort_term(0))
-
-
+from .proof_hint_term import ProofHintTerm
 
 # proof statements
 
-class ProofSttTerm(dts.Term):
-    def __init__(self, pre : dts.Term, post : dts.Term):
+class ProofSttTerm(VVar):
+    def __init__(self, pre : QPreTerm, post : QPreTerm):
 
-        if not isinstance(pre, dts.Term) or not isinstance(post, dts.Term):
-            raise ValueError()
-        if pre.type != type_qpre:
+        if not isinstance(pre, QPreTerm):
             raise RuntimeErrorWithLog("The term '" + str(pre) + "' is not a quantum predicate.")
-        if post.type != type_qpre:
+        if not isinstance(post, QPreTerm):
             raise RuntimeErrorWithLog("The term '" + str(post) + "' is not a quantum predicate.")
 
-        pre_val = val_qpre(pre)
-        post_val = val_qpre(post)
-
-        all_qvarls = pre_val.all_qvarls
-        all_qvarls = all_qvarls.join(post_val.all_qvarls)
-        super().__init__(type_proof_stt, None)
+        all_qvarls = pre.all_qvarls
+        all_qvarls = all_qvarls.join(post.all_qvarls)
         self._all_qvarls : QvarlsTerm = all_qvarls
-        self._pre : dts.Term = pre
-        self._post : dts.Term = post
+        self._pre : QPreTerm = pre
+        self._post : QPreTerm = post
+
+    @property
+    def str_type(self) -> str:
+        return "quantum_predicate_set"
             
     @property
     def all_qvarls(self) -> QvarlsTerm:
         return self._all_qvarls
     
     @property
-    def pre_val(self) -> QPreTerm:
-        return val_qpre(self._pre)
+    def pre(self) -> QPreTerm:
+        return self._pre
     
     @property
-    def post_val(self) -> QPreTerm:
-        return val_qpre(self._post)
+    def post(self) -> QPreTerm:
+        return self._post
 
     def get_prog(self) -> ProgSttTerm:
         raise NotImplementedError()
@@ -87,182 +80,157 @@ class ProofSttTerm(dts.Term):
         get the proof statement with all subproofs substituted
         '''
         raise NotImplementedError()
-    
-def val_proof_stt(term : dts.Term) -> ProofSttTerm:
-    if not isinstance(term, dts.Term):
-        raise ValueError()
-    if term.type != type_proof_stt:
-        raise ValueError()
-        
-    if isinstance(term, ProofSttTerm):
-        return term
-    elif isinstance(term, dts.Var):
-        val = term.val
-        if not isinstance(val, ProofSttTerm):
-            raise Exception()
-        return val
-    else:
-        raise Exception()
 
 
-# implement the weakest precondition calculus
 
 class SkipProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term):
+    def __init__(self, pre : QPreTerm, post : QPreTerm):
         super().__init__(pre, post)
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
+        r = prefix + str(self.pre) + ";\n"
         r += prefix + "skip"
         return r
     
 
 class AbortProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term):
+    def __init__(self, pre : QPreTerm, post : QPreTerm):
         super().__init__(pre, post)
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
+        r = prefix + str(self.pre) + ";\n"
         r += prefix + "abort"
         return r
     
 
 class InitProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, qvarls : dts.Term):
-        if not isinstance(qvarls, dts.Term):
-            raise ValueError()
-        if qvarls.type != type_qvarls:
+    def __init__(self, pre : QPreTerm, post : QPreTerm, qvarls : QvarlsTerm):
+        if not isinstance(qvarls, QvarlsTerm):
             raise ValueError()
 
         super().__init__(pre, post)
-        self._all_qvarls = self._all_qvarls.join(val_qvarls(qvarls))
-        self._qvarls : dts.Term = qvarls
+        self._all_qvarls = self._all_qvarls.join(qvarls)
+        self._qvarls : QvarlsTerm = qvarls
     
     @property
-    def qvarls_val(self) -> QvarlsTerm:
-        return val_qvarls(self._qvarls)
+    def qvarls(self) -> QvarlsTerm:
+        return self._qvarls
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
-        r += prefix + str(self.qvarls_val) + " :=0"
+        r = prefix + str(self.pre) + ";\n"
+        r += prefix + str(self.qvarls) + " :=0"
         return r
         
 class UnitaryProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, opt_pair : dts.Term):
-        if not isinstance(opt_pair, dts.Term):
-            raise ValueError()
-        if opt_pair.type != type_opt_pair:
+    def __init__(self, pre : QPreTerm, post : QPreTerm, opt_pair : OptPairTerm):
+        if not isinstance(opt_pair, OptPairTerm):
             raise ValueError()
 
         super().__init__(pre, post)
-        self._all_qvarls = self._all_qvarls.join(val_opt_pair(opt_pair).qvarls_val)
-        self._opt_pair : dts.Term = opt_pair
+        self._all_qvarls = self._all_qvarls.join(opt_pair.qvarls)
+        self._opt_pair : OptPairTerm = opt_pair
     
     @property
-    def opt_pair_val(self) -> OptPairTerm:
-        return val_opt_pair(self._opt_pair)
+    def opt_pair(self) -> OptPairTerm:
+        return self._opt_pair
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
-        r += prefix + str(self.opt_pair_val.qvarls_val) + " *= " + str(self.opt_pair_val.opt)
+        r = prefix + str(self.pre) + ";\n"
+        r += prefix + str(self.opt_pair.qvarls) + " *= " + str(self.opt_pair.opt)
         return r
         
 class IfProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, opt_pair : dts.Term, P1 : dts.Term, P0 : dts.Term):        
-        if not isinstance(opt_pair, dts.Term) or not isinstance(P1, dts.Term) or not isinstance(P0, dts.Term):
+    def __init__(self, pre : QPreTerm, post : QPreTerm, opt_pair : MeaPairTerm, 
+                P0 : ProofSttTerm, P1 : ProofSttTerm):        
+        if not isinstance(opt_pair, MeaPairTerm):
             raise ValueError()
-        if opt_pair.type != type_opt_pair:
-            raise ValueError()
-        if P1.type != type_proof_stt:
-            raise RuntimeErrorWithLog("The term '" + str(P1) + "' is not a proof statement.")
-        if P0.type != type_proof_stt:
+        if not isinstance(P0, ProofSttTerm):
             raise RuntimeErrorWithLog("The term '" + str(P0) + "' is not a proof statement.")
+        if not isinstance(P1, ProofSttTerm):
+            raise RuntimeErrorWithLog("The term '" + str(P1) + "' is not a proof statement.")
 
         super().__init__(pre, post)
-        self._all_qvarls = self._all_qvarls.join(val_opt_pair(opt_pair).qvarls_val)
-        self._all_qvarls = self._all_qvarls.join(val_proof_stt(P1).all_qvarls)
-        self._all_qvarls = self._all_qvarls.join(val_proof_stt(P0).all_qvarls)
+        self._all_qvarls = self._all_qvarls.join(opt_pair.qvarls)
+        self._all_qvarls = self._all_qvarls.join(P1.all_qvarls)
+        self._all_qvarls = self._all_qvarls.join(P0.all_qvarls)
         self._opt_pair = opt_pair
         self._P0 = P0
         self._P1 = P1
     
     @property
-    def opt_pair_val(self) -> OptPairTerm:
-        return val_opt_pair(self._opt_pair)
+    def opt_pair(self) -> MeaPairTerm:
+        return self._opt_pair
     
     @property
-    def P1_val(self) -> ProofSttTerm:
-        return val_proof_stt(self._P1)
-    
+    def P0(self) -> ProofSttTerm:
+        return self._P0
+
     @property
-    def P0_val(self) -> ProofSttTerm:
-        return val_proof_stt(self._P0)
+    def P1(self) -> ProofSttTerm:
+        return self._P1
+    
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
-        r += prefix + "if " + str(self.opt_pair_val) + " then\n"
-        r += self.P1_val.str_content(prefix + "\t") + "\n"
+        r = prefix + str(self.pre) + ";\n"
+        r += prefix + "if " + str(self.opt_pair) + " then\n"
+        r += self.P1.str_content(prefix + "\t") + "\n"
         r += prefix + "else\n"
-        r += self.P0_val.str_content(prefix + "\t") + "\n"
+        r += self.P0.str_content(prefix + "\t") + "\n"
         r += prefix + "end"
         return r
     
     
 class WhileProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, inv : dts.Term, opt_pair : dts.Term, P : dts.Term):        
-        if not isinstance(inv, dts.Term) or not isinstance(opt_pair, dts.Term) or not isinstance(P, dts.Term):
+    def __init__(self, pre : QPreTerm, post : QPreTerm, inv : QPreTerm, 
+                opt_pair : MeaPairTerm, P : ProofSttTerm):        
+        if not isinstance(inv, QPreTerm) or not isinstance(opt_pair, MeaPairTerm):
             raise ValueError()
-        if inv.type != type_qpre or opt_pair.type != type_opt_pair:
-            raise ValueError()
-        if P.type != type_proof_stt:
+        if not isinstance(P, ProofSttTerm):
             raise RuntimeErrorWithLog("The term '" + str(P) + "' is not a proof statement.")
 
         super().__init__(pre, post)
-        self._all_qvarls = self._all_qvarls.join(val_qpre(inv).all_qvarls)
-        self._all_qvarls = self._all_qvarls.join(val_opt_pair(opt_pair).qvarls_val)
-        self._all_qvarls = self._all_qvarls.join(val_proof_stt(P).all_qvarls)
+        self._all_qvarls = self._all_qvarls.join(inv.all_qvarls)
+        self._all_qvarls = self._all_qvarls.join(opt_pair.qvarls)
+        self._all_qvarls = self._all_qvarls.join(P.all_qvarls)
         self._inv = inv
         self._opt_pair = opt_pair
         self._P = P
     
     @property
-    def inv_val(self) -> QPreTerm:
-        return val_qpre(self._inv)
+    def inv(self) -> QPreTerm:
+        return self._inv
 
     @property
-    def opt_pair_val(self) -> OptPairTerm:
-        return val_opt_pair(self._opt_pair)
+    def opt_pair(self) -> MeaPairTerm:
+        return self._opt_pair
     
     @property
-    def P_val(self) -> ProofSttTerm:
-        return val_proof_stt(self._P)
+    def P(self) -> ProofSttTerm:
+        return self._P
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
-        r += prefix + "{ inv: " + self.inv_val.str_content() + " };\n"
-        r += prefix + "while " + str(self.opt_pair_val) + " do\n"
-        r += self.P_val.str_content(prefix + "\t") + "\n"
+        r = prefix + str(self.pre) + ";\n"
+        r += prefix + "{ inv: " + self.inv.str_content() + " };\n"
+        r += prefix + "while " + str(self.opt_pair) + " do\n"
+        r += self.P.str_content(prefix + "\t") + "\n"
         r += prefix + "end"
         return r
     
 class NondetProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, proof_ls : Tuple[dts.Term,...]):        
+    def __init__(self, pre : QPreTerm, post : QPreTerm, proof_ls : Tuple[ProofSttTerm,...]):        
         if not isinstance(proof_ls, tuple):
             raise ValueError()
-        for item in proof_ls:
-            item_val = val_proof_stt(item)
         
         super().__init__(pre, post)
         for item in proof_ls:
-            item_val = val_proof_stt(item)
-            self._all_qvarls = self._all_qvarls.join(item_val.all_qvarls)
-        self._proof_ls : Tuple[dts.Term,...] = proof_ls
+            self._all_qvarls = self._all_qvarls.join(item.all_qvarls)
+        self._proof_ls : Tuple[ProofSttTerm,...] = proof_ls
     
     def get_proof(self, i : int) -> ProofSttTerm:
-        return val_proof_stt(self._proof_ls[i])
+        return self._proof_ls[i]
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
+        r = prefix + str(self.pre) + ";\n"
         r += prefix + "(\n"
         r += self.get_proof(0).str_content(prefix + "\t") + "\n"
         for i in range(1, len(self._proof_ls)):
@@ -270,90 +238,62 @@ class NondetProofTerm(ProofSttTerm):
             r += self.get_proof(i).str_content(prefix + "\t") + "\n"
         r += prefix + ")"
         return r
-    
-class SubproofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, subproof : dts.Term, arg_ls : dts.Term):
-        if not isinstance(subproof, dts.Term) or not isinstance(arg_ls, dts.Term):
-            raise ValueError()
-        if subproof.type != type_proof or arg_ls.type != type_qvarls:
-            raise ValueError()
 
-        super().__init__(pre, post)
-        self._all_qvarls = val_qvarls(arg_ls)
-        self._subproof = subproof
-        self._arg_ls = arg_ls
-    
-    @property
-    def arg_ls_val(self) -> QvarlsTerm:
-        return val_qvarls(self._arg_ls)
-    
-    def str_content(self, prefix: str) -> str:
-        r = prefix + str(self._pre) + ";\n"
-        r += prefix + str(self._subproof) + " " + str(self.arg_ls_val)
-        return r
     
 class QPreProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, qpre : dts.Term):
-        if not isinstance(qpre, dts.Term):
-            raise ValueError()
-        if qpre.type != type_qpre:
+    def __init__(self, pre : QPreTerm, post : QPreTerm, qpre : QPreTerm):
+        if not isinstance(qpre, QPreTerm):
             raise ValueError()
         
         super().__init__(pre, post)
-        self._all_qvarls = self._all_qvarls.join(val_qpre(qpre).all_qvarls)
+        self._all_qvarls = self._all_qvarls.join(qpre.all_qvarls)
         self._qpre = qpre
     
     @property
-    def qpre_val(self) -> QPreTerm:
-        return val_qpre(self._qpre)
+    def qpre(self) -> QPreTerm:
+        return self._qpre
     
     def str_content(self, prefix: str) -> str:
-        return prefix + str(self.qpre_val)
+        return prefix + str(self.qpre)
     
 class UnionProofTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, proof_ls : Tuple[dts.Term,...]):
+    def __init__(self, pre : QPreTerm, post : QPreTerm, proof_ls : Tuple[ProofSttTerm,...]):
         if not isinstance(proof_ls, tuple):
             raise ValueError()
-        for item in proof_ls:
-            item_val = val_proof_stt(item)
 
         super().__init__(pre, post)
         for item in proof_ls:
-            item_val = val_proof_stt(item)
-            self._all_qvarls = self._all_qvarls.join(item_val.all_qvarls)
-        self._proof_ls : Tuple[dts.Term,...] = proof_ls
+            self._all_qvarls = self._all_qvarls.join(item.all_qvarls)
+        self._proof_ls : Tuple[ProofSttTerm,...] = proof_ls
     
     def get_proof(self, i : int) -> ProofSttTerm:
-        return val_proof_stt(self._proof_ls[i])
+        return self._proof_ls[i]
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + str(self.pre_val) + ";\n"
+        r = prefix + str(self.pre) + ";\n"
         r += prefix + "(\n"
         r += self.get_proof(0).str_content(prefix + "\t") + ";\n"
-        r += prefix + "\t" + str(self.get_proof(0).post_val) + "\n"
+        r += prefix + "\t" + str(self.get_proof(0).post) + "\n"
         for i in range(1, len(self._proof_ls)):
             r += prefix + ",\n"
             r += self.get_proof(i).str_content(prefix + "\t") + ";\n"
-            r += prefix + "\t" + str(self.get_proof(i).post_val) + "\n"
+            r += prefix + "\t" + str(self.get_proof(i).post) + "\n"
         r += prefix + ")"
         return r
     
 
 class ProofSeqTerm(ProofSttTerm):
-    def __init__(self, pre : dts.Term, post : dts.Term, proof_ls : Tuple[dts.Term,...]):        
+    def __init__(self, pre : QPreTerm, post : QPreTerm, proof_ls : Tuple[ProofSttTerm,...]):        
         if not isinstance(proof_ls, tuple):
             raise ValueError()
-        for item in proof_ls:
-            item_val = val_proof_stt(item)
         
         super().__init__(pre, post)
         for item in proof_ls:
-            item_val = val_proof_stt(item)
-            self._all_qvarls = self._all_qvarls.join(item_val.all_qvarls)
-        self._proof_ls : Tuple[dts.Term,...] = proof_ls
+            self._all_qvarls = self._all_qvarls.join(item.all_qvarls)
+        self._proof_ls : Tuple[ProofSttTerm,...] = proof_ls
 
     def get_proof(self, i : int) -> ProofSttTerm:
-        return val_proof_stt(self._proof_ls[i])
+        return self._proof_ls[i]
 
     def str_content(self, prefix: str) -> str:
         if len(self._proof_ls) == 1:
@@ -368,95 +308,60 @@ class ProofSeqTerm(ProofSttTerm):
             raise Exception()
         
 
-class ProofTerm(dts.Term):
-    def __init__(self, arg_ls : dts.Term):
-        if arg_ls.type != type_qvarls:
-            raise RuntimeErrorWithLog("The term '" + str(arg_ls) + "' is not a quantum variable list.")
-        arg_ls_val = val_qvarls(arg_ls)
-
-        super().__init__(type_proof, None)
-        self._arg_ls : dts.Term = arg_ls
-        self._all_qvarls : QvarlsTerm = arg_ls_val
-
-    @property
-    def all_qvarls(self) -> QvarlsTerm:
-        return self._all_qvarls
-
-    @property
-    def arg_ls_val(self) -> QvarlsTerm:
-        return val_qvarls(self._arg_ls)
-
-    def __eq__(self, other) -> bool:
-        return NotImplemented
-
-    def __str__(self) -> str:
-        raise NotImplementedError()
-
-class ProofDefiningTerm(ProofTerm):
-    '''
-    The proof being defined.
-    '''
-    def __str__(self) -> str:
-        return "\n(Proof Being Defined) " + str(self.arg_ls_val) + "\n"
-
-class ProofDefinedTerm(ProofTerm):
+class ProofDefinedTerm(VVar):
     '''
     the completed proof
     '''
-    def __init__(self, pre : dts.Term, proof_hint : dts.Term, proof_stts : dts.Term, post : dts.Term, arg_ls : dts.Term):
+    def __init__(self, pre : QPreTerm, proof_hint : ProofHintTerm, 
+                proof_stts : ProofSttTerm, post : QPreTerm, arg_ls : QvarlsTerm):
         '''
         proof_hint : proof_hint is necessary for apply_hint method
         the specified pre and post conditions are necessary, because they are not the full extension
         '''
         
-        if not isinstance(pre, dts.Term)\
-             or not isinstance(proof_hint, dts.Term)\
-             or not isinstance(proof_stts, dts.Term)\
-             or not isinstance(post, dts.Term)\
-             or not isinstance(arg_ls, dts.Term):
+        if not isinstance(pre, QPreTerm)\
+             or not isinstance(proof_hint, ProofHintTerm)\
+             or not isinstance(proof_stts, ProofSttTerm)\
+             or not isinstance(post, QPreTerm)\
+             or not isinstance(arg_ls, QvarlsTerm):
             raise ValueError()
 
-        super().__init__(arg_ls)
-        self._arg_ls : dts.Term = arg_ls
-        self._proof_hint : dts.Term = proof_hint
-        self._proof_stts : dts.Term = proof_stts
+        self._arg_ls : QvarlsTerm = arg_ls
+        self._proof_hint : ProofHintTerm = proof_hint
+        self._proof_stts : ProofSttTerm = proof_stts
         self._pre = pre
         self._post = post
-        self._all_qvarls = self._all_qvarls.join(val_proof_stt(self._proof_stts).all_qvarls)
+        self._all_qvarls : QvarlsTerm = arg_ls
+        self._all_qvarls = self._all_qvarls.join(self._proof_stts.all_qvarls)
 
-    
-    @property
-    def proof_stts_val(self) -> ProofSttTerm:
-        return val_proof_stt(self._proof_stts)
+
 
     @property
-    def pre_val(self) -> QPreTerm:
-        return val_qpre(self._pre)
+    def proof_stts(self) -> ProofSttTerm:
+        return self._proof_stts
+
+    @property
+    def pre(self) -> QPreTerm:
+        return self._pre
     
     @property
-    def post_val(self) -> QPreTerm:
-        return val_qpre(self._post)
+    def post(self) -> QPreTerm:
+        return self._post
         
+    @property
+    def all_qvarls(self) -> QvarlsTerm:
+        return self._all_qvarls
+
+    @property
+    def arg_ls(self) -> QvarlsTerm:
+        return self._arg_ls
+
+    def __eq__(self, other) -> bool:
+        return NotImplemented
 
     def __str__(self) -> str:
-        r = "\nproof " + str(self.arg_ls_val) + " : \n" 
-        r += "\t" + str(self.pre_val) + ";\n\n"
-        r += self.proof_stts_val.str_content("\t") + ";\n"
-        r += "\n\t" + str(self.post_val) + "\n"
+        r = "\nproof " + str(self.arg_ls) + " : \n" 
+        r += "\t" + str(self.pre) + ";\n\n"
+        r += self.proof_stts.str_content("\t") + ";\n"
+        r += "\n\t" + str(self.post) + "\n"
         return r
-
-def val_proof(term : dts.Term) -> ProofDefinedTerm:
-    if not isinstance(term, dts.Term):
-        raise ValueError()
-    if term.type != type_proof:
-        raise ValueError()
-        
-    if isinstance(term, ProofDefinedTerm):
-        return term
-    elif isinstance(term, dts.Var):
-        val = term.val
-        if not isinstance(val, ProofDefinedTerm):
-            raise Exception()
-        return val
-    else:
-        raise Exception()

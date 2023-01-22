@@ -22,15 +22,29 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
-from nqpv import dts
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
 from nqpv.vsystem.settings import Settings
 
-fac = dts.TermFact()
 
-type_scope = fac.axiom("scope", fac.sort_term(0))
+class VVar:
+    '''
+    the varibles for the verification system
+    '''
+
+    @property
+    def str_type(self) -> str :
+        '''
+        This property returns the type of this variable.
+        ( A more concise hint different from the complete string data. )
+        '''
+        return "Verification Varibale"
+
+    name : str = "temp_var"
 
 class VarPath:
+    '''
+    the class of paths to indicate a variable in the system
+    '''
     def __init__(self, path : Tuple[str,...], pointer : int = 0):
         if not isinstance(path, tuple):
             raise ValueError()
@@ -63,38 +77,34 @@ class VarPath:
         return r
 
 
-class ScopeTerm(dts.Term):
+class VarScope (VVar):
 
 
     cur_setting : Settings = Settings()
 
-    def __init__(self, label : str, parent_scope : dts.Term | None):
-        if not (isinstance(parent_scope, dts.Term) or parent_scope is None) or not isinstance(label, str):
+    def __init__(self, label : str, parent_scope : VarScope | None):
+        if not (isinstance(parent_scope, VarScope) or parent_scope is None) or not isinstance(label, str):
             raise ValueError()
-        
-
-        super().__init__(type_scope, None)
 
         # auto naming number for every scope
         self.auto_naming_no : int = 0
 
-        if parent_scope is not None:
-            if parent_scope.type != type_scope:
-                raise ValueError()
-            parent_scope = parent_scope.eval()
-            if not isinstance(parent_scope, ScopeTerm):
-                raise Exception()
-        self._parent_scope : ScopeTerm | None = parent_scope
+        self._parent_scope : VarScope | None = parent_scope
 
         # the label of this environment
         self._label : str = label
+
         # dictionary to store all the variables in this environment
         # note: the dictionary is the local id, and the dict value (var) has a polished id
-        self._vars : Dict[str, dts.Var] = {}
+        self._vars : Dict[str, VVar] = {}
         self.settings = Settings()
 
     @property
-    def parent_scope(self) -> ScopeTerm | None:
+    def str_type(self) -> str:
+        return "scope"
+        
+    @property
+    def parent_scope(self) -> VarScope | None:
         return self._parent_scope
 
     @property
@@ -108,22 +118,25 @@ class ScopeTerm(dts.Term):
         r = "<scope " + self.scope_prefix + ">\n"
         r += str(self.settings) + "\n"
         for key in self._vars:
-            r += "\t" + key + "\t\t" + str(self._vars[key].type) + "\n"
+            r += "\t" + key + "\t\t" + self._vars[key].str_type + "\n"
         return r
 
-    def _search(self, label : str) -> dts.Var | None:
+    def _search(self, label : str) -> VVar | None:
         if label in self._vars:
             return self._vars[label]
         elif self._parent_scope is not None:
             return self._parent_scope._search(label)
-        # may found global itself
+        # may found global itself (the global scope does not appear in the cases above)
         elif self._label == label:
-            return dts.Var(label, type_scope, self)
+            return self
         else:
             return None
 
 
-    def __getitem__(self, key : VarPath | str) -> dts.Var:
+    def __getitem__(self, key : VarPath | str) -> VVar:
+        '''
+        referring to a variable in an inductive way
+        '''
         if isinstance(key, str):
             return self[VarPath((key,))]
 
@@ -134,30 +147,33 @@ class ScopeTerm(dts.Term):
                 # if the search is over
                 return find_res
             else:
-                if find_res.type == type_scope:
+                if isinstance(find_res, VarScope):
                     # search in the next scope
-                    next_scope_val = find_res.val
-                    if not isinstance(next_scope_val, ScopeTerm):
-                        raise Exception()
-                    return next_scope_val[next_key]
+                    return find_res[next_key]
                 
         raise RuntimeErrorWithLog("The variable '" + str(key) + "' is not defined.")
 
 
-    def __setitem__(self, key : str, value : dts.Term) -> None:
+    def __setitem__(self, key : str, value : VVar) -> None:
         '''
         Note: value will be packaged into a Var term, with the polished name
         also used to assign new variables
-        '''
-        if not isinstance(value, dts.Term):
+        '''        
+        if not isinstance(value, VVar):
             raise ValueError()
-        
-        self._vars[key] = dts.Var(self.scope_prefix + key, value.type, value, key)
+        self._vars[key] = value
+        value.name = key
     
-    def _search_value(self, value : dts.Term, id_used : set[str]) -> str | None :
+    def _search_value(self, value : VVar, id_used : set[str]) -> str | None :
         '''
-        id_used : preserved the searched ids in child scopes to avoid the references to overlapped old variables.
+        Search whether this value has been stored. If yes, return the key; else return None.
+        ( The search is limited to those variables that can be refered to without path specification. )
+
+        id_used : preserve the searched ids in child scopes to avoid the references to overlapped old variables.
         '''
+        if not isinstance(value, VVar):
+            raise ValueError()
+
         for key in self._vars:
             if key in id_used:
                 continue
@@ -170,13 +186,23 @@ class ScopeTerm(dts.Term):
         else:
             return self.parent_scope._search_value(value, id_used)
 
-    def append(self, value : dts.Term) -> str:
+    def append(self, value : VVar) -> str:
         '''
         check whether the value already exists in this environment.
         If yes, return the variable.
         If not, create a new variable with an auto name and return the name used.
         '''
-        search_res = self._search_value(value, set())
+
+
+        if not isinstance(value, VVar):
+            raise ValueError()
+
+        # the setting controls whether to check the existence of identical operators
+        if self.settings.IDENTICAL_VAR_CHECK:
+            search_res = self._search_value(value, set())
+        else:
+            search_res = None
+
         if search_res is None:
             name = self.auto_name()
             self[name] = value
@@ -204,21 +230,18 @@ class ScopeTerm(dts.Term):
                 # if the search is over
                 return True
             else:
-                if find_res.type == type_scope:
+                if isinstance(find_res, VarScope):
                     # search in the next scope
-                    next_scope_val = find_res.val
-                    if not isinstance(next_scope_val, ScopeTerm):
-                        raise Exception()
-                    return next_key in next_scope_val 
+                    return next_key in find_res 
         return False
 
-    def inject(self, var_env : ScopeTerm) -> None:
+    def inject(self, var_env : VarScope) -> None:
         '''
         inject the var environment to the current var environment
         (variables with the same name will be reassigned)
         '''
         for var in var_env._vars:
-            self[var] = var_env[var].val
+            self[var] = var_env[var]
     
     def auto_name(self, naming_prefix = "VAR") -> str:
         '''
@@ -233,5 +256,5 @@ class ScopeTerm(dts.Term):
         return r
 
     def report(self, msg : str) -> None:
-        if not self.settings.silent:
+        if not self.settings.SILENT:
             print(msg)

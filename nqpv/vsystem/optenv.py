@@ -19,16 +19,15 @@
 # inject the commonly used unitary gates and measurements
 # load the tensors in the run path folder
 # ------------------------------------------------------------
+from __future__ import annotations
 
 import os
-from nqpv import dts
 
-from nqpv.vsystem.content.opt_kernel import get_opt_qnum
+from nqpv.vsystem.content.opt_kernel import get_opt_qnum, check_measure
 
 from .log_system import LogSystem, RuntimeErrorWithLog
-from .content.opt_term import type_operator
-from .content.scope_term import ScopeTerm
-from .content.opt_term import OperatorTerm
+from .var_scope import VVar, VarScope
+from .content.opt_term import OperatorTerm, MeasureTerm
 
 import numpy as np
 
@@ -92,52 +91,6 @@ optlib = {
         [0., 0., 0., 0., 0., 0., 1., 0.]]
     ).reshape((2,2,2,2,2,2)),
     
-    # measurements
-
-    "M01" : np.array(
-        [[[1., 0.],
-        [0., 0.]],
-
-        [[0., 0.],
-        [0., 1.]]]
-    ),
-
-    "M10" : np.array(
-        [[[0., 0.],
-        [0., 1.]],
-
-        [[1., 0.],
-        [0., 0.]]]
-    ),
-
-    "Mpm" : np.array(
-        [[[0.5, 0.5],
-        [0.5, 0.5]],
-
-        [[0.5, -0.5],
-        [-0.5, 0.5]]]
-    ),
-
-    "Mmp" : np.array(
-        [[[0.5, -0.5],
-        [-0.5, 0.5]],
-
-        [[0.5, 0.5],
-        [0.5, 0.5]]]
-    ),
-
-    "MEq01_2" : np.array(
-        [[[0., 0., 0., 0.],
-         [0., 1., 0., 0.],
-         [0., 0., 1., 0.],
-         [0., 0., 0., 0.]],
-
-         [[1., 0., 0., 0.],
-         [0., 0., 0., 0.],
-         [0., 0., 0., 0.],
-         [0., 0., 0., 1.]]]
-    ).reshape((2,2,2,2,2)),
-
     # hermitian operators
     "Idiv2" : np.array(
         [[1., 0.],
@@ -215,34 +168,88 @@ optlib = {
     ).reshape((2,2,2,2,2,2)),
 }
 
-def get_opt_env() -> ScopeTerm:
+mealib = {
+    # measurements
+
+    "M01" : np.array(
+        [[[1., 0.],
+        [0., 0.]],
+
+        [[0., 0.],
+        [0., 1.]]]
+    ),
+
+    "M10" : np.array(
+        [[[0., 0.],
+        [0., 1.]],
+
+        [[1., 0.],
+        [0., 0.]]]
+    ),
+
+    "Mpm" : np.array(
+        [[[0.5, 0.5],
+        [0.5, 0.5]],
+
+        [[0.5, -0.5],
+        [-0.5, 0.5]]]
+    ),
+
+    "Mmp" : np.array(
+        [[[0.5, -0.5],
+        [-0.5, 0.5]],
+
+        [[0.5, 0.5],
+        [0.5, 0.5]]]
+    ),
+
+    "MEq01_2" : np.array(
+        [[[0., 0., 0., 0.],
+         [0., 1., 0., 0.],
+         [0., 0., 1., 0.],
+         [0., 0., 0., 0.]],
+
+         [[1., 0., 0., 0.],
+         [0., 0., 0., 0.],
+         [0., 0., 0., 0.],
+         [0., 0., 0., 1.]]]
+    ).reshape((2,2,2,2,2)),
+}
+
+def get_opt_env() -> VarScope:
     '''
     return the var environment containing the operators
     '''
-    scope = ScopeTerm("opt_library", None)
+
+    scope = VarScope("opt_library", None)
     for id in optlib:
         scope[id] = OperatorTerm(optlib[id])
+    for id in mealib:
+        scope[id] = MeasureTerm(mealib[id])
     return scope
 
 
 
-def optload(path : str) -> OperatorTerm:
+def optload(path : str) -> OperatorTerm | MeasureTerm:
     try:
-        return OperatorTerm(np.load(path))
+        m = np.load(path)
+        if check_measure(m):
+            return MeasureTerm(m)
+        else:
+            return OperatorTerm(m)
+        
 
     except:
         raise RuntimeErrorWithLog("Cannot load the operatior at '" + path + "'. (filename extension is needed)")
 
-
-def optsave(opt : dts.Var, path : str) -> None:
+def optsave(opt : OperatorTerm | MeasureTerm, path : str) -> None:
     try:
-        if opt.type != type_operator:
-            raise RuntimeErrorWithLog("The variable '" + str(opt) + "' is not an operator.")
-        opt_val = opt.eval()
-        if not isinstance(opt_val, OperatorTerm):
-            raise Exception()
-        np.save(path, opt_val.m)
+        if isinstance(opt, OperatorTerm):
+            np.save(path, opt.m)
+        elif isinstance(opt, MeasureTerm):
+            np.save(path, opt.m)
+        else:
+            raise ValueError()
     
     except:
-        raise RuntimeErrorWithLog("Cannot save the operator '" + str(opt) + "' at the position '" + path + "'.") 
-
+        raise RuntimeErrorWithLog("Cannot save the operator '" + str(opt) + "' at the position '" + path + "'.")

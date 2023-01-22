@@ -47,6 +47,8 @@ reserved = {
     'EPS'   : 'EPS',
     'SDP_PRECISION' : 'SDP_PRECISION',
     'SILENT'    : 'SILENT',
+    'IDENTICAL_VAR_CHECK'   : 'IDENTICAL_VAR_CHECK',
+    'OPT_PRESERVING'    : 'OPT_PRESERVING',
 
     # inner calculation methods
     'import': 'IMPORT',

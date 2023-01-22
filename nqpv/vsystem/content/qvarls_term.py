@@ -21,15 +21,12 @@
 from __future__ import annotations
 from typing import Any, List, Tuple, Dict
 
-from nqpv import dts
+from ..var_scope import VVar
 
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
-fac = dts.TermFact()
+class QvarlsTerm(VVar):
 
-type_qvarls = fac.axiom("qvarls", fac.sort_term(0))
-
-class QvarlsTerm(dts.Term):
     def __init__(self, qvarls : Tuple[str,...]):
         #check the terms
         if not isinstance(qvarls, tuple):
@@ -46,8 +43,11 @@ class QvarlsTerm(dts.Term):
             else:
                 appeared.add(item)
 
-        super().__init__(type_qvarls, None)
         self._qvarls : Tuple[str,...] = qvarls
+
+    @property
+    def str_type(self) -> str:
+        return "qvar " + str(self.qnum) + " qubit"
     
     @property
     def vls(self) -> Tuple[str,...]:
@@ -63,8 +63,6 @@ class QvarlsTerm(dts.Term):
     def __eq__(self, other) -> bool:
         if isinstance(other, QvarlsTerm):
             return self._qvarls == other._qvarls
-        elif isinstance(other, dts.Var):
-            raise NotImplemented
         else:
             return False
 
@@ -127,20 +125,3 @@ class QvarlsTerm(dts.Term):
             if qvar not in new_qvarls:
                 new_qvarls.append(qvar)
         return QvarlsTerm(tuple(new_qvarls))
-
-def val_qvarls(term : dts.Term) -> QvarlsTerm:
-    if not isinstance(term, dts.Term):
-        raise ValueError()
-    if term.type != type_qvarls:
-        raise ValueError()
-        
-    if isinstance(term, QvarlsTerm):
-        return term
-    elif isinstance(term, dts.Var):
-        val = term.val
-        if not isinstance(val, QvarlsTerm):
-            raise Exception()
-        return val
-    else:
-        raise Exception()
-

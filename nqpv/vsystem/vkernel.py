@@ -24,8 +24,6 @@ from typing import Any, List, Dict, Tuple
 
 import os
 
-from nqpv import dts
-from nqpv.vsystem.content.proof_tacits import construct_proof
 from nqpv.vsystem.syntax.pos_info import PosInfo
 
 from .settings import Settings
@@ -33,33 +31,36 @@ from .syntax import ast
 from .syntax import vparser
 from .log_system import LogSystem, RuntimeErrorWithLog
 from .optenv import get_opt_env, optload, optsave
-
+from .content.opt_term import MeasureTerm, OperatorTerm
+from .content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgSttSeqTerm, ProgSttTerm, SkipTerm, UnitaryTerm, WhileTerm
 from .content.qvarls_term import QvarlsTerm
-from .content.opt_pair_term import OptPairTerm
+from .content.opt_pair_term import OptPairTerm, MeaPairTerm
+
+from .content.proof_tacits import construct_proof
 from .content.qpre_term import QPreTerm
-from .content.prog_term import type_prog, AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgDefiningTerm, ProgSttSeqTerm, ProgSttTerm, ProgTerm, SkipTerm, SubProgTerm, UnitaryTerm, WhileTerm
-from .content.proof_term import ProofDefiningTerm
-from .content.proof_hint_term import type_proof, AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofHintTerm, ProofSeqHintTerm, ProofDefinedTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
-from .content.scope_term import ScopeTerm, VarPath
+from .content.proof_term import ProofDefinedTerm
+from .content.proof_hint_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofHintTerm, ProofSeqHintTerm, QPreHintTerm, SkipHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
+
+from .var_scope import VarScope, VarPath
 
 
 class VKernel:
     def __init__(self, name : str, folder_path : str = "", parent : VKernel | None = None):
         '''
-        parent : the parent scope. if None, then the new scope will be created
+        parent : the parent kernel. if None, then the new kernel will be created
         folder_path : the folder path (relative to the run path) of the scope modules. (It is usually the folder where the file is located.)
         '''
         super().__init__()
-        self.cur_scope : ScopeTerm
+        self.cur_scope : VarScope
         self.folder_path = folder_path
         if parent is None:
-            self.cur_scope = ScopeTerm(name, None)
+            self.cur_scope = VarScope(name, None)
             self.cur_scope.inject(get_opt_env())
         else:
-            self.cur_scope = ScopeTerm(name, parent.cur_scope)
+            self.cur_scope = VarScope(name, parent.cur_scope)
 
 
-    def inject(self, scope : ScopeTerm) -> None:
+    def inject(self, scope : VarScope) -> None:
         '''
         inject the scope to the current scope
         variables with the same name will not be reassigned
@@ -71,10 +72,13 @@ class VKernel:
         self.cur_scope.report(msg)
 
     @staticmethod
-    def process_module(path : str) -> ScopeTerm:
+    def process_module(path : str) -> VarScope:
         '''
+        Process a module file and return a variable scope.
         Note : there is the requirement for filename extension ".nqpv"
         '''
+
+        # examinate the module file
         folder_path = os.path.dirname(path)
         file_name = os.path.basename(path)
         index_dot = file_name.find(".")
@@ -89,10 +93,12 @@ class VKernel:
             raise RuntimeErrorWithLog("The file '" + path + "' not found.")
         
 
+        # create a new kernel to process this module
         module_name = file_name[:index_dot]
         kernel = VKernel("global", folder_path)
 
         try:
+            # save meta information as global variables is accpectable for this single-thread software
             PosInfo.cur_file = module_name
             ast_scope = vparser.parser.parse(prog_str)
             scope = kernel.eval_scope(ast_scope, module_name)
@@ -105,7 +111,7 @@ class VKernel:
         list = [item.id for item in varpath_ast.data]
         return VarPath(tuple(list))
 
-    def eval_scope(self, scope_ast : ast.AstScope, name = "__local_scope") -> ScopeTerm:
+    def eval_scope(self, scope_ast : ast.AstScope, name = "__local_scope") -> VarScope:
         '''
         evaluate the scope using a subkernel. this allows the nested setting strategy
         '''
@@ -113,8 +119,8 @@ class VKernel:
         # register the scope
         self.cur_scope[name] = new_kernel.cur_scope
         # enter the new setting 
-        parent_setting = ScopeTerm.cur_setting 
-        ScopeTerm.cur_setting = new_kernel.cur_scope.settings
+        parent_setting = VarScope.cur_setting 
+        VarScope.cur_setting = new_kernel.cur_scope.settings
 
         for cmd in scope_ast.cmd_ls:
 
@@ -144,21 +150,29 @@ class VKernel:
                             raise RuntimeErrorWithLog("The setting 'SDP_PRECISION' must be greater than 0.", cmd.pos)
                         new_kernel.cur_scope.settings.SDP_precision = cmd.data
                     elif cmd.setting_item == "SILENT":
-                        new_kernel.cur_scope.settings.silent = cmd.data
+                        new_kernel.cur_scope.settings.SILENT = cmd.data
+                    elif cmd.setting_item == "IDENTICAL_VAR_CHECK":
+                        new_kernel.cur_scope.settings.IDENTICAL_VAR_CHECK = cmd.data
+                    elif cmd.setting_item == "OPT_PRESERVING":
+                        new_kernel.cur_scope.settings.OPT_PRESERVING = cmd.data
                     else:
                         raise Exception()
 
                 elif isinstance(cmd, ast.AstSaveOpt):
                     var_path = new_kernel.eval_varpath(cmd.var)
                     real_path = os.path.join(self.folder_path, cmd.path)
-                    optsave(new_kernel.cur_scope[var_path], real_path)
+                    opt = new_kernel.cur_scope[var_path]
+                    # check for the legality of the operator
+                    if not (isinstance(opt, MeasureTerm) or isinstance(opt, OperatorTerm)):
+                        raise RuntimeErrorWithLog(" The variable '" + str(cmd.var) +"' is not an operator. ")
+                    optsave(opt, real_path)
                 else:
                     raise Exception()
             except RuntimeErrorWithLog:
                 LogSystem.channels["error"].append("Invalid '" + cmd.label + "' command." + PosInfo.str(cmd.pos))
 
         # return to the parent setting
-        ScopeTerm.cur_setting = parent_setting
+        VarScope.cur_setting = parent_setting
             
         return new_kernel.cur_scope
     
@@ -174,6 +188,9 @@ class VKernel:
         except RuntimeErrorWithLog:
             raise RuntimeErrorWithLog("Invalid quantum variable list.", qvarls.pos)
 
+
+
+
     def eval_qpre(self, qpre : ast.AstPredicate | ast.AstInv) -> QPreTerm:
         try:
             pair_ls : List[OptPairTerm] = []
@@ -185,7 +202,6 @@ class VKernel:
             return QPreTerm(tuple(pair_ls))
         except RuntimeErrorWithLog:
             raise RuntimeErrorWithLog("Invalid quantum predicate.", qpre.pos)
-
 
 
     def eval_prog(self, data : ast.Ast) -> ProgSttTerm:
@@ -206,23 +222,19 @@ class VKernel:
             S0 = self.eval_prog(data.prog0)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
-            pair = OptPairTerm(opt, qvarls)
+            pair = MeaPairTerm(opt, qvarls)
             return IfTerm(pair, S1, S0)
         elif isinstance(data, ast.AstWhile):
             S = self.eval_prog(data.prog)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
-            pair = OptPairTerm(opt, qvarls)
+            pair = MeaPairTerm(opt, qvarls)
             return WhileTerm(pair, S)
         elif isinstance(data, ast.AstNondet):
             prog_ls = []
             for subprog in data.data:
                 prog_ls.append(self.eval_prog(subprog))
             return NondetTerm(tuple(prog_ls))
-        elif isinstance(data, ast.AstSubprog):
-            subprog = self.cur_scope[self.eval_varpath(data.subprog)]
-            qvarls = self.eval_qvarls(data.qvar_ls)
-            return SubProgTerm(subprog, qvarls)
         elif isinstance(data, ast.AstProgSeq):
             prog_ls = []
             for subprog in data.data:
@@ -230,6 +242,8 @@ class VKernel:
             return ProgSttSeqTerm(tuple(prog_ls))
         else:
             raise Exception()
+
+
 
     def eval_proof_hint(self, data : ast.Ast) -> ProofHintTerm:
         if isinstance(data, ast.AstSkip):
@@ -249,24 +263,20 @@ class VKernel:
             P0 = self.eval_proof_hint(data.proof0)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
-            pair = OptPairTerm(opt, qvarls)
+            pair = MeaPairTerm(opt, qvarls)
             return IfHintTerm(pair, P1, P0)
         elif isinstance(data, ast.AstWhileProof):
             inv = self.eval_qpre(data.inv)
             P = self.eval_proof_hint(data.proof)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
-            pair = OptPairTerm(opt, qvarls)
+            pair = MeaPairTerm(opt, qvarls)
             return WhileHintTerm(inv, pair, P)
         elif isinstance(data, ast.AstNondetProof):
             proof_ls = []
             for subproof in data.data:
                 proof_ls.append(self.eval_proof_hint(subproof))
             return NondetHintTerm(tuple(proof_ls))
-        elif isinstance(data, ast.AstSubproof):
-            subproof = self.cur_scope[self.eval_varpath(data.subproof)]
-            qvarls = self.eval_qvarls(data.qvar_ls)
-            return SubproofHintTerm(subproof, qvarls)
         elif isinstance(data, ast.AstUnionProof):
             proof_ls = []
             for subproof in data.data:
@@ -283,26 +293,24 @@ class VKernel:
         else:
             raise Exception()
     
-    def eval_expr(self, expr : ast.AstExpression) -> dts.Term:
+    def eval_expr(self, expr : ast.AstExpression) -> Any:
         '''
-        this method will always return the value, not the variable
+        This method evaluates the expressions.
         '''
         try:
             if isinstance(expr, ast.AstExpressionVar):
                 var_path = self.eval_varpath(expr.var)
-                return self.cur_scope[var_path].val
+                return self.cur_scope[var_path]
 
             elif isinstance(expr, ast.AstExpressionValue):
-                if isinstance(expr.data, ast.AstProgExpr):    
-                    # definition
-                    if isinstance(expr.data.data, ast.AstProgSeq):
-                        if not isinstance(expr.data.type, ast.AstTypeProg):
-                            raise Exception()
-                        prog_seq = self.eval_prog(expr.data.data)
-                        arg_ls = self.eval_qvarls(expr.data.type.qvarls)
-                        return ProgDefinedTerm(prog_seq, arg_ls)
-                    else:
+                if isinstance(expr.data, ast.AstProgExpr):  
+                    if not isinstance(expr.data.data, ast.AstProgSeq):
                         raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.data.type) + "'.", expr.data.pos)
+                    if not isinstance(expr.data.type, ast.AstTypeProg):
+                        raise Exception()
+                    prog_seq = self.eval_prog(expr.data.data)
+                    arg_ls = self.eval_qvarls(expr.data.type.qvarls)
+                    return ProgDefinedTerm(prog_seq, arg_ls)
                     
                 elif isinstance(expr.data, ast.AstProofExpr):
                     #definition
@@ -323,6 +331,10 @@ class VKernel:
 
                 elif isinstance(expr.data, ast.AstScope):
                     return self.eval_scope(expr.data)
+
+                elif isinstance(expr.data, ast.AstImport):
+                    # get a new kernel
+                    return VKernel.process_module(os.path.join(self.folder_path, expr.data.path))
                 else:
                     raise Exception()
             else:
@@ -330,66 +342,10 @@ class VKernel:
 
         except RuntimeErrorWithLog:
             raise RuntimeErrorWithLog("Invalid expression.", expr.pos)
-        
+
+
     def eval_def(self, cmd : ast.AstDefinition) -> None:
         '''
-        evaluate the expression and return the value (containing type and data)
+        evaluate the definition command
         '''
-        if isinstance(cmd.expr, ast.AstExpressionVar):
-            var_path = self.eval_varpath(cmd.expr.var)
-            self.cur_scope[cmd.var.id] = self.cur_scope[var_path]
-        elif isinstance(cmd.expr, ast.AstExpressionValue):
-            if isinstance(cmd.expr.data, ast.AstProgExpr):
-                try:
-                    if not isinstance(cmd.expr.data.type, ast.AstTypeProg):
-                        raise Exception()
-                    # create the var being defined
-                    self.cur_scope[cmd.var.id] = ProgDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
-
-                    # evaluate
-                    value = self.eval_expr(cmd.expr)
-                    
-                    # assign
-                    self.cur_scope.remove_var(cmd.var.id)
-                    self.cur_scope[cmd.var.id] = value
-
-                except RuntimeErrorWithLog:
-                    self.cur_scope.remove_var(cmd.var.id)
-                    raise RuntimeErrorWithLog("Invalid program definition.", cmd.pos)
-
-
-            elif isinstance(cmd.expr.data, ast.AstProofExpr):
-                try:
-                    if not isinstance(cmd.expr.data.type, ast.AstTypeProof):
-                        raise Exception()
-                    # create the var being defined
-                    self.cur_scope[cmd.var.id] = ProofDefiningTerm(self.eval_qvarls(cmd.expr.data.type.qvarls))
-                    
-                    # evaluate
-                    value = self.eval_expr(cmd.expr)
-
-                    # assign
-                    self.cur_scope.remove_var(cmd.var.id)
-                    self.cur_scope[cmd.var.id] = value
-                
-                except RuntimeErrorWithLog:
-                    self.cur_scope.remove_var(cmd.var.id)
-                    raise RuntimeErrorWithLog("Invalid proof definition.", cmd.pos)
-
-            elif isinstance(cmd.expr.data, ast.AstScope):                    
-                subscope = self.eval_scope(cmd.expr.data, cmd.var.id)
-                self.cur_scope[cmd.var.id] = subscope
-
-            # normal assignment
-            elif isinstance(cmd.expr.data, ast.AstLoadOpt):
-                self.cur_scope[cmd.var.id] = self.eval_expr(cmd.expr)
-            elif isinstance(cmd.expr.data, ast.AstImport):
-                # get a new kernel
-                module_scope = VKernel.process_module(os.path.join(self.folder_path, cmd.expr.data.path))
-                self.cur_scope[cmd.var.id] = module_scope
-                
-            else:
-                raise Exception()
-        else:
-            raise Exception()
-
+        self.cur_scope[cmd.var.id] = self.eval_expr(cmd.expr)

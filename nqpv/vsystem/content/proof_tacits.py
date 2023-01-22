@@ -22,47 +22,45 @@
 from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
-from nqpv import dts
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
-from .qvarls_term import QvarlsTerm, type_qvarls, val_qvarls
-from .opt_pair_term import OptPairTerm, type_opt_pair, val_opt_pair
+from .qvarls_term import QvarlsTerm
+from .opt_pair_term import OptPairTerm
 from . import qpre_term
-from .qpre_term import QPreTerm, type_qpre, val_qpre
-from .scope_term import ScopeTerm
+from .qpre_term import QPreTerm
+from ..var_scope import VarScope
 
 
-from .proof_hint_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofHintTerm, ProofSeqHintTerm, QPreHintTerm, SkipHintTerm, SubproofHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm, val_proof_hint
-from .proof_term import AbortProofTerm, IfProofTerm, InitProofTerm, NondetProofTerm, ProofSeqTerm, ProofSttTerm, ProofTerm, ProofDefinedTerm, QPreProofTerm, SkipProofTerm, SubproofTerm, UnionProofTerm, UnitaryProofTerm, WhileProofTerm
+from .proof_hint_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofHintTerm, ProofSeqHintTerm, QPreHintTerm, SkipHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
+from .proof_term import AbortProofTerm, IfProofTerm, InitProofTerm, NondetProofTerm, ProofSeqTerm, ProofSttTerm, ProofDefinedTerm, QPreProofTerm, SkipProofTerm, UnionProofTerm, UnitaryProofTerm, WhileProofTerm
 
 
-def construct_proof(hint : ProofHintTerm, pre : dts.Term, post : dts.Term, arg_ls : dts.Term, scope : ScopeTerm) -> ProofTerm:
+def construct_proof(hint : ProofHintTerm, pre : QPreTerm, post : QPreTerm, 
+                    arg_ls : QvarlsTerm, scope : VarScope) -> ProofDefinedTerm:
     '''
     construct a proof term from this hint
     '''
-    if not isinstance(pre, dts.Term) or not isinstance(post, dts.Term)\
-            or not isinstance(arg_ls, dts.Term) or not isinstance(scope, ScopeTerm):
+    if not isinstance(pre, QPreTerm) or not isinstance(post, QPreTerm)\
+            or not isinstance(arg_ls, QvarlsTerm) or not isinstance(scope, VarScope):
         raise ValueError()
-    pre_val = val_qpre(pre)
-    post_val = val_qpre(post)
 
     # need to check whether arg_ls covers the pre and the post
-    arg_ls_val = val_qvarls(arg_ls)
-    if not arg_ls_val.cover(pre_val.all_qvarls) or \
-            not arg_ls_val.cover(post_val.all_qvarls):
+    arg_ls_val = arg_ls
+    if not arg_ls_val.cover(pre.all_qvarls) or \
+            not arg_ls_val.cover(post.all_qvarls):
         raise RuntimeErrorWithLog("The argument list '" + str(arg_ls) + "' must cover that of the precondition and the postcondition.")
 
     # calculate the proof statements
-    proof_stts = wp_calculus(hint, post_val, scope)
+    proof_stts = wp_calculus(hint, post, scope)
 
     try:
-        QPreTerm.sqsubseteq(pre_val, proof_stts.pre_val, scope)
+        QPreTerm.sqsubseteq(pre, proof_stts.pre, scope)
     except RuntimeErrorWithLog:
         raise RuntimeErrorWithLog("The precondition of this proof does not hold.")
 
     return ProofDefinedTerm(pre, hint, proof_stts, post, arg_ls)
 
-def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> ProofSttTerm:
+def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> ProofSttTerm:
     '''
     calculate the weakest precondition, of a program given by proof_hint with respect to the post condition
     return a proof statement for this
@@ -76,55 +74,48 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
         return SkipProofTerm(post, post)
         
     elif isinstance(hint, AbortHintTerm):
-        post_val = val_qpre(post)
-        pre = qpre_term.qpre_I(post_val.all_qvarls, scope)
+        pre = qpre_term.qpre_I(post.all_qvarls, scope)
         return AbortProofTerm(pre, post)
 
     elif isinstance(hint, InitHintTerm):
-        post_val = val_qpre(post)
-        pre = qpre_term.qpre_init(post_val, hint.qvarls_val, scope)
+        pre = qpre_term.qpre_init(post, hint.qvarls, scope)
         return InitProofTerm(pre, post, hint._qvarls)
 
     elif isinstance(hint, UnitaryHintTerm):
-        post_val = val_qpre(post)        
-        pre = qpre_term.qpre_contract(post_val, hint.opt_pair_val.dagger(), scope)
+        pre = qpre_term.qpre_contract(post, hint.opt_pair.dagger(), scope)
         return UnitaryProofTerm(pre, post, hint._opt_pair)
     
     elif isinstance(hint, IfHintTerm):
-        post_val = val_qpre(post)
-
-        if len(post_val.opt_pairs) == 1:            
+        if len(post.opt_pairs) == 1:            
 
             P1 = wp_calculus(hint.P1_val, post, scope)
             P0 = wp_calculus(hint.P0_val, post, scope)
 
-            pre = qpre_term.qpre_mea_proj_sum(P0.pre_val, P1.pre_val, hint.opt_pair_val, scope)
+            pre = qpre_term.qpre_mea_proj_sum(P0.pre, P1.pre, hint.opt_pair, scope)
             return IfProofTerm(pre, post, hint._opt_pair, P1, P0)
 
         else:
             # break the set using (Union) rule
             proof_ls : List[ProofSttTerm]= []
             union_pre = QPreTerm(())
-            for pair in post_val.opt_pairs:
-                pair_val = val_opt_pair(pair)
-                this_post = QPreTerm((pair_val,))
+            for pair in post.opt_pairs:
+                this_post = QPreTerm((pair,))
 
                 P1 = wp_calculus(hint.P1_val, this_post, scope)
                 P0 = wp_calculus(hint.P0_val, this_post, scope)
-                this_pre = qpre_term.qpre_mea_proj_sum(P0.pre_val, P1.pre_val, hint.opt_pair_val, scope)
+                this_pre = qpre_term.qpre_mea_proj_sum(P0.pre, P1.pre, hint.opt_pair, scope)
                 union_pre = union_pre.union(this_pre)
                 proof_ls.append(IfProofTerm(this_pre, this_post, hint._opt_pair, P1, P0))
             
             return UnionProofTerm(union_pre, post, tuple(proof_ls))
         
     elif isinstance(hint, WhileHintTerm):
-        post_val = val_qpre(post)
 
-        if len(post_val.opt_pairs) == 1:            
-            proposed_pre = qpre_term.qpre_mea_proj_sum(post_val, hint.inv_val, hint.opt_pair_val, scope)
-            P = wp_calculus(hint.P_val, proposed_pre, scope)
+        if len(post.opt_pairs) == 1:            
+            proposed_pre = qpre_term.qpre_mea_proj_sum(post, hint.inv, hint.opt_pair, scope)
+            P = wp_calculus(hint.P, proposed_pre, scope)
             try:
-                QPreTerm.sqsubseteq(hint.inv_val, P.pre_val, scope)
+                QPreTerm.sqsubseteq(hint.inv, P.pre, scope)
             except:
                 raise RuntimeErrorWithLog("The predicate '" + str(hint._inv) + "' is not a valid loop invariant.")  
 
@@ -133,14 +124,13 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
             # break the set using (Union) rule
             proof_ls : List[ProofSttTerm]= []
             union_pre = QPreTerm(())
-            for pair in post_val.opt_pairs:
-                pair_val = val_opt_pair(pair)
-                this_post = QPreTerm((pair_val,))
+            for pair in post.opt_pairs:
+                this_post = QPreTerm((pair,))
 
-                proposed_pre = qpre_term.qpre_mea_proj_sum(this_post, hint.inv_val, hint.opt_pair_val, scope)
-                P = wp_calculus(hint.P_val, proposed_pre, scope)
+                proposed_pre = qpre_term.qpre_mea_proj_sum(this_post, hint.inv, hint.opt_pair, scope)
+                P = wp_calculus(hint.P, proposed_pre, scope)
                 try:
-                    QPreTerm.sqsubseteq(hint.inv_val, P.pre_val, scope)
+                    QPreTerm.sqsubseteq(hint.inv, P.pre, scope)
                 except:
                     raise RuntimeErrorWithLog("The predicate '" + str(hint._inv) + "' is not a valid loop invariant.")  
 
@@ -153,24 +143,11 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
         proof_stts = []
         pre = QPreTerm(())
         for item in hint._proof_hints:
-            item_val = val_proof_hint(item)
-            new_proof_stt = wp_calculus(item_val, post, scope)
+            new_proof_stt = wp_calculus(item, post, scope)
             proof_stts.append(new_proof_stt)
-            pre = pre.union(new_proof_stt.pre_val)
+            pre = pre.union(new_proof_stt.pre)
         
         return NondetProofTerm(pre, post, tuple(proof_stts))
-    
-    elif isinstance(hint, SubproofHintTerm):
-        cor = hint.subproof_val.arg_ls_val.get_sub_correspond(hint.arg_ls_val)
-        pre_sub = hint.subproof_val.pre_val.qvar_subsitute(cor)
-        post_sub = hint.subproof_val.post_val.qvar_subsitute(cor)
-
-        try:
-            QPreTerm.sqsubseteq(post_sub, post, scope)
-        except RuntimeErrorWithLog:
-            raise RuntimeErrorWithLog("The subproof statement '" + str(hint._subproof) + "' cannot be put here.")
-        
-        return SubproofTerm(pre_sub, post, hint._subproof, hint._arg_ls)
     
     elif isinstance(hint, QPreHintTerm):
         try:
@@ -186,21 +163,18 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
         post_cal = QPreTerm(())
         for item in hint._proof_hints:
             try:
-                item_val = val_proof_hint(item)
                 # different tactics for subproofs and proof hints
-                if isinstance(item_val, ProofSeqHintTerm):
-                    subhint = item_val.get_proof_hint(len(item_val._proof_hints)-1)
-                    if isinstance(subhint, SubproofHintTerm):
-                        item_post = subhint.subproof_val.post_val
-                    elif isinstance(subhint, QPreHintTerm):
-                        item_post = subhint.qpre_val
+                if isinstance(item, ProofSeqHintTerm):
+                    subhint = item.get_proof_hint(len(item._proof_hints)-1)
+                    if isinstance(subhint, QPreHintTerm):
+                        item_post = subhint.qpre
                     else:
                         raise RuntimeErrorWithLog("The postcondition of proof hint '" + str(item) + "' cannot be automatically deduced.")
 
-                    new_proof_stt = wp_calculus(item_val, item_post, scope)
+                    new_proof_stt = wp_calculus(item, item_post, scope)
                     proof_stts.append(new_proof_stt)
                     post_cal = post_cal.union(item_post)
-                    pre_cal = pre_cal.union(new_proof_stt.pre_val)
+                    pre_cal = pre_cal.union(new_proof_stt.pre)
 
             except RuntimeErrorWithLog:
                 raise RuntimeErrorWithLog("The proof '" + str(item) + "' in the union proof does not hold.")
@@ -217,9 +191,9 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : ScopeTerm) -> Pro
         proof_stts : List[ProofSttTerm] = []
         cur_post = post
         for i in range(len(hint._proof_hints)-1, -1, -1):
-            item_val = val_proof_hint(hint._proof_hints[i])
-            proof_stts.insert(0, wp_calculus(item_val, cur_post, scope))
-            cur_post = proof_stts[0].pre_val
+            item = hint._proof_hints[i]
+            proof_stts.insert(0, wp_calculus(item, cur_post, scope))
+            cur_post = proof_stts[0].pre
         
         return ProofSeqTerm(cur_post, post, tuple(proof_stts))
     

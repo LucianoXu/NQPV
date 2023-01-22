@@ -21,7 +21,7 @@ from typing import Any, List, Dict, Tuple
 import os
 
 from .vsystem import vkernel
-from .vsystem.content.scope_term import ScopeTerm
+from .vsystem.var_scope import VarScope
 from .vsystem.log_system import LogSystem, RuntimeErrorWithLog
 
 def verify(path : str) -> None:

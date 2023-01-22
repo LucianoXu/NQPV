@@ -21,107 +21,69 @@
 from __future__ import annotations
 from typing import Any, List, Tuple, Dict
 
-from nqpv import dts
+from nqpv.vsystem.var_scope import VVar, VarScope
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
 from . import opt_kernel
-from .qvarls_term import QvarlsTerm, type_qvarls, val_qvarls
-from .opt_term import OperatorTerm, type_operator, val_opt
-from .scope_term import ScopeTerm
+from .qvarls_term import QvarlsTerm
+from .opt_term import OperatorTerm, MeasureTerm
 
-fac = dts.TermFact()
 
-type_opt_pair = fac.axiom("opt_pair", fac.sort_term(0))
 
-class OptPairTerm(dts.Term):
-    def __init__(self, opt : dts.Term, qvarls : dts.Term):
+class OptPairTerm(VVar):
+    def __init__(self, opt : VVar, qvarls : QvarlsTerm):
 
-        if not isinstance(opt, dts.Term) or not isinstance(qvarls, dts.Term):
-            raise ValueError()
-
-        # check the terms
-        if opt.type != type_operator:
+        if not isinstance(opt, OperatorTerm):
             raise RuntimeErrorWithLog("The term '" + str(opt) + "' is not an operator.")
-        if qvarls.type != type_qvarls:
+        
+        if not isinstance(qvarls, QvarlsTerm):
             raise RuntimeErrorWithLog("The term '" + str(qvarls) + "' is not a quantum variable list")
         
-        opt_val : OperatorTerm = val_opt(opt)
-        qvarls_val : QvarlsTerm = val_qvarls(qvarls)
-
         try:
-            opt_val.qnum
+            opt.qnum
         except ValueError:
             raise RuntimeErrorWithLog("The operator '" + str(opt) + "' can not be used here. All indices must be 2 valued.")
 
 
         # check the qubit number
-        if opt_val.qnum != qvarls_val.qnum:
+        if opt.qnum != qvarls.qnum:
             raise RuntimeErrorWithLog("The operator '" + str(opt) + "' and the quantum variable list '" + 
                 str(qvarls) + "' does not match on qubit numbers.")
         
-        super().__init__(type_opt_pair, None)
-        self._opt : dts.Term = opt
-        self._qvarls : dts.Term = qvarls
+        self._opt : OperatorTerm = opt
+        self._qvarls : QvarlsTerm = qvarls
     
     @property
-    def opt(self) -> dts.Term:
+    def str_type(self) -> str:
+        return "opt_pair " + str(self.qvarls.qnum) + " qubit"
+
+    @property
+    def opt(self) -> OperatorTerm:
         return self._opt
     
     @property
-    def opt_val(self) -> OperatorTerm:
-        return val_opt(self._opt)
-    
-    @property
-    def qvarls(self) -> dts.Term:
+    def qvarls(self) -> QvarlsTerm:
         return self._qvarls
 
     @property
-    def qvarls_val(self) -> QvarlsTerm:
-        return val_qvarls(self._qvarls)
-
-    def eval(self) -> dts.Term:
-        return OptPairTerm(self.opt.eval(), self.qvarls.eval())
-
-    @property
     def unitary_pair(self) -> bool:
-        return self._opt.eval().unitary # type: ignore
+        return self.opt.unitary
     
     @property
     def hermitian_predicate_pair(self) -> bool:
-        return self._opt.eval().hermitian_predicate # type: ignore
+        return self.opt.hermitian_predicate
     
-    @property
-    def measurement_pair(self) -> bool:
-        return self._opt.eval().measurement # type: ignore
-
     def __eq__(self, other) -> bool:
-        if isinstance(other, OptPairTerm):
-            return self.opt == other.opt and self.qvarls == other.qvarls
-        elif isinstance(other, dts.Var):
-            raise NotImplemented
-        else:
-            return False
+        raise NotImplemented
     
     def __str__(self) -> str:
-        return str(self.opt) + str(self.qvarls)
+        return self.opt.name + str(self.qvarls)
 
     def dagger(self) -> OptPairTerm:
         '''
         return the dagger operator
         '''
-        return OptPairTerm(self.opt_val.dagger(), self._qvarls)
-
-    def opt_mea0(self) -> OptPairTerm:
-        '''
-        return the operator for measurement result 0
-        '''
-        return OptPairTerm(self.opt_val.opt_mea0(), self._qvarls)
-    
-    def opt_mea1(self) -> OptPairTerm:
-        '''
-        return the operator for measurement result 1
-        '''
-        return OptPairTerm(self.opt_val.opt_mea1(), self._qvarls)
+        return OptPairTerm(self.opt.dagger(), self._qvarls)
     
     def __add__(self, other : OptPairTerm) -> OptPairTerm:
         '''
@@ -132,33 +94,72 @@ class OptPairTerm(dts.Term):
         if self.qvarls != other.qvarls:
             # automatic extension for hermitian pairs
             if self.hermitian_predicate_pair and other.hermitian_predicate_pair:
-                all_qvarls = self.qvarls_val.join(other.qvarls_val)
+                all_qvarls = self.qvarls.join(other.qvarls)
                 new_self = hermitian_extend(self, all_qvarls)
                 new_other = hermitian_extend(other, all_qvarls)
-                return OptPairTerm(new_self.opt_val + new_other.opt_val, all_qvarls)
+                return OptPairTerm(new_self.opt + new_other.opt, all_qvarls)
             else:
                 raise ValueError()
         else:
-            return OptPairTerm(self.opt_val + other.opt_val, self.qvarls)
+            return OptPairTerm(self.opt + other.opt, self.qvarls)
 
     def qvar_substitute(self, correspondence : Dict[str, str]) -> OptPairTerm:
-        return OptPairTerm(self._opt, self.qvarls_val.qvar_substitute(correspondence))
+        return OptPairTerm(self._opt, self.qvarls.qvar_substitute(correspondence))
 
-def val_opt_pair(term : dts.Term) -> OptPairTerm:
-    if not isinstance(term, dts.Term):
-        raise ValueError()
-    if term.type != type_opt_pair:
-        raise ValueError()
+class MeaPairTerm(VVar):
+    def __init__(self, mea : VVar, qvarls : QvarlsTerm):
+        if not isinstance(mea, MeasureTerm):
+            raise RuntimeErrorWithLog("The term '" + str(mea) + "' is not a measurement.")
+        
+        if not isinstance(qvarls, QvarlsTerm):
+            raise RuntimeErrorWithLog("The term '" + str(qvarls) + "' is not a quantum variable list")
 
-    if isinstance(term, OptPairTerm):
-        return term
-    elif isinstance(term, dts.Var):
-        val = term.val
-        if not isinstance(val, OptPairTerm):
-            raise Exception()
-        return val
-    else:
-        raise Exception()
+        try:
+            mea.qnum
+        except ValueError:
+            raise RuntimeErrorWithLog("The operator '" + str(mea) + "' can not be used here. All indices must be 2 valued.")
+
+
+        # check the qubit number
+        if mea.qnum != qvarls.qnum:
+            raise RuntimeErrorWithLog("The operator '" + str(mea) + "' and the quantum variable list '" + 
+                str(qvarls) + "' does not match on qubit numbers.")
+        
+        self._mea : MeasureTerm = mea
+        self._qvarls : QvarlsTerm = qvarls
+
+    @property
+    def str_type(self) -> str:
+        return "opt_pair " + str(self.qvarls.qnum) + " qubit"
+
+    @property
+    def mea(self) -> MeasureTerm:
+        return self._mea
+
+    @property
+    def mea0(self) -> OptPairTerm:
+        return OptPairTerm(self.mea.m0, self.qvarls)
+
+    @property
+    def mea1(self) -> OptPairTerm:
+        return OptPairTerm(self.mea.m1, self.qvarls)
+    
+    @property
+    def qvarls(self) -> QvarlsTerm:
+        return self._qvarls
+
+    def __eq__(self, other) -> bool:
+        raise NotImplemented
+    
+    def __str__(self) -> str:
+        return self.mea.name + str(self.qvarls)
+
+    def dagger(self) -> MeaPairTerm:
+        '''
+        return the dagger operator
+        '''
+        return MeaPairTerm(self.mea.dagger(), self._qvarls)
+
 
 def hermitian_I(all_qvarls : QvarlsTerm) -> OptPairTerm:
     if not isinstance(all_qvarls, QvarlsTerm):
@@ -182,15 +183,15 @@ def hermitian_contract(H : OptPairTerm, M : OptPairTerm) -> OptPairTerm:
         raise RuntimeErrorWithLog("The operator variable pair '" + str(H) + "' is not a hermitian predicate pair.")
     
     # automatic extension
-    if not H.qvarls_val.cover(M.qvarls_val):
-        extended_qvarls = H.qvarls_val.join(M.qvarls_val)
+    if not H.qvarls.cover(M.qvarls):
+        extended_qvarls = H.qvarls.join(M.qvarls)
         H = hermitian_extend(H, extended_qvarls)
 
-    new_m = opt_kernel.hermitian_contract(H.qvarls_val.vls, H.opt_val.m, M.qvarls_val.vls, M.opt_val.m)
+    new_m = opt_kernel.hermitian_contract(H.qvarls.vls, H.opt.m, M.qvarls.vls, M.opt.m)
     new_opt = OperatorTerm(new_m)
     new_opt.ensure_hermitian_predicate()
 
-    return OptPairTerm(new_opt, H.qvarls_val)
+    return OptPairTerm(new_opt, H.qvarls)
 
 def hermitian_init(H : OptPairTerm, qvarls : QvarlsTerm) -> OptPairTerm:
     '''
@@ -203,15 +204,15 @@ def hermitian_init(H : OptPairTerm, qvarls : QvarlsTerm) -> OptPairTerm:
         raise RuntimeErrorWithLog("The operator variable pair '" + str(H) + "' is not a hermitian predicate pair.")
     
     # automatic extension
-    if not H.qvarls_val.cover(qvarls):
-        extended_qvarls = H.qvarls_val.join(qvarls)
+    if not H.qvarls.cover(qvarls):
+        extended_qvarls = H.qvarls.join(qvarls)
         H = hermitian_extend(H, extended_qvarls)
 
-    new_m = opt_kernel.hermitian_init(H.qvarls_val.vls, H.opt_val.m, qvarls.vls)
+    new_m = opt_kernel.hermitian_init(H.qvarls.vls, H.opt.m, qvarls.vls)
     new_opt = OperatorTerm(new_m)
     new_opt.ensure_hermitian_predicate()
 
-    return OptPairTerm(new_opt, H.qvarls_val)
+    return OptPairTerm(new_opt, H.qvarls)
 
 def hermitian_extend(H : OptPairTerm, all_qvarls : QvarlsTerm) -> OptPairTerm:
     '''
@@ -222,14 +223,14 @@ def hermitian_extend(H : OptPairTerm, all_qvarls : QvarlsTerm) -> OptPairTerm:
     if not H.hermitian_predicate_pair:
         raise RuntimeErrorWithLog("The operator variable pair '" + str(H) + "' is not a hermitian predicate pair.")
     
-    if not all_qvarls.cover(H.qvarls_val):
+    if not all_qvarls.cover(H.qvarls):
         raise RuntimeErrorWithLog("The variable list of '" + str(H) + "' must be covered by the quantum variable list '" + str(all_qvarls) + "' to expand to.")
 
     # check whether extend is unnecessary
-    if all_qvarls == H.qvarls_val:
+    if all_qvarls == H.qvarls:
         return H
 
-    new_m = opt_kernel.hermitian_extend(all_qvarls.vls,  H.opt_val.m, H.qvarls_val.vls)
+    new_m = opt_kernel.hermitian_extend(all_qvarls.vls,  H.opt.m, H.qvarls.vls)
     new_opt = OperatorTerm(new_m)
     new_opt.ensure_hermitian_predicate()
 

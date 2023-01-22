@@ -21,26 +21,21 @@
 from __future__ import annotations
 from typing import Any, List, Tuple, Dict
 
-from nqpv import dts
 from nqpv.vsystem.content.opt_term import OperatorTerm
 
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
+from nqpv.vsystem.var_scope import VVar, VarScope
 
 from .qvarls_term import QvarlsTerm
 from . import opt_kernel
 from . import opt_pair_term
-from .opt_pair_term import OptPairTerm, type_opt_pair, val_opt_pair
-from .scope_term import ScopeTerm
+from .opt_pair_term import OptPairTerm, MeaPairTerm
 
 import numpy as np
 import cvxpy as cp
 
-fac = dts.TermFact()
-
-type_qpre = fac.axiom("qpre", fac.sort_term(0))
-
-class QPreTerm(dts.Term):
-    def __init__(self, opt_pairs : Tuple[dts.Term,...]):
+class QPreTerm(VVar):
+    def __init__(self, opt_pairs : Tuple[VVar,...]):
         # check the terms
         if not isinstance(opt_pairs, tuple):
             raise ValueError()
@@ -48,38 +43,29 @@ class QPreTerm(dts.Term):
         # remove the repeated pairs
         unique_pairs = []
         for pair in opt_pairs:
-            if not isinstance(pair, dts.Term):
-                raise ValueError()
-            if pair.type != type_opt_pair:
+            if not isinstance(pair, OptPairTerm):
                 raise RuntimeErrorWithLog("The term '" + str(pair) + "' is not an operator variable pair.")
             
             # check for hermitian predicate pair
-            pair_val : OptPairTerm = pair.eval() # type: ignore
+            pair_val : OptPairTerm = pair
             if not pair_val.hermitian_predicate_pair:
                 raise RuntimeErrorWithLog("The pair '" + str(pair) + "' is not a hermitian predicate pair.")
             
-            if pair not in unique_pairs:
-                unique_pairs.append(pair)
+            #if pair not in unique_pairs:
+            unique_pairs.append(pair)
         
-        super().__init__(type_qpre, None)
-        self._opt_pairs : Tuple[dts.Term,...] = tuple(unique_pairs)
+        self._opt_pairs : Tuple[OptPairTerm,...] = tuple(unique_pairs)
     
     @property
-    def opt_pairs(self) -> Tuple[dts.Term,...]:
+    def opt_pairs(self) -> Tuple[OptPairTerm,...]:
         return self._opt_pairs
 
     def __len__(self) -> int:
         return len(self._opt_pairs)
 
     def get_pair(self, i : int) -> OptPairTerm:
-        return val_opt_pair(self._opt_pairs[i])
+        return self._opt_pairs[i]
 
-    def eval(self) -> dts.Term:
-        evaluated = []
-        for pair in self._opt_pairs:
-            evaluated.append(pair.eval())
-        return QPreTerm(tuple(evaluated))
-    
     @property
     def all_qvarls(self) -> QvarlsTerm:
         '''
@@ -87,7 +73,7 @@ class QPreTerm(dts.Term):
         '''
         result = QvarlsTerm(())
         for i in range(len(self)):
-            result = result.join(self.get_pair(i).qvarls_val)
+            result = result.join(self.get_pair(i).qvarls)
         return result
     
     def str_content(self) -> str:
@@ -108,12 +94,11 @@ class QPreTerm(dts.Term):
         r = "{ " + self.str_content() +  " }"
         return r
     
-    def union(self, other : dts.Term) -> QPreTerm:
+    def union(self, other : QPreTerm) -> QPreTerm:
         '''
         union the two predicates to form a new predicate
         '''
-        other_val = val_qpre(other)
-        return QPreTerm(self._opt_pairs + other_val._opt_pairs)
+        return QPreTerm(self._opt_pairs + other._opt_pairs)
 
     def qvar_subsitute(self, correspondence : Dict[str, str]) -> QPreTerm:
         new_pairs = []
@@ -122,43 +107,39 @@ class QPreTerm(dts.Term):
         return QPreTerm(tuple(new_pairs))
 
     @staticmethod
-    def sqsubseteq(qpreA : dts.Term, qpreB : dts.Term, scope : ScopeTerm) -> None:
+    def sqsubseteq(qpreA : QPreTerm, qpreB : QPreTerm, scope : VarScope) -> None:
         '''
         checks the requirement of qpreA sqsubseteq_inf qpreB
         <automatic extension>
         '''
-        if not isinstance(qpreA, dts.Term) or not isinstance(qpreB, dts.Term) or not isinstance(scope, ScopeTerm):
+        if not isinstance(qpreA, QPreTerm) or not isinstance(qpreB, QPreTerm) or not isinstance(scope, VarScope):
             raise ValueError()
         
-        # evaluate the expressions
-        qpreA_val : QPreTerm = val_qpre(qpreA)
-        qpreB_val : QPreTerm = val_qpre(qpreB)
-        
         # auto extension
-        all_qvarls = qpreA_val.all_qvarls.join(qpreB_val.all_qvarls)
-        qpreA_val = qpre_extend(qpreA_val, all_qvarls, scope)
-        qpreB_val = qpre_extend(qpreB_val, all_qvarls, scope)
+        all_qvarls = qpreA.all_qvarls.join(qpreB.all_qvarls)
+        qpreA_val = qpre_extend(qpreA, all_qvarls, scope)
+        qpreB_val = qpre_extend(qpreB, all_qvarls, scope)
         
         scope.report("Determining : ")
         scope.report(str(qpreA) + " <= " + str(qpreB) + "\n")
 
         # transform all the hermitian operators into matrices
         dim = 2**all_qvarls.qnum
-        msetA = [opt_kernel.tensor_to_matrix(qpreA_val.get_pair(i).opt_val.m) for i in range(len(qpreA_val))]
+        msetA = [opt_kernel.tensor_to_matrix(qpreA_val.get_pair(i).opt.m) for i in range(len(qpreA_val))]
 
         for j in range(len(qpreB_val)):
-            mB = opt_kernel.tensor_to_matrix(qpreB_val.get_pair(j).opt_val.m)
+            mB = opt_kernel.tensor_to_matrix(qpreB_val.get_pair(j).opt.m)
 
             if len(msetA) == 1:
                 # use eigen solver
                 e_vals = np.linalg.eigvals(mB - msetA[0])   # type: ignore
-                if np.any(e_vals < 0 - ScopeTerm.cur_setting.EPS):
+                if np.any(e_vals < 0 - VarScope.cur_setting.EPS):
                     raise RuntimeErrorWithLog(
                         "\nOrder relation not satisfied: \n\t" + 
                         str(qpreA) + " <= " + str(qpreB) + "\n" +
                         "The operator '" + str(qpreB_val.get_pair(j)) + "' can be violated.\n" +
                         "This conclusion may be incorrect due to the precision settings:\n"+
-                        "\t EPS : " + str(ScopeTerm.cur_setting.EPS ) + "\n" +
+                        "\t EPS : " + str(VarScope.cur_setting.EPS ) + "\n" +
                         "This relation may still hold with a trial of lower equivalence requirement.\n\n"
                     )
             else:
@@ -166,11 +147,11 @@ class QPreTerm(dts.Term):
                 X = cp.Variable((dim, dim), hermitian=True) # type: ignore
                 constraints = [X >> 0]  # type: ignore
                 constraints += [
-                    cp.real(cp.trace((mB - mA) @ X)) <= -ScopeTerm.cur_setting.EPS for mA in msetA    # type: ignore
+                    cp.real(cp.trace((mB - mA) @ X)) <= -VarScope.cur_setting.EPS for mA in msetA    # type: ignore
                 ]
                 prob = cp.Problem(cp.Minimize(0), constraints)  # type: ignore
 
-                prob.solve(eps = ScopeTerm.cur_setting.SDP_precision)
+                prob.solve(eps = VarScope.cur_setting.SDP_precision)
 
                 # Print result. debug purpose.
                 '''
@@ -194,32 +175,15 @@ class QPreTerm(dts.Term):
                         "The operator '" + str(qpreB_val.get_pair(j)) + "' can be violated.\n" +
                         "Density operator witnessed: '" + sol_name + "'.\n" +
                         "This conclusion may be incorrect due to the precision settings:\n"+
-                        "\t EPS : " + str(ScopeTerm.cur_setting.EPS ) + "\n" +
-                        "\t SDP_PRECISION :" + str(ScopeTerm.cur_setting.SDP_precision) + "\n" + 
+                        "\t EPS : " + str(VarScope.cur_setting.EPS ) + "\n" +
+                        "\t SDP_PRECISION :" + str(VarScope.cur_setting.SDP_precision) + "\n" + 
                         "This relation may still hold with a trial of better SDP solver precision or lower equivalence requirement.\n\n"
                     )
                 
 
-def val_qpre(term : dts.Term) -> QPreTerm:
-    if not isinstance(term, dts.Term):
-        raise ValueError()
-    if term.type != type_qpre:
-        raise ValueError()
-        
-    if isinstance(term, QPreTerm):
-        return term
-    elif isinstance(term, dts.Var):
-        val = term.val
-        if not isinstance(val, QPreTerm):
-            raise Exception()
-        return val
-    else:
-        raise Exception()
 
-
-
-def qpre_I(all_qvarls : QvarlsTerm, scope : ScopeTerm) -> QPreTerm:
-    if not isinstance(all_qvarls, QvarlsTerm) or not isinstance(scope, ScopeTerm):
+def qpre_I(all_qvarls : QvarlsTerm, scope : VarScope) -> QPreTerm:
+    if not isinstance(all_qvarls, QvarlsTerm) or not isinstance(scope, VarScope):
         raise ValueError()
     new_pair = opt_pair_term.hermitian_I(all_qvarls)
     new_name = scope.append(new_pair.opt)
@@ -227,8 +191,8 @@ def qpre_I(all_qvarls : QvarlsTerm, scope : ScopeTerm) -> QPreTerm:
     return QPreTerm((new_pair,))
 
 
-def qpre_contract(qpre : QPreTerm, M : OptPairTerm, scope : ScopeTerm) -> QPreTerm:
-    if not isinstance(qpre, QPreTerm) or not isinstance(M, OptPairTerm) or not isinstance(scope,ScopeTerm):
+def qpre_contract(qpre : QPreTerm, M : OptPairTerm, scope : VarScope) -> QPreTerm:
+    if not isinstance(qpre, QPreTerm) or not isinstance(M, OptPairTerm) or not isinstance(scope,VarScope):
         raise ValueError()
     pairs = []
     for i in range(len(qpre)):
@@ -239,8 +203,8 @@ def qpre_contract(qpre : QPreTerm, M : OptPairTerm, scope : ScopeTerm) -> QPreTe
     
     return QPreTerm(tuple(pairs))
 
-def qpre_init(qpre : QPreTerm, qvarls : QvarlsTerm, scope : ScopeTerm) -> QPreTerm:
-    if not isinstance(qpre, QPreTerm) or not isinstance(qvarls, QvarlsTerm) or not isinstance(scope, ScopeTerm):
+def qpre_init(qpre : QPreTerm, qvarls : QvarlsTerm, scope : VarScope) -> QPreTerm:
+    if not isinstance(qpre, QPreTerm) or not isinstance(qvarls, QvarlsTerm) or not isinstance(scope, VarScope):
         raise ValueError()
     pairs = []
     for i in range(len(qpre)):
@@ -251,19 +215,17 @@ def qpre_init(qpre : QPreTerm, qvarls : QvarlsTerm, scope : ScopeTerm) -> QPreTe
     
     return QPreTerm(tuple(pairs))
 
-def qpre_mea_proj_sum(qpre0 : QPreTerm, qpre1 : QPreTerm, M : OptPairTerm, scope : ScopeTerm) -> QPreTerm:
+def qpre_mea_proj_sum(qpre0 : QPreTerm, qpre1 : QPreTerm, 
+        M : MeaPairTerm, scope : VarScope) -> QPreTerm:
     '''
     M should be the measurement operators
     '''
     if not isinstance(qpre0, QPreTerm) or not isinstance(qpre1, QPreTerm)\
-        or not isinstance(M, OptPairTerm) or not isinstance(scope, ScopeTerm):
-        raise ValueError()
-
-    if not M.measurement_pair:
+        or not isinstance(M, OptPairTerm) or not isinstance(scope, VarScope):
         raise ValueError()
     
-    M0 = M.opt_mea0()
-    M1 = M.opt_mea1()
+    M0 = M.mea0
+    M1 = M.mea1
     pairs = []
     for i in range(len(qpre0)):
         for j in range(len(qpre1)):
@@ -272,7 +234,7 @@ def qpre_mea_proj_sum(qpre0 : QPreTerm, qpre1 : QPreTerm, M : OptPairTerm, scope
             ) + opt_pair_term.hermitian_contract(
                 qpre1.get_pair(j), M1
             )
-            new_pair.opt_val.ensure_hermitian_predicate()
+            new_pair.opt.ensure_hermitian_predicate()
             new_name = scope.append(new_pair.opt)
             new_pair = OptPairTerm(scope[new_name], new_pair.qvarls)
             pairs.append(new_pair)
@@ -281,8 +243,8 @@ def qpre_mea_proj_sum(qpre0 : QPreTerm, qpre1 : QPreTerm, M : OptPairTerm, scope
     
 
 
-def qpre_extend(qpre : QPreTerm, all_qvarls : QvarlsTerm, scope : ScopeTerm) -> QPreTerm:
-    if not isinstance(qpre, QPreTerm) or not isinstance(all_qvarls, QvarlsTerm) or not isinstance(scope, ScopeTerm):
+def qpre_extend(qpre : QPreTerm, all_qvarls : QvarlsTerm, scope : VarScope) -> QPreTerm:
+    if not isinstance(qpre, QPreTerm) or not isinstance(all_qvarls, QvarlsTerm) or not isinstance(scope, VarScope):
         raise ValueError()
     pairs = []
     for i in range(len(qpre)):

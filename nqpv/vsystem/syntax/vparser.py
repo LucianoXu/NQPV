@@ -74,6 +74,10 @@ def p_setting(p):
             | SETTING SDP_PRECISION ASSIGN FLOAT_NUM END
             | SETTING SILENT ASSIGN TRUE END
             | SETTING SILENT ASSIGN FALSE END
+            | SETTING IDENTICAL_VAR_CHECK ASSIGN TRUE END
+            | SETTING IDENTICAL_VAR_CHECK ASSIGN FALSE END
+            | SETTING OPT_PRESERVING ASSIGN TRUE END
+            | SETTING OPT_PRESERVING ASSIGN FALSE END
     '''
 
     # FLOAT_NUM is already checked
@@ -81,7 +85,7 @@ def p_setting(p):
         p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], float(p[4]))
     elif p[2] == "SDP_PRECISION":
         p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], float(p[4]))
-    elif p[2] == "SILENT":
+    elif p[2] in ("SILENT", "IDENTICAL_VAR_CHECK", "OPT_PRESERVING"):
         if p[4] == "true":
             p[0] = ast.AstSetting(PosInfo(p.slice[1].lineno), p[2], True)
         else:
@@ -267,12 +271,9 @@ def p_statement(p):
                 | if
                 | while
                 | nondet
-                | var qvar_ls
     '''
     if len(p) == 2:
         p[0] = p[1]
-    else:
-        p[0] = ast.AstSubprog(p[1].pos, p[1], p[2])
 
     if p[0] is None:
         raise Exception()
@@ -387,8 +388,7 @@ def p_proof_mid(p):
 
 def p_proof_statement(p):
     '''
-    proof_statement : var qvar_ls
-                    | skip
+    proof_statement : skip
                     | abort
                     | init
                     | unitary
@@ -398,10 +398,7 @@ def p_proof_statement(p):
                     | union_proof
                     | predicate
     '''
-    if isinstance(p[1], ast.AstVar):
-        p[0] = ast.AstSubproof(p[1].pos, p[1], p[2])
-    else:
-        p[0] = p[1]
+    p[0] = p[1]
 
     if p[0] is None:
         raise Exception()

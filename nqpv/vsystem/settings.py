@@ -28,9 +28,15 @@ class Settings:
         # use the default settings
         self.EPS : float = 1e-7
         self.SDP_precision : float = 1e-9
-        self.silent = True
+        self.SILENT = True
+        self.IDENTICAL_VAR_CHECK = True
+        self.OPT_PRESERVING = True
 
     def __str__(self) -> str:
-        r = "EPS : " + str(self.EPS) + " ; SDP precision : " + str(self.SDP_precision) + " ; SILENT : " + str(self.silent)
+        r = "EPS : " + str(self.EPS) + " ;\n" +\
+            "SDP precision : " + str(self.SDP_precision) + " ;\n" +\
+            "SILENT : " + str(self.SILENT) + " ;\n"\
+            "IDENTIVAL_VAR_CHECK : " + str(self.IDENTICAL_VAR_CHECK) + " ;\n" +\
+            "OPT_PRESERVING : " + str(self.OPT_PRESERVING)
         return r
     

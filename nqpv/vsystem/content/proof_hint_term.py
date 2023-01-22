@@ -22,27 +22,24 @@
 from __future__ import annotations
 from typing import List, Tuple
 
-from nqpv import dts
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
-from .qvarls_term import QvarlsTerm, type_qvarls, val_qvarls
-from .opt_pair_term import OptPairTerm, type_opt_pair, val_opt_pair
+from .qvarls_term import QvarlsTerm
+from .opt_pair_term import OptPairTerm, MeaPairTerm
 from . import qpre_term
-from .qpre_term import QPreTerm, type_qpre, val_qpre
-from .scope_term import ScopeTerm
+from .qpre_term import QPreTerm
+from ..var_scope import VVar, VarScope
 
-from .proof_term import type_proof, ProofDefinedTerm, val_proof
 
-fac = dts.TermFact()
-type_proof_hint = fac.axiom("proof_hint", fac.sort_term(0))
-
-class ProofHintTerm(dts.Term):
+class ProofHintTerm(VVar):
     def __init__(self, all_qvarls : QvarlsTerm, label : str):
-        val_qvarls(all_qvarls)
 
-        super().__init__(type_proof_hint, None)
         self._all_qvarls : QvarlsTerm = all_qvarls
         self._label : str = label
+
+    @property
+    def str_type(self) -> str:
+        return "proof_hint"
 
     @property
     def all_qvarls(self) -> QvarlsTerm:
@@ -64,22 +61,6 @@ class ProofHintTerm(dts.Term):
     def __str__(self) -> str:
         return "\n" + self.str_content("") + "\n"
     
-def val_proof_hint(term : dts.Term) -> ProofHintTerm:
-    if not isinstance(term, dts.Term):
-        raise ValueError()
-    if term.type != type_proof_hint:
-        raise ValueError()
-        
-    if isinstance(term, ProofHintTerm):
-        return term
-    elif isinstance(term, dts.Var):
-        val = term.val
-        if not isinstance(val, ProofHintTerm):
-            raise Exception()
-        return val
-    else:
-        raise Exception()
-
 class SkipHintTerm(ProofHintTerm):
     def __init__(self):
         super().__init__(QvarlsTerm(()), "skip hint")
@@ -101,20 +82,17 @@ class AbortHintTerm(ProofHintTerm):
         return prefix + "abort"
 
 class InitHintTerm(ProofHintTerm):
-    def __init__(self, qvarls : dts.Term):
-        if not isinstance(qvarls, dts.Term):
-            raise ValueError()
-        if qvarls.type != type_qvarls:
+    def __init__(self, qvarls : QvarlsTerm):
+        if not isinstance(qvarls, QvarlsTerm):
             raise RuntimeErrorWithLog("The term '" + str(qvarls) + "' is not a quantum variable list.")
-        
-        qvarls_val = val_qvarls(qvarls)
 
-        super().__init__(qvarls_val, "initialization hint")
-        self._qvarls : dts.Term = qvarls
+
+        super().__init__(qvarls, "initialization hint")
+        self._qvarls : QvarlsTerm = qvarls
 
     @property
-    def qvarls_val(self) -> QvarlsTerm:
-        return val_qvarls(self._qvarls)
+    def qvarls(self) -> QvarlsTerm:
+        return self._qvarls
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         if isinstance(other, InitHintTerm):
@@ -126,22 +104,20 @@ class InitHintTerm(ProofHintTerm):
         return prefix + str(self._qvarls) + " :=0"
 
 class UnitaryHintTerm(ProofHintTerm):
-    def __init__(self, opt_pair : dts.Term):
-        if not isinstance(opt_pair, dts.Term):
-            raise ValueError()
-        if opt_pair.type != type_opt_pair:
+    def __init__(self, opt_pair : OptPairTerm):
+        if not isinstance(opt_pair, OptPairTerm):
             raise RuntimeErrorWithLog("The term '" + str(opt_pair) + "' is not a operator variable pair.")
-        opt_pair_val = val_opt_pair(opt_pair)
-        if not opt_pair_val.unitary_pair:
+
+        if not opt_pair.unitary_pair:
             raise RuntimeErrorWithLog("The operator variable pair '" + str(opt_pair) + "' is not an unitary pair.")
         
-        all_qvarls = opt_pair_val.qvarls_val
+        all_qvarls = opt_pair.qvarls
         super().__init__(all_qvarls, "unitary hint")
-        self._opt_pair : dts.Term = opt_pair
+        self._opt_pair : OptPairTerm = opt_pair
 
     @property
-    def opt_pair_val(self) -> OptPairTerm:
-        return val_opt_pair(self._opt_pair)
+    def opt_pair(self) -> OptPairTerm:
+        return self._opt_pair
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         if isinstance(other, UnitaryHintTerm):
@@ -150,46 +126,38 @@ class UnitaryHintTerm(ProofHintTerm):
             return False
 
     def str_content(self, prefix: str) -> str:
-        return prefix + str(self.opt_pair_val._qvarls) + " *= " + str(self.opt_pair_val._opt)
+        return prefix + str(self.opt_pair._qvarls) + " *= " + str(self.opt_pair._opt)
 
 class IfHintTerm(ProofHintTerm):
-    def __init__(self, opt_pair : dts.Term, P1 : dts.Term, P0 : dts.Term):
-        if not isinstance(opt_pair, dts.Term) or not isinstance(P0, dts.Term) or not isinstance(P1, dts.Term):
-            raise ValueError()
-        # check the measurement
-        if opt_pair.type != type_opt_pair:
-            raise RuntimeErrorWithLog("The term '" + str(opt_pair) + "' is not a operator variable pair.")
-        opt_pair_val = val_opt_pair(opt_pair)
-        if not opt_pair_val.measurement_pair:
-            raise RuntimeErrorWithLog("The operator variable pair '" + str(opt_pair) + "' is not a measurement set pair.")
-
-        if P0.type != type_proof_hint:
+    def __init__(self, opt_pair : MeaPairTerm, P0 : ProofHintTerm, P1 : ProofHintTerm):
+        if not isinstance(opt_pair, MeaPairTerm):
+            raise RuntimeErrorWithLog("The term '" + str(opt_pair) + "' is not a measurement.")
+        
+        if not isinstance(P0, ProofHintTerm):
             raise RuntimeErrorWithLog("The term '" + str(P0) + "' is not a proof hint.")
-        if P1.type != type_proof_hint:
+        if not isinstance(P1, ProofHintTerm):
             raise RuntimeErrorWithLog("The term '" + str(P1) + "' is not a proof hint.")
+            
         
-        P0_val = val_proof_hint(P0)
-        P1_val = val_proof_hint(P1)
-        
-        all_qvarls = opt_pair_val.qvarls_val
-        all_qvarls = all_qvarls.join(P0_val.all_qvarls)
-        all_qvarls = all_qvarls.join(P1_val.all_qvarls)
+        all_qvarls = opt_pair.qvarls
+        all_qvarls = all_qvarls.join(P0.all_qvarls)
+        all_qvarls = all_qvarls.join(P1.all_qvarls)
         super().__init__(all_qvarls, "if hint")
-        self._opt_pair : dts.Term = opt_pair
-        self._P0 : dts.Term = P0
-        self._P1 : dts.Term = P1
+        self._opt_pair : MeaPairTerm = opt_pair
+        self._P0 : ProofHintTerm = P0
+        self._P1 : ProofHintTerm = P1
 
     @property
-    def opt_pair_val(self) -> OptPairTerm:
-        return val_opt_pair(self._opt_pair)
+    def opt_pair(self) -> MeaPairTerm:
+        return self._opt_pair
     
     @property
     def P0_val(self) -> ProofHintTerm:
-        return val_proof_hint(self._P0)
+        return self._P0
     
     @property
     def P1_val(self) -> ProofHintTerm:
-        return val_proof_hint(self._P1)
+        return self._P1
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         if isinstance(other, IfHintTerm):
@@ -208,77 +176,66 @@ class IfHintTerm(ProofHintTerm):
         return r
 
 class WhileHintTerm(ProofHintTerm):
-    def __init__(self, inv : dts.Term, opt_pair : dts.Term, P : dts.Term):
-        if not isinstance(inv, dts.Term) or not isinstance(opt_pair, dts.Term) or not isinstance(P, dts.Term):
-            raise ValueError()
-        # check the measurement
-        if opt_pair.type != type_opt_pair:
-            raise RuntimeErrorWithLog("The term '" + str(opt_pair) + "' is not a operator variable pair.")
-        opt_pair_val = val_opt_pair(opt_pair)
-        if not opt_pair_val.measurement_pair:
-            raise RuntimeErrorWithLog("The operator variable pair '" + str(opt_pair) + "' is not a measurement set pair.")
-        
+    def __init__(self, inv : QPreTerm, opt_pair : MeaPairTerm, P : ProofHintTerm):
+        if not isinstance(inv, QPreTerm):
+            raise RuntimeErrorWithLog("The term '" + str(opt_pair) + "' is not a measurement.")
+      
         # check loop invariant
-        if inv.type != type_qpre:
+        if not isinstance(opt_pair, QPreTerm):
             raise RuntimeErrorWithLog("The term '" + str(opt_pair) + "' is not a predicate, while a loop invariant is needed.")
 
-        if P.type != type_proof_hint:
+        if not isinstance(P, ProofHintTerm):
             raise RuntimeErrorWithLog("The term '" + str(P) + "' is not a proof hint.")
-
-        P_val = val_proof_hint(P)
         
-        all_qvarls = opt_pair_val.qvarls_val
-        all_qvarls = all_qvarls.join(P_val.all_qvarls)
+        all_qvarls = opt_pair.qvarls
+        all_qvarls = all_qvarls.join(P.all_qvarls)
         super().__init__(all_qvarls, "while hint")
-        self._inv : dts.Term = inv
-        self._opt_pair : dts.Term = opt_pair
-        self._P : dts.Term = P
+        self._inv : QPreTerm = inv
+        self._opt_pair : MeaPairTerm = opt_pair
+        self._P : ProofHintTerm = P
 
     @property
-    def inv_val(self) -> QPreTerm:
-        return val_qpre(self._inv)
+    def inv(self) -> QPreTerm:
+        return self._inv
 
     @property
-    def opt_pair_val(self) -> OptPairTerm:
-        return val_opt_pair(self._opt_pair)
+    def opt_pair(self) -> MeaPairTerm:
+        return self._opt_pair
     
     @property
-    def P_val(self) -> ProofHintTerm:
-        return val_proof_hint(self._P)
+    def P(self) -> ProofHintTerm:
+        return self._P
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         if isinstance(other, WhileHintTerm):
             return self._opt_pair == other._opt_pair\
-                and self.P_val.prog_consistent(other.P_val)
+                and self.P.prog_consistent(other.P)
         else:
             return False
     
     def str_content(self, prefix: str) -> str:
-        r = prefix + "{ inv: " + self.inv_val.str_content() + "};\n"
+        r = prefix + "{ inv: " + self.inv.str_content() + "};\n"
         r += prefix + "while " + str(self._opt_pair) + " do\n"
-        r += self.P_val.str_content(prefix + "\t") + "\n"
+        r += self.P.str_content(prefix + "\t") + "\n"
         r += prefix + "end"
         return r
 
 class NondetHintTerm(ProofHintTerm):
-    def __init__(self, proof_hints : Tuple[dts.Term, ...]):
+    def __init__(self, proof_hints : Tuple[ProofHintTerm, ...]):
         if not isinstance(proof_hints, tuple):
             raise ValueError()
         
         all_qvarls = QvarlsTerm(())
         for item in proof_hints:
-            if not isinstance(item, dts.Term):
-                raise ValueError()
-            if item.type != type_proof_hint:
+            if not isinstance(item, ProofHintTerm):
                 raise RuntimeErrorWithLog("The term '" + str(item) + "' is not a proof hint.")
-            item_val = val_proof_hint(item)
-            all_qvarls = all_qvarls.join(item_val.all_qvarls)
+            all_qvarls = all_qvarls.join(item.all_qvarls)
         
         super().__init__(all_qvarls, "nondeterministic hint")
-        self._proof_hints : Tuple[dts.Term,...] = proof_hints
+        self._proof_hints : Tuple[ProofHintTerm,...] = proof_hints
     
     def get_proof_hint(self, i : int) -> ProofHintTerm:
-        return val_proof_hint(self._proof_hints[i])
+        return self._proof_hints[i]
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         if isinstance(other, NondetHintTerm):
@@ -300,61 +257,17 @@ class NondetHintTerm(ProofHintTerm):
         r += prefix + ")"
         return r
 
-class SubproofHintTerm(ProofHintTerm):
-    def __init__(self, subproof : dts.Term, arg_ls : dts.Term):
-        # note: we need subproof to be a dts.Var
-        if not isinstance(subproof, dts.Var) or not isinstance(arg_ls, dts.Term):
-            raise ValueError()
-        
-        if subproof.type != type_proof:
-            raise RuntimeErrorWithLog("The term '" + str(subproof) + "' is not a subproof.")
-        
-        arg_ls_val = val_qvarls(arg_ls)
-        super().__init__(arg_ls_val, 'subproof hint')
-        self._subproof : dts.Var = subproof
-        self._arg_ls : dts.Term = arg_ls
-
-    @property
-    def subproof_val(self) -> ProofDefinedTerm:
-        return val_proof(self._subproof)
-    
-    @property
-    def arg_ls_val(self) -> QvarlsTerm:
-        return val_qvarls(self._arg_ls)
-
-    def prog_consistent(self, other: ProofHintTerm) -> bool:
-        if isinstance(other, SubproofHintTerm):
-            subproof_self = val_proof(self._subproof)
-            subproof_other = val_proof(other._subproof)
-            hint_self = val_proof_hint(subproof_self._proof_hint)
-            hint_other = val_proof_hint(subproof_other._proof_hint)
-
-            subprog_consistent = hint_self.prog_consistent(hint_other)\
-                and subproof_self._arg_ls == subproof_other._arg_ls
-
-            return subprog_consistent and self._arg_ls == other._arg_ls
-        else:
-            return False
-    
-    def str_content(self, prefix: str) -> str:
-        # we need to reserve the variable name
-        return prefix + str(self._subproof) + " " + str(self.arg_ls_val)
-    
 class QPreHintTerm(ProofHintTerm):
-    def __init__(self, qpre : dts.Term):
-        if not isinstance(qpre, dts.Term):
+    def __init__(self, qpre : QPreTerm):
+        if not isinstance(qpre, QPreTerm):
             raise ValueError()
-        if qpre.type != type_qpre:
-            raise ValueError()
-        
-        qpre_val = val_qpre(qpre)
 
-        super().__init__(qpre_val.all_qvarls,"predicate hint")
-        self._qpre : dts.Term = qpre_val
+        super().__init__(qpre.all_qvarls,"predicate hint")
+        self._qpre : QPreTerm = qpre
 
     @property
-    def qpre_val(self) -> QPreTerm:
-        return val_qpre(self._qpre)
+    def qpre(self) -> QPreTerm:
+        return self._qpre
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         '''
@@ -363,27 +276,24 @@ class QPreHintTerm(ProofHintTerm):
         raise Exception()
     
     def str_content(self, prefix: str) -> str:
-        return prefix + str(self.qpre_val)
+        return prefix + str(self.qpre)
 
 
 class UnionHintTerm(ProofHintTerm):
-    def __init__(self, proof_hints : Tuple[dts.Term,...]):
+    def __init__(self, proof_hints : Tuple[ProofHintTerm,...]):
         if not isinstance(proof_hints, tuple):
             raise ValueError()
         all_qvarls = QvarlsTerm(())
         for item in proof_hints:
-            if not isinstance(item, dts.Term):
-                raise ValueError()
-            if item.type != type_proof_hint:
+            if not isinstance(item, ProofHintTerm):
                 raise RuntimeErrorWithLog("The term '" + str(item) + "' is not a proof hint.")
-            item_val = val_proof_hint(item)
-            all_qvarls = all_qvarls.join(item_val.all_qvarls)
+            all_qvarls = all_qvarls.join(item.all_qvarls)
         
         # check whether the program of all proofs are the same
-        example_proof_hint = val_proof_hint(proof_hints[0])
+        example_proof_hint = proof_hints[0]
         for i in range(1, len(proof_hints)):
-            item_val = val_proof_hint(proof_hints[i])
-            if not example_proof_hint.prog_consistent(item_val):
+            item = proof_hints[i]
+            if not example_proof_hint.prog_consistent(item):
                 raise RuntimeErrorWithLog(
                     "The (Union) rule requires that all the proofs are about the same program, but proof '" +\
                         str(proof_hints[0]) + "' and proof '" + str(proof_hints[i]) + "' are not."
@@ -391,10 +301,10 @@ class UnionHintTerm(ProofHintTerm):
 
 
         super().__init__(all_qvarls, "union hint")
-        self._proof_hints : Tuple[dts.Term,...] = proof_hints
+        self._proof_hints : Tuple[ProofHintTerm,...] = proof_hints
     
     def get_proof_hint(self, i : int) -> ProofHintTerm:
-        return val_proof_hint(self._proof_hints[i])
+        return self._proof_hints[i]
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         if isinstance(other, UnionHintTerm):
@@ -412,19 +322,16 @@ class UnionHintTerm(ProofHintTerm):
         return r
 
 class ProofSeqHintTerm(ProofHintTerm):
-    def __init__(self, proof_hints : Tuple[dts.Term,...]):
+    def __init__(self, proof_hints : Tuple[ProofHintTerm,...]):
         if not isinstance(proof_hints, tuple):
             raise ValueError()
         
         all_qvarls = QvarlsTerm(())
         for item in proof_hints:
-            if not isinstance(item, dts.Term):
-                raise ValueError()
-            if item.type != type_proof_hint:
+            if not isinstance(item, ProofHintTerm):
                 raise RuntimeErrorWithLog("The term '" + str(item) + "' is not a proof hint.")
             # the individual subprogram can be "None" here
-            item_val = val_proof_hint(item)
-            all_qvarls = all_qvarls.join(item_val.all_qvarls)
+            all_qvarls = all_qvarls.join(item.all_qvarls)
         
         super().__init__(all_qvarls, "sequential hint")
         # flatten the sequential composition
@@ -434,10 +341,10 @@ class ProofSeqHintTerm(ProofHintTerm):
                 flattened = flattened + item._proof_hints
             else:
                 flattened = flattened + (item,)
-        self._proof_hints : Tuple[dts.Term,...] = flattened
+        self._proof_hints : Tuple[ProofHintTerm,...] = flattened
 
     def get_proof_hint(self, i : int) -> ProofHintTerm:
-        return val_proof_hint(self._proof_hints[i])
+        return self._proof_hints[i]
 
     def prog_consistent(self, other: ProofHintTerm) -> bool:
         if isinstance(other, ProofSeqHintTerm):

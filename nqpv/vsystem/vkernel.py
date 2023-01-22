@@ -27,21 +27,22 @@ import os
 from nqpv.vsystem.syntax.pos_info import PosInfo
 
 from .settings import Settings
-from .syntax import ast
-from .syntax import vparser
+from .syntax import ast, vparser
+
 from .log_system import LogSystem, RuntimeErrorWithLog
+from .var_scope import VarScope, VarPath
+
 from .optenv import get_opt_env, optload, optsave
+
 from .content.opt_term import MeasureTerm, OperatorTerm
-from .content.prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgDefinedTerm, ProgSttSeqTerm, ProgSttTerm, SkipTerm, UnitaryTerm, WhileTerm
 from .content.qvarls_term import QvarlsTerm
 from .content.opt_pair_term import OptPairTerm, MeaPairTerm
-
-from .content.proof_tacits import construct_proof
 from .content.qpre_term import QPreTerm
-from .content.proof_term import ProofDefinedTerm
-from .content.proof_hint_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofHintTerm, ProofSeqHintTerm, QPreHintTerm, SkipHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
 
-from .var_scope import VarScope, VarPath
+from .content.prog_term import *
+from .content.proof_hint_term import *
+from .content.proof_tacits import construct_proof
+
 
 
 class VKernel:
@@ -118,9 +119,9 @@ class VKernel:
         new_kernel = VKernel(name, self.folder_path, self)
         # register the scope
         self.cur_scope[name] = new_kernel.cur_scope
-        # enter the new setting 
-        parent_setting = VarScope.cur_setting 
-        VarScope.cur_setting = new_kernel.cur_scope.settings
+        # enter the new scope 
+        parent_scope = VarScope.cur_scope
+        VarScope.cur_scope = new_kernel.cur_scope
 
         for cmd in scope_ast.cmd_ls:
 
@@ -171,8 +172,8 @@ class VKernel:
             except RuntimeErrorWithLog:
                 LogSystem.channels["error"].append("Invalid '" + cmd.label + "' command." + PosInfo.str(cmd.pos))
 
-        # return to the parent setting
-        VarScope.cur_setting = parent_setting
+        # return to the parent scope
+        VarScope.cur_scope = parent_scope
             
         return new_kernel.cur_scope
     
@@ -218,12 +219,12 @@ class VKernel:
             pair = OptPairTerm(opt, qvarls)
             return UnitaryTerm(pair)
         elif isinstance(data, ast.AstIf):
-            S1 = self.eval_prog(data.prog1)
             S0 = self.eval_prog(data.prog0)
+            S1 = self.eval_prog(data.prog1)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = MeaPairTerm(opt, qvarls)
-            return IfTerm(pair, S1, S0)
+            return IfTerm(pair, S0, S1)
         elif isinstance(data, ast.AstWhile):
             S = self.eval_prog(data.prog)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
@@ -259,12 +260,12 @@ class VKernel:
             pair = OptPairTerm(opt, qvarls)
             return UnitaryHintTerm(pair)
         elif isinstance(data, ast.AstIfProof):
-            P1 = self.eval_proof_hint(data.proof1)
             P0 = self.eval_proof_hint(data.proof0)
+            P1 = self.eval_proof_hint(data.proof1)
             opt = self.cur_scope[self.eval_varpath(data.opt)]
             qvarls = self.eval_qvarls(data.qvar_ls)
             pair = MeaPairTerm(opt, qvarls)
-            return IfHintTerm(pair, P1, P0)
+            return IfHintTerm(pair, P0, P1)
         elif isinstance(data, ast.AstWhileProof):
             inv = self.eval_qpre(data.inv)
             P = self.eval_proof_hint(data.proof)
@@ -321,7 +322,7 @@ class VKernel:
                         proof_hint_seq = self.eval_proof_hint(expr.data.data.seq)
                         post = self.eval_qpre(expr.data.data.post)
                         arg_ls = self.eval_qvarls(expr.data.type.qvarls)
-                        return construct_proof(proof_hint_seq, pre, post, arg_ls, self.cur_scope)
+                        return construct_proof(proof_hint_seq, pre, post, arg_ls)
                     else:
                         raise RuntimeErrorWithLog("The expression is not of type '" + str(expr.data.type) + "'.", expr.data.pos)
 

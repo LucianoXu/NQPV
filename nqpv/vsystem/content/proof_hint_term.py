@@ -23,16 +23,17 @@ from __future__ import annotations
 from typing import List, Tuple
 
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
+from nqpv.vsystem.var_scope import VVar
 
 from .qvarls_term import QvarlsTerm
 from .opt_pair_term import OptPairTerm, MeaPairTerm
-from . import qpre_term
 from .qpre_term import QPreTerm
-from ..var_scope import VVar, VarScope
+
 
 
 class ProofHintTerm(VVar):
     def __init__(self, all_qvarls : QvarlsTerm, label : str):
+        super().__init__()
 
         self._all_qvarls : QvarlsTerm = all_qvarls
         self._label : str = label
@@ -126,7 +127,7 @@ class UnitaryHintTerm(ProofHintTerm):
             return False
 
     def str_content(self, prefix: str) -> str:
-        return prefix + str(self.opt_pair._qvarls) + " *= " + str(self.opt_pair._opt)
+        return prefix + str(self.opt_pair._qvarls) + " *= " + self.opt_pair.opt.name
 
 class IfHintTerm(ProofHintTerm):
     def __init__(self, opt_pair : MeaPairTerm, P0 : ProofHintTerm, P1 : ProofHintTerm):
@@ -177,11 +178,11 @@ class IfHintTerm(ProofHintTerm):
 
 class WhileHintTerm(ProofHintTerm):
     def __init__(self, inv : QPreTerm, opt_pair : MeaPairTerm, P : ProofHintTerm):
-        if not isinstance(inv, QPreTerm):
+        if not isinstance(opt_pair, MeaPairTerm):
             raise RuntimeErrorWithLog("The term '" + str(opt_pair) + "' is not a measurement.")
       
         # check loop invariant
-        if not isinstance(opt_pair, QPreTerm):
+        if not isinstance(inv, QPreTerm):
             raise RuntimeErrorWithLog("The term '" + str(opt_pair) + "' is not a predicate, while a loop invariant is needed.")
 
         if not isinstance(P, ProofHintTerm):

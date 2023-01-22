@@ -39,7 +39,8 @@ class VVar:
         '''
         return "Verification Varibale"
 
-    name : str = "temp_var"
+    def __init__(self):
+        self.name : str = "temp_var"
 
 class VarPath:
     '''
@@ -80,11 +81,24 @@ class VarPath:
 class VarScope (VVar):
 
 
-    cur_setting : Settings = Settings()
+    cur_scope : VarScope | None = None
+
+
+    @staticmethod
+    def get_cur_scope() -> VarScope:
+        if VarScope.cur_scope is None:
+            raise Exception()
+        return VarScope.cur_scope
+
+    @staticmethod
+    def cur_settings() -> Settings:
+        return VarScope.get_cur_scope().settings
 
     def __init__(self, label : str, parent_scope : VarScope | None):
         if not (isinstance(parent_scope, VarScope) or parent_scope is None) or not isinstance(label, str):
             raise ValueError()
+
+        super().__init__()
 
         # auto naming number for every scope
         self.auto_naming_no : int = 0

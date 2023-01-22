@@ -23,13 +23,16 @@ from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
+from nqpv.vsystem.var_scope import VVar
 
 from .qvarls_term import QvarlsTerm
 from .opt_pair_term import OptPairTerm, MeaPairTerm
-from ..var_scope import VVar, VarScope
+
 
 class ProgSttTerm(VVar):
     def __init__(self, all_qvarls : QvarlsTerm):
+        super().__init__()
+
         if not isinstance(all_qvarls, QvarlsTerm):
             raise ValueError()
 
@@ -246,6 +249,8 @@ class ProgDefinedTerm(VVar):
     def __init__(self, prog_seq : ProgSttTerm, arg_ls : QvarlsTerm):
         '''
         '''
+        super().__init__()
+        
         if not isinstance(prog_seq, ProgSttTerm) or not isinstance(arg_ls, QvarlsTerm):
             raise ValueError()
 

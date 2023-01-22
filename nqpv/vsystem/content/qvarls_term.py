@@ -21,13 +21,14 @@
 from __future__ import annotations
 from typing import Any, List, Tuple, Dict
 
-from ..var_scope import VVar
-
+from nqpv.vsystem.var_scope import VVar
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
 
 class QvarlsTerm(VVar):
 
     def __init__(self, qvarls : Tuple[str,...]):
+        super().__init__()
+
         #check the terms
         if not isinstance(qvarls, tuple):
             raise ValueError()

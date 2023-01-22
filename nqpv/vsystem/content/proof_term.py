@@ -23,21 +23,19 @@ from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
+from nqpv.vsystem.var_scope import VVar
 
 from .qvarls_term import QvarlsTerm
-from .opt_term import OperatorTerm
 from .opt_pair_term import OptPairTerm, MeaPairTerm
-from . import qpre_term
 from .qpre_term import QPreTerm
-from .prog_term import AbortTerm, IfTerm, InitTerm, NondetTerm, ProgSttSeqTerm, ProgSttTerm, SkipTerm, UnitaryTerm, WhileTerm
-from ..var_scope import VVar, VarScope
-
+from .prog_term import *
 from .proof_hint_term import ProofHintTerm
 
 # proof statements
 
 class ProofSttTerm(VVar):
     def __init__(self, pre : QPreTerm, post : QPreTerm):
+        super().__init__()
 
         if not isinstance(pre, QPreTerm):
             raise RuntimeErrorWithLog("The term '" + str(pre) + "' is not a quantum predicate.")
@@ -136,7 +134,7 @@ class UnitaryProofTerm(ProofSttTerm):
     
     def str_content(self, prefix: str) -> str:
         r = prefix + str(self.pre) + ";\n"
-        r += prefix + str(self.opt_pair.qvarls) + " *= " + str(self.opt_pair.opt)
+        r += prefix + str(self.opt_pair.qvarls) + " *= " + self.opt_pair.opt.name
         return r
         
 class IfProofTerm(ProofSttTerm):
@@ -318,6 +316,7 @@ class ProofDefinedTerm(VVar):
         proof_hint : proof_hint is necessary for apply_hint method
         the specified pre and post conditions are necessary, because they are not the full extension
         '''
+        super().__init__()
         
         if not isinstance(pre, QPreTerm)\
              or not isinstance(proof_hint, ProofHintTerm)\

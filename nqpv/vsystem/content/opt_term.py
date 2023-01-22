@@ -21,9 +21,8 @@
 from __future__ import annotations
 from typing import Any, List, Tuple
 
-from . import opt_kernel
-
-from ..var_scope import VVar
+from nqpv.vsystem import opt_kernel
+from nqpv.vsystem.var_scope import VVar
 
 import numpy as np
 
@@ -35,6 +34,7 @@ class OperatorTerm(VVar):
         '''
         every operator must have a name
         '''
+        super().__init__()
 
         if not isinstance(m, np.ndarray):
             raise ValueError()
@@ -121,6 +121,7 @@ class MeasureTerm(VVar):
     The type of measurement operator sets.
     '''
     def __init__(self, m : np.ndarray):
+        super().__init__()
 
         if not isinstance(m, np.ndarray):
             raise ValueError()

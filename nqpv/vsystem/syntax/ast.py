@@ -173,12 +173,12 @@ class AstID(Ast):
         return self.id
 
 class AstIfProof(Ast):
-    def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs, proof1 : AstProof, proof0 : AstProof):
+    def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs, proof0 : AstProof, proof1 : AstProof):
         super().__init__(pos, "if proof")
         self.opt : AstVar = opt
         self.qvar_ls : AstQvarLs = qvar_ls
-        self.proof1 : AstProof = proof1
         self.proof0 : AstProof = proof0
+        self.proof1 : AstProof = proof1
 
 class AstInv(Ast):
     def __init__(self, pos : PosInfo, data : List[Tuple[AstVar, AstQvarLs]]):
@@ -241,12 +241,12 @@ class AstWhile(Ast):
         self.prog : AstProgSeq = prog
 
 class AstIf(Ast):
-    def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs, prog1 : AstProgSeq, prog0 : AstProgSeq):
+    def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs, prog0 : AstProgSeq, prog1 : AstProgSeq):
         super().__init__(pos, "if")
         self.opt : AstVar = opt
         self.qvar_ls : AstQvarLs = qvar_ls
-        self.prog1 : AstProgSeq = prog1
         self.prog0 : AstProgSeq = prog0
+        self.prog1 : AstProgSeq = prog1
 
 class AstUnitary(Ast):
     def __init__(self, pos : PosInfo, opt : AstVar, qvar_ls : AstQvarLs):

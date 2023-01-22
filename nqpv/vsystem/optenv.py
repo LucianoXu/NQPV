@@ -23,10 +23,10 @@ from __future__ import annotations
 
 import os
 
-from nqpv.vsystem.content.opt_kernel import get_opt_qnum, check_measure
+from nqpv.vsystem.opt_kernel import get_opt_qnum, check_measure
 
-from .log_system import LogSystem, RuntimeErrorWithLog
-from .var_scope import VVar, VarScope
+from .log_system import RuntimeErrorWithLog
+from .var_scope import VarScope
 from .content.opt_term import OperatorTerm, MeasureTerm
 
 import numpy as np

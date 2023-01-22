@@ -25,7 +25,7 @@ import numpy as np
 
 
 from nqpv.vsystem.log_system import LogSystem
-from ..var_scope import VarScope    
+from nqpv.vsystem.var_scope import VarScope    
 
 def np_eps_equal(a : np.ndarray, b : np.ndarray) -> bool:
     '''
@@ -35,7 +35,7 @@ def np_eps_equal(a : np.ndarray, b : np.ndarray) -> bool:
         return False
 
     diff = np.max(np_complex_norm(a - b))  # type: ignore
-    return diff < VarScope.cur_setting.EPS
+    return diff < VarScope.cur_settings().EPS
 
 def np_complex_norm(m : np.ndarray) -> np.ndarray:
     '''
@@ -97,7 +97,7 @@ def check_hermitian_predicate(m : np.ndarray) -> bool:
 
     # check 0 <= matrix <= I
     e_vals = np.linalg.eigvals(matrix)
-    if np.any(e_vals < 0 - VarScope.cur_setting.EPS) or np.any(e_vals > 1 + VarScope.cur_setting.EPS):
+    if np.any(e_vals < 0 - VarScope.cur_settings().EPS) or np.any(e_vals > 1 + VarScope.cur_settings().EPS):
         #LogSystem.channels["error"].append("The requirement 0 <= Predicate <= I is not satisfied.")
         return False
         
@@ -147,6 +147,7 @@ def dagger(M : np.ndarray) -> np.ndarray:
     nM = len(M.shape)//2
     trans = list(range(nM, nM*2)) + list(range(0, nM))
     return np.conjugate(M).transpose(trans)
+
 
 ################################### operation with qvars
 def hermitian_contract(qvar: Tuple[str,...], H : np.ndarray, qvar_act : Tuple[str,...], M : np.ndarray) -> np.ndarray:

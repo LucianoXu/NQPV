@@ -22,7 +22,7 @@ P1 = np.array([[1., 0., 0., 0.],
                     [0., 0., 0., 0.],
                     [0., 0., 0., 1.]])
                     
-MQWalk = np.stack((P0,P1), axis = 0)
+MQWalk = np.stack((P1,P0), axis = 0)
 np.save("MQWalk", MQWalk.reshape((2,2,2,2,2)))
 
 # the invariant N

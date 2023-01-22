@@ -18,13 +18,14 @@
 #
 # defining the operator-variable pair terms
 # ------------------------------------------------------------
+
 from __future__ import annotations
 from typing import Any, List, Tuple, Dict
 
-from nqpv.vsystem.var_scope import VVar, VarScope
+from nqpv.vsystem.var_scope import VVar
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
+from nqpv.vsystem import opt_kernel
 
-from . import opt_kernel
 from .qvarls_term import QvarlsTerm
 from .opt_term import OperatorTerm, MeasureTerm
 
@@ -32,6 +33,7 @@ from .opt_term import OperatorTerm, MeasureTerm
 
 class OptPairTerm(VVar):
     def __init__(self, opt : VVar, qvarls : QvarlsTerm):
+        super().__init__()
 
         if not isinstance(opt, OperatorTerm):
             raise RuntimeErrorWithLog("The term '" + str(opt) + "' is not an operator.")
@@ -74,8 +76,11 @@ class OptPairTerm(VVar):
         return self.opt.hermitian_predicate
     
     def __eq__(self, other) -> bool:
-        raise NotImplemented
-    
+            if isinstance(other, OptPairTerm):
+                return self.opt == other.opt and self.qvarls == other.qvarls
+            else:
+                return False    
+
     def __str__(self) -> str:
         return self.opt.name + str(self.qvarls)
 
@@ -108,6 +113,8 @@ class OptPairTerm(VVar):
 
 class MeaPairTerm(VVar):
     def __init__(self, mea : VVar, qvarls : QvarlsTerm):
+        super().__init__()
+
         if not isinstance(mea, MeasureTerm):
             raise RuntimeErrorWithLog("The term '" + str(mea) + "' is not a measurement.")
         

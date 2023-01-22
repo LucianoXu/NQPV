@@ -23,25 +23,23 @@ from __future__ import annotations
 from typing import Any, List, Dict, Tuple
 
 from nqpv.vsystem.log_system import RuntimeErrorWithLog
+from nqpv.vsystem.var_scope import VarScope
 
 from .qvarls_term import QvarlsTerm
-from .opt_pair_term import OptPairTerm
-from . import qpre_term
-from .qpre_term import QPreTerm
-from ..var_scope import VarScope
-
-
-from .proof_hint_term import AbortHintTerm, IfHintTerm, InitHintTerm, NondetHintTerm, ProofHintTerm, ProofSeqHintTerm, QPreHintTerm, SkipHintTerm, UnionHintTerm, UnitaryHintTerm, WhileHintTerm
-from .proof_term import AbortProofTerm, IfProofTerm, InitProofTerm, NondetProofTerm, ProofSeqTerm, ProofSttTerm, ProofDefinedTerm, QPreProofTerm, SkipProofTerm, UnionProofTerm, UnitaryProofTerm, WhileProofTerm
+from .qpre_term import *
+from .proof_hint_term import *
+from .proof_term import *
 
 
 def construct_proof(hint : ProofHintTerm, pre : QPreTerm, post : QPreTerm, 
-                    arg_ls : QvarlsTerm, scope : VarScope) -> ProofDefinedTerm:
+                    arg_ls : QvarlsTerm) -> ProofDefinedTerm:
     '''
     construct a proof term from this hint
     '''
+    scope = VarScope.cur_scope
+
     if not isinstance(pre, QPreTerm) or not isinstance(post, QPreTerm)\
-            or not isinstance(arg_ls, QvarlsTerm) or not isinstance(scope, VarScope):
+            or not isinstance(arg_ls, QvarlsTerm):
         raise ValueError()
 
     # need to check whether arg_ls covers the pre and the post
@@ -51,20 +49,22 @@ def construct_proof(hint : ProofHintTerm, pre : QPreTerm, post : QPreTerm,
         raise RuntimeErrorWithLog("The argument list '" + str(arg_ls) + "' must cover that of the precondition and the postcondition.")
 
     # calculate the proof statements
-    proof_stts = wp_calculus(hint, post, scope)
+    proof_stts = wp_calculus(hint, post)
 
     try:
-        QPreTerm.sqsubseteq(pre, proof_stts.pre, scope)
+        QPreTerm.sqsubseteq(pre, proof_stts.pre)
     except RuntimeErrorWithLog:
         raise RuntimeErrorWithLog("The precondition of this proof does not hold.")
 
     return ProofDefinedTerm(pre, hint, proof_stts, post, arg_ls)
 
-def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> ProofSttTerm:
+def wp_calculus(hint : ProofHintTerm, post : QPreTerm) -> ProofSttTerm:
     '''
     calculate the weakest precondition, of a program given by proof_hint with respect to the post condition
     return a proof statement for this
     '''
+    scope = VarScope.get_cur_scope()
+
     scope.report("wp calculus : " + str(hint.label))
     scope.report("{ ? }")
     scope.report(str(hint))
@@ -74,25 +74,25 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> Proo
         return SkipProofTerm(post, post)
         
     elif isinstance(hint, AbortHintTerm):
-        pre = qpre_term.qpre_I(post.all_qvarls, scope)
+        pre = qpre_I(post.all_qvarls)
         return AbortProofTerm(pre, post)
 
     elif isinstance(hint, InitHintTerm):
-        pre = qpre_term.qpre_init(post, hint.qvarls, scope)
+        pre = qpre_init(post, hint.qvarls)
         return InitProofTerm(pre, post, hint._qvarls)
 
     elif isinstance(hint, UnitaryHintTerm):
-        pre = qpre_term.qpre_contract(post, hint.opt_pair.dagger(), scope)
+        pre = qpre_contract(post, hint.opt_pair.dagger())
         return UnitaryProofTerm(pre, post, hint._opt_pair)
     
     elif isinstance(hint, IfHintTerm):
         if len(post.opt_pairs) == 1:            
 
-            P1 = wp_calculus(hint.P1_val, post, scope)
-            P0 = wp_calculus(hint.P0_val, post, scope)
+            P0 = wp_calculus(hint.P0_val, post)
+            P1 = wp_calculus(hint.P1_val, post)
 
-            pre = qpre_term.qpre_mea_proj_sum(P0.pre, P1.pre, hint.opt_pair, scope)
-            return IfProofTerm(pre, post, hint._opt_pair, P1, P0)
+            pre = qpre_mea_proj_sum(P0.pre, P1.pre, hint.opt_pair)
+            return IfProofTerm(pre, post, hint._opt_pair, P0, P1)
 
         else:
             # break the set using (Union) rule
@@ -101,21 +101,21 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> Proo
             for pair in post.opt_pairs:
                 this_post = QPreTerm((pair,))
 
-                P1 = wp_calculus(hint.P1_val, this_post, scope)
-                P0 = wp_calculus(hint.P0_val, this_post, scope)
-                this_pre = qpre_term.qpre_mea_proj_sum(P0.pre, P1.pre, hint.opt_pair, scope)
+                P0 = wp_calculus(hint.P0_val, this_post)
+                P1 = wp_calculus(hint.P1_val, this_post)
+                this_pre = qpre_mea_proj_sum(P0.pre, P1.pre, hint.opt_pair)
                 union_pre = union_pre.union(this_pre)
-                proof_ls.append(IfProofTerm(this_pre, this_post, hint._opt_pair, P1, P0))
+                proof_ls.append(IfProofTerm(this_pre, this_post, hint._opt_pair, P0, P1))
             
             return UnionProofTerm(union_pre, post, tuple(proof_ls))
         
     elif isinstance(hint, WhileHintTerm):
 
         if len(post.opt_pairs) == 1:            
-            proposed_pre = qpre_term.qpre_mea_proj_sum(post, hint.inv, hint.opt_pair, scope)
-            P = wp_calculus(hint.P, proposed_pre, scope)
+            proposed_pre = qpre_mea_proj_sum(hint.inv, post, hint.opt_pair)
+            P = wp_calculus(hint.P, proposed_pre)
             try:
-                QPreTerm.sqsubseteq(hint.inv, P.pre, scope)
+                QPreTerm.sqsubseteq(hint.inv, P.pre)
             except:
                 raise RuntimeErrorWithLog("The predicate '" + str(hint._inv) + "' is not a valid loop invariant.")  
 
@@ -127,10 +127,10 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> Proo
             for pair in post.opt_pairs:
                 this_post = QPreTerm((pair,))
 
-                proposed_pre = qpre_term.qpre_mea_proj_sum(this_post, hint.inv, hint.opt_pair, scope)
-                P = wp_calculus(hint.P, proposed_pre, scope)
+                proposed_pre = qpre_mea_proj_sum(hint.inv, this_post, hint.opt_pair)
+                P = wp_calculus(hint.P, proposed_pre)
                 try:
-                    QPreTerm.sqsubseteq(hint.inv, P.pre, scope)
+                    QPreTerm.sqsubseteq(hint.inv, P.pre)
                 except:
                     raise RuntimeErrorWithLog("The predicate '" + str(hint._inv) + "' is not a valid loop invariant.")  
 
@@ -143,7 +143,7 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> Proo
         proof_stts = []
         pre = QPreTerm(())
         for item in hint._proof_hints:
-            new_proof_stt = wp_calculus(item, post, scope)
+            new_proof_stt = wp_calculus(item, post)
             proof_stts.append(new_proof_stt)
             pre = pre.union(new_proof_stt.pre)
         
@@ -151,7 +151,7 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> Proo
     
     elif isinstance(hint, QPreHintTerm):
         try:
-            QPreTerm.sqsubseteq(hint._qpre, post, scope)
+            QPreTerm.sqsubseteq(hint._qpre, post)
         except RuntimeErrorWithLog:
             raise RuntimeErrorWithLog("The condition hint '" + str(post) + "' does not hold.")
         
@@ -171,7 +171,7 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> Proo
                     else:
                         raise RuntimeErrorWithLog("The postcondition of proof hint '" + str(item) + "' cannot be automatically deduced.")
 
-                    new_proof_stt = wp_calculus(item, item_post, scope)
+                    new_proof_stt = wp_calculus(item, item_post)
                     proof_stts.append(new_proof_stt)
                     post_cal = post_cal.union(item_post)
                     pre_cal = pre_cal.union(new_proof_stt.pre)
@@ -180,7 +180,7 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> Proo
                 raise RuntimeErrorWithLog("The proof '" + str(item) + "' in the union proof does not hold.")
         
         try:
-            QPreTerm.sqsubseteq(post_cal, post, scope)
+            QPreTerm.sqsubseteq(post_cal, post)
         except RuntimeErrorWithLog:
             raise RuntimeErrorWithLog("The postcondition and the (Union) proof hint do not fit.")
 
@@ -192,7 +192,7 @@ def wp_calculus(hint : ProofHintTerm, post : QPreTerm, scope : VarScope) -> Proo
         cur_post = post
         for i in range(len(hint._proof_hints)-1, -1, -1):
             item = hint._proof_hints[i]
-            proof_stts.insert(0, wp_calculus(item, cur_post, scope))
+            proof_stts.insert(0, wp_calculus(item, cur_post))
             cur_post = proof_stts[0].pre
         
         return ProofSeqTerm(cur_post, post, tuple(proof_stts))

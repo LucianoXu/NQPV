@@ -36,7 +36,7 @@ class OptPairTerm(VVar):
         super().__init__()
 
         if not isinstance(opt, OperatorTerm):
-            raise RuntimeErrorWithLog("The term '" + str(opt) + "' is not an operator.")
+            raise RuntimeErrorWithLog("The term '" + opt.name + "' is not an operator.")
         
         if not isinstance(qvarls, QvarlsTerm):
             raise RuntimeErrorWithLog("The term '" + str(qvarls) + "' is not a quantum variable list")
@@ -44,12 +44,12 @@ class OptPairTerm(VVar):
         try:
             opt.qnum
         except ValueError:
-            raise RuntimeErrorWithLog("The operator '" + str(opt) + "' can not be used here. All indices must be 2 valued.")
+            raise RuntimeErrorWithLog("The operator '" + opt.name + "' can not be used here. All indices must be 2 valued.")
 
 
         # check the qubit number
         if opt.qnum != qvarls.qnum:
-            raise RuntimeErrorWithLog("The operator '" + str(opt) + "' and the quantum variable list '" + 
+            raise RuntimeErrorWithLog("The operator '" + opt.name + "' and the quantum variable list '" + 
                 str(qvarls) + "' does not match on qubit numbers.")
         
         self._opt : OperatorTerm = opt

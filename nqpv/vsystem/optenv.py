@@ -263,4 +263,4 @@ def optsave(opt : OperatorTerm | MeasureTerm, path : str) -> None:
             raise ValueError()
     
     except:
-        raise RuntimeErrorWithLog("Cannot save the operator '" + str(opt) + "' at the position '" + path + "'.")
+        raise RuntimeErrorWithLog("Cannot save the operator '" + opt.name + "' at the position '" + path + "'.")

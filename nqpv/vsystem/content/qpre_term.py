@@ -56,6 +56,8 @@ class QPreTerm(VVar):
             if VarScope.cur_settings().IDENTICAL_VAR_CHECK:
                 if pair not in unique_pairs:
                     unique_pairs.append(pair)
+            else:
+                unique_pairs.append(pair)
         
         self._opt_pairs : Tuple[OptPairTerm,...] = tuple(unique_pairs)
     

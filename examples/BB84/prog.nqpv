@@ -1,4 +1,5 @@
 setting SILENT := true end
+setting IDENTICAL_VAR_CHECK := false end
 
 def BB84_loop := proof[key2 q2] :
     { I[key2] };
@@ -11,25 +12,25 @@ def BB84_loop := proof[key2 q2] :
 
     // repeat until the encoding basis coincide
     { inv : P0[f] };
-    while M10[f] do
+    while M01[f] do
 
         // Alice chooses a set of basis and encode
         [a1 a2] :=0;
         (skip # a1 *= X);
         (skip # a2 *= X);
         [q1 q2] :=0;
-        if M01[key1] then q1 *= X else skip end;
-        if M01[key2] then q2 *= X else skip end;
-        if M01[a1] then q1 *= H else skip end;
-        if M01[a2] then q2 *= H else skip end;
+        if M10[key1] then q1 *= X else skip end;
+        if M10[key2] then q2 *= X else skip end;
+        if M10[a1] then q1 *= H else skip end;
+        if M10[a2] then q2 *= H else skip end;
 
         // transmit, Bob chooses a set of basis
         [b1 b2] :=0;
         (skip # b1 *= X);
         (skip # b2 *= X);
 
-        if MEq01_2[a1 b1] then 
-            if MEq01_2[a2 b2] then 
+        if MEq10_2[a1 b1] then 
+            if MEq10_2[a2 b2] then 
                 f :=0;
                 f *= X
             else 
@@ -41,13 +42,13 @@ def BB84_loop := proof[key2 q2] :
     end;
 
     // decode
-    if M01[b1] then q1 *= H else skip end;
-    if M01[b2] then q2 *= H else skip end;
-    if M01[q1] then skip else skip end;
-    if M01[q2] then skip else skip end;
+    if M10[b1] then q1 *= H else skip end;
+    if M10[b2] then q2 *= H else skip end;
+    if M10[q1] then skip else skip end;
+    if M10[q2] then skip else skip end;
 
     // check on the first bit
-    if MEq01_2[key1 q1] then skip else abort end;
+    if MEq10_2[key1 q1] then skip else abort end;
 
     { Eq01_2[key2 q2] }
 

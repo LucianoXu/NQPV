@@ -7,7 +7,7 @@ def pf := proof[q q1] :
     q1 *= H;
     q2 *= X;
     q2 *= H;
-    if M01[q] then
+    if M10[q] then
         ( 
             [q1 q2] *= CX
         #

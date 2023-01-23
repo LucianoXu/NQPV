@@ -154,7 +154,7 @@ class QPreTerm(VVar):
                 X = cp.Variable((dim, dim), hermitian=True) # type: ignore
                 constraints = [X >> 0]  # type: ignore
                 constraints += [
-                    cp.real(cp.trace((mB - mA) @ X)) <= -VarScope.cur_setting.EPS for mA in msetA    # type: ignore
+                    cp.real(cp.trace((mB - mA) @ X)) <= -VarScope.cur_settings().EPS for mA in msetA    # type: ignore
                 ]
                 prob = cp.Problem(cp.Minimize(0), constraints)  # type: ignore
 

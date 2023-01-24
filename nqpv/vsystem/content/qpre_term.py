@@ -172,7 +172,11 @@ class QPreTerm(VVar):
                 if X.value is not None:
 
                     # rescale to satisfy trace(rho) = 1
-                    sol = X.value / np.trace(X.value)
+                    tr = np.trace(X.value)
+                    if tr < VarScope.cur_settings().EPS:
+                        sol = X.value
+                    else:
+                        sol = X.value / tr
                     
                     sol_name = scope.append(OperatorTerm(sol))
 
